@@ -1,7 +1,7 @@
 #!/usr/bin/python
 # -*- coding: cp1252 -*-
 #
-# Alice-universal-alpha.py(w) (8-12-2023)
+# Alice-universal-alpha.py(w) (8-14-2023)
 # Written using Python version 3.10, Windows OS 
 # Requires a hardware interface level functions add-on file
 # Created by D Mercer ()
@@ -67,7 +67,7 @@ import webbrowser
 # check which operating system
 import platform
 #
-RevDate = "12 Aug 2023"
+RevDate = "14 Aug 2023"
 SWRev = "1.0 "
 #
 # small bit map of triangle logo for window icon
@@ -17739,6 +17739,10 @@ def CalEqRint():
         RDSetBGO()
 #
 # ================ Make main Screen ==========================
+#
+# Try to connect to hardware
+Sucess = ConnectDevice()
+#
 TgInput = IntVar()   # Trigger Input variable
 TgSource = IntVar()   # Trigger Input variable
 SingleShot = IntVar() # variable for single shot triger
@@ -18779,9 +18783,9 @@ else:
 BLoadConfig("alice-last-config.cfg") # load configuration from last session
 if LocalLanguage != "English":
     BLoadConfig(LocalLanguage) # load local language configuration 
-# Try to connect to hardware
-Sucess = ConnectDevice()
+#
 if Sucess:
+    Get_Data() # do a dummy first data capture
     bcon.configure(text="Conn", style="GConn.TButton")
     BTime() # initally set Sample Rate by Horz Time base
     BSetTrigEdge()

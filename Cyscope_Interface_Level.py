@@ -1,6 +1,6 @@
 #
 # Hardware specific interface functions
-# For PSoC 5 CyScope Dev Kits (8-11-2023)
+# For PSoC 5 CyScope Dev Kits (8-14-2023)
 # Written using Python version 3.10, Windows OS 
 #
 try:
@@ -269,7 +269,7 @@ def Get_Data():
 #
 def ConnectDevice():
     global ser, SerComPort, DevID, MaxSamples, SAMPLErate, RateDivider
-    global bcon, FWRevOne, HWRevOne, MaxSampleRate
+    global bcon, FWRevOne, HWRevOne, MaxSampleRate, CHANNELS, DigChannels
     global CH1Probe, CH2Probe, CH1VRange, CH2VRange, TimeDiv
     global CHAsb, CHBsb, TMsb, LSBsizeA, LSBsizeB, ADC_Cal
     global d0btn, d1btn, d2btn, d3btn, d4btn, d5btn, d6btn, d7btn
@@ -315,6 +315,9 @@ def ConnectDevice():
         DevID = serialString.decode("Ascii")
         DevID = DevID.strip('*\r\n')
         print("ID Returned: ", DevID)
+        if DevID == "CyScope V1.43":
+            CHANNELS = 3 # Number of supported Analog input channels
+            DigChannels = 4
         #
         MaxSamples = 2000
         SAMPLErate = MaxSampleRate / (2**RateDivider)
@@ -333,13 +336,6 @@ def ConnectDevice():
         # Post trigger sample count 10 bits 512 = 1 0 (0001 0000 0000).
         ser.write(b'S C 1 6\n')
         #
-        # bcon.configure(text="Conn", style="GConn.TButton")
-        #
-        # BTime() # initally set Sample Rate by Horz Time base
-        # BSetTrigEdge()
-        # BSetTriggerSource()
-        # BTriglevel() # set trigger level
-        #
         #default PWM output width to 0 on atartup
         WValue = 0
         SendStr = 'D D ' + str(WValue) + '\n'
@@ -347,7 +343,7 @@ def ConnectDevice():
         ser.write(SendByt)
         #
         # ReMakeAWGwaves()
-        Get_Data() # do a dummy first data capture
+        # Get_Data() # do a dummy first data capture
         return(True) # return a logical true if sucessful!
     else:
         return(False)
