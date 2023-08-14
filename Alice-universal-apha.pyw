@@ -876,7 +876,7 @@ try:
     exec( open(HardwareFile).read() )
 except:
     root.update()
-    showwarning("WARNING","Hardware Specific File not found!")
+    showwarning("WARNING","Trouble Reading Hardware Specific File!")
     HardwareFile = askopenfilename(defaultextension = ".py", filetypes=[("Hardware File:", "*.py")])
     if HardwareFile == None:
         root.destroy()
@@ -886,7 +886,7 @@ except:
             exec( open(HardwareFile).read() )
         except:
             root.update()
-            showwarning("WARNING","Hardware Specific File not found!")
+            showwarning("WARNING","Trouble Reading Hardware Specific File!")
             root.destroy()
             exit()
 #print("Traces = ", CHANNELS)
@@ -18766,7 +18766,7 @@ root.protocol("WM_DELETE_WINDOW", Bcloseexit)
 # ===== Initalize device ======
 if not numpy_found:
     root.update()
-    showwarning("WARNING","Numpy not found!")
+    showwarning("WARNING","Numpy not installed?!")
     root.destroy()
     exit()
 #

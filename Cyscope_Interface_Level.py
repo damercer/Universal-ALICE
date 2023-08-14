@@ -3,8 +3,14 @@
 # For PSoC 5 CyScope Dev Kits (8-11-2023)
 # Written using Python version 3.10, Windows OS 
 #
-import serial
-import serial.tools.list_ports
+try:
+    import serial
+    import serial.tools.list_ports
+except:
+    root.update()
+    showwarning("WARNING","PySerial not installed?!")
+    root.destroy()
+    exit()
 #
 # adjust for your specific hardware by changing these values
 CHANNELS = 4 # Number of supported Analog input channels
