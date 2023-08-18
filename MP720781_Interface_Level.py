@@ -3,12 +3,18 @@
 # For Multicomp Pre MP720781 Scope Meter (7-27-2023)
 # Written using Python version 3.7, Windows OS 
 #
-import usb.core
-import usb.util
-import usb.control
-from usb.backend import libusb0, libusb1, openusb # , IBackend
-be0, be1 = libusb0.get_backend(), libusb1.get_backend()
-be3 = openusb.get_backend()
+try:
+    import usb.core
+    import usb.util
+    import usb.control
+    from usb.backend import libusb0, libusb1, openusb # , IBackend
+    be0, be1 = libusb0.get_backend(), libusb1.get_backend()
+    be3 = openusb.get_backend()
+except:
+    root.update()
+    showwarning("WARNING","Pyusb not installed?!")
+    root.destroy()
+    exit()
 Tdiv.set(12)
 TimeDiv = 0.0002
 import yaml
@@ -143,7 +149,7 @@ def Get_Data():
 def ConnectDevice():
     global dev, cfg, untf, DevID, MaxSamples, AWGSAMPLErate, SAMPLErate
     global bcon, FWRevOne, HWRevOne, Header
-    global CH1Probe, CH2Probe, CH1VRange, CH2VRange, TimeDiv
+    global CH1Probe, CH2Probe, CH1VRange, CH2VRange, TimeDiv, TimeDivStr
     global CHAsb, CHBsb, TMsb
     global TgInput, TgEdge, TRIGGERlevel, TRIGGERentry
 
@@ -180,18 +186,8 @@ def ConnectDevice():
         TiggerLevel = Header["Trig"]["Items"]["Level"]
         TriggerEdge = Header["Trig"]["Items"]["Edge"]
         TriggerChannel = Header["Trig"]["Items"]["Channel"]
-##        print("Channel 1 Probe: ", CH1Probe)
-##        print("Channel 2 Probe: ", CH2Probe)
-##        print("Channel 1 Range: ", CH1VRange)
-##        print("Channel 2 Range: ", CH2VRange)
-##        print("Horz Time per Div: ", TimeDiv)
-        CHAsb.delete(0,"end")
-        CHAsb.insert(0,CH1VRange)
-        CHBsb.delete(0,"end")
-        CHBsb.insert(0,CH2VRange)
-        TMsb.delete(0,"end")
-        TMsb.insert(0,TimeDivStr)
-        TimeDiv = UnitConvert(TMsb.get())
+#
+        TimeDiv = UnitConvert(TimeDivStr)
         TimeSpan = (Tdiv.get() * TimeDiv)# in Seconds
         SAMPLErate = (300 / TimeSpan)*4 # interpolate samples by 4x
         if TriggerChannel == "CH1":
@@ -202,11 +198,11 @@ def ConnectDevice():
             TgEdge.set(0)
         else:
             TgEdge.set(1)
-        TRIGGERlevel = UnitConvert(TiggerLevel)
-        TRIGGERentry.delete(0,"end")
-        TRIGGERentry.insert(0,TRIGGERlevel)
-# print(dev)
-        bcon.configure(text="Conn", style="GConn.TButton")
+        # print(dev)
+        # bcon.configure(text="Conn", style="GConn.TButton")
+        return(True) # return a logical true if sucessful!
+    else:
+        return(False)
 #
 # AWG Stuff
 #

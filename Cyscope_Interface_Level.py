@@ -297,7 +297,7 @@ def ConnectDevice():
         ser.parity='N'
         ser.stopbits=1
         ser.timeout=0
-        xonxoff=0,
+        ser.xonxoff=0
         ser.rtscts=1
         serialString = "none"  # Used to hold data coming over UART
         # print(ser)

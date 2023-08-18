@@ -17740,9 +17740,6 @@ def CalEqRint():
 #
 # ================ Make main Screen ==========================
 #
-# Try to connect to hardware
-Sucess = ConnectDevice()
-#
 TgInput = IntVar()   # Trigger Input variable
 TgSource = IntVar()   # Trigger Input variable
 SingleShot = IntVar() # variable for single shot triger
@@ -17861,6 +17858,18 @@ SAVScale = IntVar()
 SAVPSD = IntVar()
 SAvertmax = 1.0
 SAvertmin = 1.0E-6
+#
+# CH1Probe
+# CH2Probe
+CH1VRange = "500mV"
+CH2VRange = "500mV"
+CH3VRange = "500mV"
+CH4VRange = "500mV"
+TimeDivStr = "200us"
+TiggerLevel = 0.0
+# Try to connect to hardware
+Sucess = ConnectDevice()
+#
 #
 if GUITheme == "Light": # Can be Light or Dark or Blue or LtBlue
     FrameBG = "#d7d7d7"
@@ -18059,7 +18068,7 @@ TRIGGERentry.bind("<Return>", BTriglevel)
 TRIGGERentry.bind('<Key>', onTextKey)
 TRIGGERentry.pack(side=LEFT)
 TRIGGERentry.delete(0,"end")
-TRIGGERentry.insert(0,0.0)
+TRIGGERentry.insert(0,TRIGGERlevel)
 #
 tgb = Button(frame1, text="50%", style="W4.TButton", command=BTrigger50p)
 tgb.pack(side=LEFT)
@@ -18138,7 +18147,7 @@ TMsb.bind("<Button-4>", onSpinBoxScroll)# with Linux OS
 TMsb.bind("<Button-5>", onSpinBoxScroll)
 TMsb.pack(side=RIGHT)
 TMsb.delete(0,"end")
-TMsb.insert(0,"200us")
+TMsb.insert(0,TimeDivStr) # "200us"
 TMlab = Label(frame1, text="Time S/Div")
 TMlab.pack(side=RIGHT)
 #
@@ -18554,7 +18563,7 @@ if CHANNELS >= 1:
     CHAsb.bind("<Button-5>", onSpinBoxScroll)
     CHAsb.pack(side=LEFT)
     CHAsb.delete(0,"end")
-    CHAsb.insert(0,"500mV")
+    CHAsb.insert(0,CH1VRange) # "500mV"
     #
     if ButtonOrder == 0:
         CHAlab = Button(frame3, text="A V/Div", style="Rtrace1.TButton", command=SetScaleA)
@@ -18587,7 +18596,7 @@ if CHANNELS >= 2:
     CHBsb.bind('<Button-4>', onSpinBoxScroll)
     CHBsb.pack(side=LEFT)
     CHBsb.delete(0,"end")
-    CHBsb.insert(0,"500mV")
+    CHBsb.insert(0,CH2VRange) # "500mV"
     #
     if ButtonOrder == 0:
         CHBlab = Button(frame3, text="B V/Div", style="Strace2.TButton", command=SetScaleB)
@@ -18686,7 +18695,7 @@ if CHANNELS >= 3:
     CHCsb.bind("<Button-5>", onSpinBoxScroll)
     CHCsb.pack(side=LEFT)
     CHCsb.delete(0,"end")
-    CHCsb.insert(0,"500mV")
+    CHCsb.insert(0,CH3VRange) # "500mV"
     #
     if ButtonOrder == 0:
         CHClab = Button(frame4, text="C V/Div", style="Rtrace3.TButton", command=SetScaleC)
@@ -18719,7 +18728,7 @@ if CHANNELS >= 4:
     CHDsb.bind('<Button-4>', onSpinBoxScroll)
     CHDsb.pack(side=LEFT)
     CHDsb.delete(0,"end")
-    CHDsb.insert(0,"500mV")
+    CHDsb.insert(0,CH4VRange) # "500mV"
     #
     if ButtonOrder == 0:
         CHDlab = Button(frame4, text="D V/Div", style="Strace4.TButton", command=SetScaleD)

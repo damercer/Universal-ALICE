@@ -116,6 +116,7 @@ def sigrok_Get_data():
     #
     # Configure which channels are on or off
     #
+    #print("Entering sigrok_Get_data()")
     SaveDig = False
     VBuffA = []
     VBuffB = []
@@ -145,22 +146,33 @@ def sigrok_Get_data():
             break
     #
     time.sleep(TimeSpan)
-    while ser.in_waiting != 0:
+    # while ser.in_waiting != 0:
+    if ser.in_waiting != 0:
         Temp = ser.read(ser.in_waiting)
+        #print("ser.in_waiting = ", ser.in_waiting)
         index = 0
+        NextRead = False
         if len(Temp) > 3:
+            #print(len(Temp))
             while index < len(Temp)-4:
+                # print(index, Temp[index])
                 if SaveDig:
                     BuffD.append(Temp[index])
                     index = index + 1
+                    NextRead = True
                 if ShowC1_V.get() > 0:
                     VBuffA.append(Temp[index]-128)
                     index = index + 1
+                    NextRead = True
                 if ShowC2_V.get() > 0:
                     VBuffB.append(Temp[index]-128)
                     index = index + 1
+                    NextRead = True
                 if ShowC3_V.get() > 0:
                     VBuffC.append(Temp[index]-128)
+                    index = index + 1
+                    NextRead = True
+                if NextRead == False:
                     index = index + 1
     #print("Length of Raw 1 : ", len(VBuffA))
     #
@@ -229,6 +241,7 @@ def sigrok_Get_data():
         else:
             VBuffC = numpy.array(VBuffC)
         VBuffC = VBuffC * LSBsize
+    #print("Exiting sigrok_Get_data()")
 #
 # main routine entry point to request sample data
 def Get_Data():
@@ -403,8 +416,10 @@ def ConnectDevice():
         #print(ser.in_waiting)
         print("Returned: ",ser.readline())
         HardwareSelectChannels()
+        # At least enable ch 0
+        ser.write(b'A100\n') # Enable Analog Cha 0
         SetDigPin()
-        Get_Data() # do a dummy first data capture
+        # Get_Data() # do a dummy first data capture
         return(True) # return a logical true if sucessful!
     else:
         return(False)
