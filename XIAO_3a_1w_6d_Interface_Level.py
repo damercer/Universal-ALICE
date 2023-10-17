@@ -1,6 +1,6 @@
 #
 # Hardware specific interface functions
-# For Arduino XIAO Two analog + 2 AWG + 6 digital channel scope (10-4-2023)
+# For Arduino XIAO Two analog + 2 AWG + 6 digital channel scope (10-9-2023)
 # Written using Python version 3.10, Windows OS 
 #
 try:
@@ -27,7 +27,8 @@ ADC_Cal = 3.30
 ScopeRes = 4096.0
 LSBsizeA =  LSBsizeB = LSBsizeC = LSBsize = ADC_Cal/ScopeRes
 Rint = 2.0E6 # ~2 Meg Ohm internal resistor to ground
-AWGRes = 1023 # For 10 bits, 4095 for 12 bits, 255 for 8 bits
+AWGARes = 1023 # For 10 bits, 4095 for 12 bits, 255 for 8 bits
+AWGBRes = 1000
 DevID = "XIAO 3"
 SerComPort = 'Auto'
 TimeSpan = 0.01
@@ -1026,11 +1027,15 @@ def ConnectDevice():
                     SerComPort = port[0]
         # Setup instrument connection
         print("Trying to open ", SerComPort)
-        ser = serial.Serial(SerComPort)  # open serial port
+        try:
+            ser = serial.Serial(SerComPort)  # open serial port
+        except:
+            return
         if ser is None:
             print('Device not found!')
-            Bcloseexit()
-            #exit()
+            return
+            # Bcloseexit()
+            # exit()
         #
         ser.baudrate = 2000000 # Dummy number USB runs at max supported speed
 #
@@ -1060,7 +1065,8 @@ def ConnectDevice():
         time.sleep(0.005)
         print("set Scope Samples: 1024")
         #
-        ser.write(b'B1024\n') # send AWG Buffer Length 
+        ser.write(b'N1024\n') # send AWG A Buffer Length
+        ser.write(b'M1024\n') # send AWG B Buffer Length
         time.sleep(0.005)
         print("set AWG Samples: 1024")
         ser.write(b'p64000\n') # send PWM (AWG) frequency
@@ -1083,22 +1089,22 @@ def ConnectDevice():
 # AWG Stuff
 #
 def AWGASendWave(AWG3): # Analog DAC on A0
-    global ser, AWGARecLength, AWGBuffLen, AWGRes
+    global ser, AWGARecLength, AWGBuffLen, AWGARes
     global AWGAAmplvalue, AWGAOffsetvalue, AWGPeakToPeak
     # Expect array values normalized from -1 to 1
     # scale values to send to 0 to 255 8 bits
     AWG3 = AWG3 * 0.5 # scale by 1/2
     # Get Low and High voltage levels
-    MinCode = int((AWGAAmplvalue / AWGPeakToPeak) * AWGRes)
+    MinCode = int((AWGAAmplvalue / AWGPeakToPeak) * AWGARes)
     if MinCode < 0:
         MinCode = 0
-    if MinCode > AWGRes:
-        MinCode = AWGRes
-    MaxCode = int((AWGAOffsetvalue / AWGPeakToPeak) * AWGRes)
+    if MinCode > AWGARes:
+        MinCode = AWGARes
+    MaxCode = int((AWGAOffsetvalue / AWGPeakToPeak) * AWGARes)
     if MaxCode < 0:
         MaxCode = 0
-    if MaxCode > AWGRes:
-        MaxCode = AWGRes
+    if MaxCode > AWGARes:
+        MaxCode = AWGARes
     # print("MinCode = ", MinCode, "MaxCode = ", MaxCode)
     # Scale to high and low voltage values
     Gain = MaxCode - MinCode
@@ -1116,17 +1122,19 @@ def AWGASendWave(AWG3): # Analog DAC on A0
         AWGARecLength = AWGBuffLen
     if len(AWG1) < AWGBuffLen:
         # ser.write(b'B1024\n') # send AWG Buffer Length
-        SendStr = 'B' + str(len(AWG1)) + '\n'
+        SendStr = 'N' + str(len(AWG1)) + '\n'
         #
+        # print(SendStr)
         SendByt = SendStr.encode('utf-8')
         ser.write(SendByt)
     else:
-        SendStr = 'B' + str(AWGBuffLen) + '\n'
+        SendStr = 'N' + str(AWGBuffLen) + '\n'
         #
         SendByt = SendStr.encode('utf-8')
         ser.write(SendByt)
     #
     index = 0
+    # print(AWGARecLength)
     while index < AWGARecLength:
         data = AWG1[index]
         # send buffer index and waveform sample data
@@ -1138,23 +1146,23 @@ def AWGASendWave(AWG3): # Analog DAC on A0
 #
 ##    
 def AWGBSendWave(AWG3): # PWM DAC on D10
-    global ser, AWGBLastWave, AWGBRecLength, AWGARecLength, AWGBuffLen, AWGRes
+    global ser, AWGBLastWave, AWGBRecLength, AWGARecLength, AWGBuffLen, AWGBRes
     global AWGBAmplvalue, AWGBOffsetvalue, AWGPeakToPeak
     # Expect array values normalized from -1 to 1
     # AWG3 = numpy.roll(AWG3, -68)
     AWGBLastWave = AWG3
     AWG3 = AWG3 * 0.5 # scale by 1/2
     # Get Low and High voltage levels
-    MinCode = int((AWGBAmplvalue / AWGPeakToPeak) * 999)
+    MinCode = int((AWGBAmplvalue / AWGPeakToPeak) * AWGBRes)
     if MinCode < 0:
         MinCode = 0
-    if MinCode > 999:
-        MinCode = 999
-    MaxCode = int((AWGBOffsetvalue / AWGPeakToPeak) * 999)
+    if MinCode > AWGBRes:
+        MinCode = AWGBRes
+    MaxCode = int((AWGBOffsetvalue / AWGPeakToPeak) * AWGBRes)
     if MaxCode < 0:
         MaxCode = 0
-    if MaxCode > 999:
-        MaxCode = 999
+    if MaxCode > AWGBRes:
+        MaxCode = AWGBRes
     #
     Gain = MaxCode - MinCode
     Offset = int((MaxCode + MinCode)/2)
@@ -1167,18 +1175,19 @@ def AWGBSendWave(AWG3): # PWM DAC on D10
     AWG1 = numpy.array(AWG1)
     #
     AWGBRecLength = len(AWG1)
-    if AWGBRecLength > AWGARecLength:
-        AWGBRecLength = AWGARecLength
-##    if len(AWG1) < AWGBuffLen:
-##        SendStr = 'B' + str(len(AWG1)) + '\n'
-##        #
-##        SendByt = SendStr.encode('utf-8')
-##        ser.write(SendByt)
-##    else:
-##        SendStr = 'B' + str(AWGBuffLen) + '\n'
-##        #
-##        SendByt = SendStr.encode('utf-8')
-##        ser.write(SendByt)
+    if AWGBRecLength > AWGBuffLen:
+        AWGBRecLength = AWGBuffLen
+    if len(AWG1) < AWGBuffLen:
+        SendStr = 'M' + str(len(AWG1)) + '\n'
+        #
+        # print(SendStr)
+        SendByt = SendStr.encode('utf-8')
+        ser.write(SendByt)
+    else:
+        SendStr = 'M' + str(AWGBuffLen) + '\n'
+        #
+        SendByt = SendStr.encode('utf-8')
+        ser.write(SendByt)
     #
     index = 0
     while index < AWGBRecLength:
@@ -1222,6 +1231,7 @@ def SetAwgSampleRate():
         AWGRepRate = FreqA
         # AWGSampleRate = FreqA * AWGBuffLen
             # AWGSampleRate = FreqB * MaxSamples
+    # print("Cycles = ", Cycles)
 #
 def SetAwgSampleFrequency(FreqANum):
     global AWGBuffLen

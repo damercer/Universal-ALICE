@@ -1,7 +1,7 @@
 #!/usr/bin/python
 # -*- coding: cp1252 -*-
 #
-# Alice-universal-alpha.py(w) (10-2-2023)
+# Alice-universal-alpha.py(w) (10-9-2023)
 # Written using Python version 3.10, Windows OS 
 # Requires a hardware interface level functions add-on file
 # Created by D Mercer ()
@@ -67,7 +67,7 @@ import webbrowser
 # check which operating system
 import platform
 #
-RevDate = "2 Oct 2023"
+RevDate = "9 Oct 2023"
 SWRev = "1.0 "
 #
 # small bit map of triangle logo for window icon
@@ -18046,6 +18046,19 @@ def CalEqRint():
     if SetResDivB.get() > 0:
         RDSetBGO()
 #
+def ReConnectDevice():
+    global Sucess
+    if not Sucess:
+        Sucess = ConnectDevice()
+    if Sucess:
+        #
+        bcon.configure(text="Conn", style="GConn.TButton")
+        BTime() # initally set Sample Rate by Horz Time base
+        BSetTrigEdge()
+        BSetTriggerSource()
+        BTriglevel() # set trigger level
+        MakeAWGwaves()
+#
 # ================ Make main Screen ==========================
 #
 TgInput = IntVar()   # Trigger Input variable
@@ -18514,7 +18527,7 @@ MouseWidget = ca
 # right side menu buttons
 dropmenu = Frame( frame2r )
 dropmenu.pack(side=TOP)
-bcon = Button(dropmenu, text="Recon", style="RConn.TButton", command=ConnectDevice)
+bcon = Button(dropmenu, text="Recon", style="RConn.TButton", command=ReConnectDevice)
 bcon.pack(side=LEFT, anchor=W)
 # File menu
 Filemenu = Menubutton(dropmenu, text="File", style="W4.TButton")
