@@ -1,6 +1,6 @@
 #
 # Hardware specific interface functions
-# For Arduino XIAO Two analog + 2 AWG + 6 digital channel scope (10-9-2023)
+# For Arduino pi pico Three analog + 2 AWG + 6 digital channel scope (9-18-2023)
 # Written using Python version 3.10, Windows OS 
 #
 try:
@@ -22,19 +22,16 @@ EnablePGAGain = 0 #
 EnableAWGNoise = 0 # 
 Tdiv.set(10)
 AWG_Amp_Mode.set(0)
-AWGPeakToPeak = 3.30
-ADC_Cal = 3.30
-ScopeRes = 4096.0
-LSBsizeA =  LSBsizeB = LSBsizeC = LSBsize = ADC_Cal/ScopeRes
-Rint = 2.0E6 # ~2 Meg Ohm internal resistor to ground
-AWGARes = 1023 # For 10 bits, 4095 for 12 bits, 255 for 8 bits
-AWGBRes = 1000
-DevID = "XIAO 3"
+AWGPeakToPeak = 3.29
+DevID = "Pico 3"
 SerComPort = 'Auto'
 TimeSpan = 0.01
+ADC_Cal = 3.29
+AWGRes = 4095 # For 8 bits, 4095 for 12 bits, 1023 for 10 bits
 InterpRate = 4
-MaxSampleRate = SAMPLErate = 25000*InterpRate
-AWGSampleRate = 50000
+MaxSampleRate = SAMPLErate = 12500*InterpRate
+AWGSampleRate = 50000 # 20 uSec
+LSBsizeA =  LSBsizeB = LSBsizeC = LSBsize = ADC_Cal/4096.0
 PhaseOffset = 12.5
 MinSamples = 1024
 AWGBuffLen = 2048
@@ -78,6 +75,12 @@ def Bcloseexit():
 #
 # Set Scope Sample Rate based on Horz Time Scale
 #
+def DummySetSampleRate():
+    global TimeSpan, MaxSampleRate, SHOWsamples, InterpRate, Tdiv
+    global TrigSource, TriggerEdge, TriggerInt, SAMPLErate, TimeDiv, ser
+
+    TimeDiv = UnitConvert(TMsb.get())
+#
 def SetSampleRate():
     global TimeSpan, SHOWsamples, InterpRate, Tdiv
     global MaxSampleRate, SAMPLErate, TimeDiv, ser
@@ -88,34 +91,31 @@ def SetSampleRate():
         pass
     #print("TimeDiv = ", TimeDiv)
     if TimeDiv < 0.000099:
-        ser.write(b't20\n') # 90.909 KSPS
+        ser.write(b't9\n') # 90.909 KSPS
         MaxSampleRate = SAMPLErate = 90909*InterpRate
     elif TimeDiv > 0.000099 and TimeDiv < 0.000199:
-        ser.write(b't20\n') # 90.909 KSPS
+        ser.write(b't10\n') # 90.909 KSPS
         MaxSampleRate = SAMPLErate = 90909*InterpRate
     elif TimeDiv > 0.000199 and TimeDiv < 0.0005:
-        ser.write(b't20\n') # 90.909KSPS
+        ser.write(b't12\n') # 90.909KSPS
         MaxSampleRate = SAMPLErate = 90909*InterpRate
     elif TimeDiv >= 0.0005 and TimeDiv < 0.001:
-        ser.write(b't20\n') # 90.909 KSPS
+        ser.write(b't14\n') # 90.909 KSPS
         MaxSampleRate = SAMPLErate = 90909*InterpRate
     elif TimeDiv >= 0.001 and TimeDiv < 0.002:
-        ser.write(b't20\n') # 62.5 KSPS
+        ser.write(b't16\n') # 62.5 KSPS
         MaxSampleRate = SAMPLErate = 62500*InterpRate
     elif TimeDiv >= 0.002 and TimeDiv < 0.005:
-        ser.write(b't30\n') # 31.250 KSPS
+        ser.write(b't32\n') # 31.250 KSPS
         MaxSampleRate = SAMPLErate = 31250*InterpRate
     elif TimeDiv >= 0.005 and TimeDiv < 0.01:
         ser.write(b't64\n') # 15.625 KSPS
         MaxSampleRate = SAMPLErate = 15625*InterpRate
     elif TimeDiv >= 0.01 and TimeDiv < 0.02:
-        ser.write(b't128\n') # 10 KSPS
-        MaxSampleRate = SAMPLErate = 10000*InterpRate
-    elif TimeDiv >= 0.02 and TimeDiv < 0.05:
-        ser.write(b't256\n') # 10 KSPS
+        ser.write(b't100\n') # 10 KSPS
         MaxSampleRate = SAMPLErate = 10000*InterpRate
     else:
-        ser.write(b't512\n') # 5 KSPS
+        ser.write(b't200\n') # 5 KSPS
         MaxSampleRate = SAMPLErate = 5000*InterpRate
     #
     time.sleep(0.005)
@@ -160,7 +160,7 @@ def Get_Data_One():
     global DBuff0, DBuff1, DBuff2, DBuff3, DBuff4, DBuff5, DBuff6, DBuff7
     global D0line, D1line, D2line, D3line, D4line, D5line, D6line, D7line
     
-    # Get data from Xiao
+    # Get data from pi pico
     #
     ser.flush()
     SaveDig = False
@@ -216,33 +216,27 @@ def Get_Data_One():
     waiting0 = ser.in_waiting
     #print("Serial Length:", waiting0)
     while waiting0 >= 1:
-        # print("Number Bytes waiting = ", waiting0)
+        #print("Number Bytes waiting = ", waiting0)
         # read in chunks divisible by 3
         # Read an integer as two bytes, big-endian
-        time.sleep(0.040)
+        time.sleep(0.01)
         waiting0 = ser.in_waiting
-        if waiting0 > 1024:
+        if waiting0 > 2049:
+            VBuffRaw = ser.read(2048)
+            Count = Count + 2048
+        elif waiting0 > 1025:
             VBuffRaw = ser.read(1024)
             Count = Count + 1024
-        elif waiting0 > 324:
-            VBuffRaw = ser.read(324)
-            Count = Count + 324
-        elif waiting0 > 108:
-            VBuffRaw = ser.read(108)
-            Count = Count + 108
-        elif waiting0 > 36:
-            VBuffRaw = ser.read(36)
-            Count = Count + 36
         else:
-            VBuffRaw = ser.read(12)
-            Count = Count + 12
+            VBuffRaw = ser.read(waiting0)
+            Count = Count + waiting0
         #print("Count = ", Count)
-        #print("Length AB: Raw: ", len(ABuff), len(VBuffRaw))
         index = 0
         while index < len(VBuffRaw):
             ABuff.append(VBuffRaw[index])
             index = index + 1
         # Count = Count + waiting0
+        #print("Length AB: Raw: ", len(ABuff), len(VBuffRaw))
         waiting0 = ser.in_waiting
         #print("Serial Length:", waiting0)
         # time.sleep(Wait)
@@ -258,28 +252,19 @@ def Get_Data_One():
     #
     waiting0 = ser.in_waiting
     if waiting0 > 0:
-        # print("Serial Length:", waiting0)
+        print("Serial Length:", waiting0)
         dump = ser.read(waiting0)
     #Frams = 0
     index = 0
-    while index < 1024: # len(ABuff)-2:
-        #Frams = Frams + 1
-        # Get CH 1 data
+    while index < len(ABuff):
         inputHigh = ABuff[index]
-        inputLow = ABuff[index+1024]
+        index = index + 1
+        inputLow = ABuff[index]
         data = ((inputHigh*256)+inputLow)
         VBuff1.append(data)
         index = index + 1
-    index = 2048 # skip ahead 1024
-    while index < 3072:
-        # Get digital inputs data
-        data = ABuff[index]
-        BuffD.append(data)
-        index = index + 1  
-    #
-    #print("Frames = ", Frams)
-    #
-    VBuffG=[]
+        BuffD.append(ABuff[index])
+        index = index + 1
     #
     # Interpolate data samples by 4X
     #
@@ -489,6 +474,7 @@ def Get_Data_Two():
     VBuff2=[]
     VBuff3=[]
     BuffD=[]
+    VBuffG=[]
     time.sleep(Wait*2)
     ### Wait to buffer enough samples to satisfy the entire frame
     # print("iterCount = ", iterCount)
@@ -498,7 +484,7 @@ def Get_Data_Two():
         # print("Number Bytes waiting = ", waiting0)
         # read in chunks divisible by 5
         # Read an integer as two bytes, big-endian
-        time.sleep(0.040)
+        time.sleep(0.01)
         waiting0 = ser.in_waiting
         if waiting0 > 2560:
             VBuffRaw = ser.read(2560)
@@ -544,32 +530,21 @@ def Get_Data_Two():
         dump = ser.read(waiting0)
     #Frams = 0
     index = 0
-    while index < 1024: # len(ABuff)-2:
-        #Frams = Frams + 1
-        # Get CH 1 data
+    while index < len(ABuff):
         inputHigh = ABuff[index]
-        inputLow = ABuff[index+1024]
+        index = index + 1
+        inputLow = ABuff[index]
         data = ((inputHigh*256)+inputLow)
         VBuff1.append(data)
         index = index + 1
-    index = 2048 # skip ahead 1024
-    while index < 3072:
-        # Get CH 2 data
         inputHigh = ABuff[index]
-        inputLow = ABuff[index+1024]
+        index = index + 1
+        inputLow = ABuff[index]
         data = ((inputHigh*256)+inputLow)
         VBuff2.append(data)
         index = index + 1
-    index = 4096 # skip ahead 1024
-    while index < 5120:
-        # Get digital inputs data
-        data = ABuff[index]
-        BuffD.append(data)
+        BuffD.append(ABuff[index])
         index = index + 1
-    #
-    #print("Frames = ", Frams)
-    #
-    VBuffG=[]
     #
     # Interpolate data samples by 4X
     #
@@ -748,9 +723,8 @@ def Get_Data_Three():
     global DBuff0, DBuff1, DBuff2, DBuff3, DBuff4, DBuff5, DBuff6, DBuff7
     global D0line, D1line, D2line, D3line, D4line, D5line, D6line, D7line
     
-    # Get data from Xiao
+    # Get data from pi pico
     #
-    ser.flush()
     SaveDig = False
     if D0_is_on or D1_is_on or D2_is_on or D3_is_on or D4_is_on or D5_is_on or D6_is_on:
         SaveDig = True
@@ -761,9 +735,9 @@ def Get_Data_Three():
     if SAMPLErate <= 4000:
         Wait = 0.08
     # 
-    ## send command to readout data
+    ## send command to pico to readout data
     if ShowC1_V.get() > 0 and ShowC2_V.get() > 0 and ShowC3_V.get() > 0:
-        ser.write(b'4') # capture on A, B and C and D4
+        ser.write(b'4') # capture on A, B and C and Digtial
     else:
         return
     #
@@ -779,30 +753,29 @@ def Get_Data_Three():
         DTime = DTime.replace("'","")
         # print(DTime)
         SampleTime = UnitConvert(DTime) * 1.0e-6 # convert to uSec
-        # set actual samplerate from returned time per sample
         MaxSampleRate = SAMPLErate = (1.0/SampleTime)*InterpRate
         # print("Sample Time: ", SampleTime)
         # print("Sample Rate = ", SAMPLErate )
     # 
-    iterCount = (MinSamples * 7) # 7 bytes for two channels plus digital byte
+    iterCount = (MinSamples * 7) # 7 bytes for three channels plus digital byte
     #
-    #StartTime = time.time()
     VBuffRaw = []
     ABuff = []
     VBuff1=[]
     VBuff2=[]
     VBuff3=[]
     BuffD=[]
-    time.sleep(Wait*3)
-    ### Wait to buffer enough samples to satisfy the entire frame
+    time.sleep(Wait)
+    ### Wait to buffer enough samples to satisfy the entire frame, and then
+    ## toss anything left over
     # print("iterCount = ", iterCount)
     Count = 0
     waiting0 = ser.in_waiting
     while waiting0 >= 1:
         # print("Number Bytes waiting = ", waiting0)
-        # read in chunks divisible by 7
+        # read in chunks divisible by 8
         # Read an integer as two bytes, big-endian
-        time.sleep(0.040)
+        time.sleep(0.01)
         waiting0 = ser.in_waiting
         if waiting0 > 3584:
             VBuffRaw = ser.read(3584)
@@ -838,50 +811,47 @@ def Get_Data_Three():
     #print("Elapsed Time = ", Elapsed)
     #print("received Bytes = ", Count)
     #print("Length: ", len(ABuff))
-    #
+    # 
     waiting0 = ser.in_waiting
+    # print("Serial Length:", waiting0)
+    # time.sleep(Wait)
     if waiting0 > 0:
         # print("Serial Length:", waiting0)
         dump = ser.read(waiting0)
     #Frams = 0
-    index = 0
-    while index < 1024: # len(ABuff)-2:
-        #Frams = Frams + 1
-        # Get CH 1 data
-        inputHigh = ABuff[index]
-        inputLow = ABuff[index+1024]
-        data = ((inputHigh*256)+inputLow)
-        VBuff1.append(data)
-        index = index + 1
-    index = 2048 # skip ahead 1024
-    while index < 3072:
-        # Get CH 2 data
-        inputHigh = ABuff[index]
-        inputLow = ABuff[index+1024]
-        data = ((inputHigh*256)+inputLow)
-        VBuff2.append(data)
-        index = index + 1
-    index = 4096 # skip ahead 1024
-    while index < 5120:
-        # Get CH 3 data
-        inputHigh = ABuff[index]
-        inputLow = ABuff[index+ 1024]
-        data = ((inputHigh*256)+inputLow)
-        VBuff3.append(data)
-        index = index + 1
-    index = 6144 # skip ahead 1024
-    while index < 7168:
-        # Get digital inputs data
-        data = ABuff[index]
-        BuffD.append(data)
-        index = index + 1
-    #
-    #print("Frames = ", Frams)
+    
+    # 
+    # print("received Samples = ", Count)
+    # print("Length: ", len(ABuff))
+    # print("Frams = ", Frams)
     #
     VBuffA=[]
     VBuffB=[]
     VBuffC=[]
     VBuffG=[]
+    #
+    index = 0
+    while index < len(ABuff):
+        inputHigh = ABuff[index]
+        index = index + 1
+        inputLow = ABuff[index]
+        data = ((inputHigh*256)+inputLow)
+        VBuff1.append(data)
+        index = index + 1
+        inputHigh = ABuff[index]
+        index = index + 1
+        inputLow = ABuff[index]
+        data = ((inputHigh*256)+inputLow)
+        VBuff2.append(data)
+        index = index + 1
+        inputHigh = ABuff[index]
+        index = index + 1
+        inputLow = ABuff[index]
+        data = ((inputHigh*256)+inputLow)
+        VBuff3.append(data)
+        index = index + 1
+        BuffD.append(ABuff[index])
+        index = index + 1
     #
     # Interpolate data samples by 4X
     #
@@ -910,7 +880,6 @@ def Get_Data_Three():
     VBuffA = VBuffA[4:SHOWsamples+4]
     VBuffB = VBuffB[4:SHOWsamples+4]
     VBuffC = VBuffC[4:SHOWsamples+4]
-    #
     VBuffG = numpy.array(VBuffG) * 1
     # Extract Digital buffers if needed
     if SaveDig:
@@ -980,7 +949,7 @@ def Get_Data_Three():
         if ShowC1_V.get() > 0:
             VBuffA = numpy.roll(VBuffA, LShift)
         if ShowC2_V.get() > 0:
-            VBuffB = numpy.roll(VBuffB, LShift+2)
+            VBuffB = numpy.roll(VBuffB, LShift+1)
         if ShowC3_V.get() > 0:
             VBuffC = numpy.roll(VBuffC, LShift+2)
         if SaveDig:
@@ -1002,11 +971,13 @@ def Get_Data_Three():
             if D7_is_on:
                 DBuff7 = numpy.roll(DBuff7, LShift)
     else:
-        VBuffA = numpy.roll(VBuffA, -2)
+        VBuffA = numpy.roll(VBuffA, -8)
+        VBuffB = numpy.roll(VBuffB, -7)
+        VBuffC = numpy.roll(VBuffC, -6)
 #
 # Hardware Help
 #
-## try to connect to Arduino XIAO board
+## try to connect to Arduino Pi Pico board
 #
 def ConnectDevice():
     global SerComPort, DevID, MaxSamples, SAMPLErate, MinSamples, AWGSampleRate
@@ -1016,26 +987,22 @@ def ConnectDevice():
     global d0btn, d1btn, d2btn, d3btn, d4btn, d5btn, d6btn, d7btn
 
     # print("SerComPort: ", SerComPort)
-    if DevID == "No Device" or DevID == "XIAO 3":
+    if DevID == "No Device" or DevID == "Pico 3":
         #
         if SerComPort == 'Auto':
             ports = serial.tools.list_ports.comports()
             for port in ports: # ports:
-                # looking for this ID: USB\VID:PID=2886:802F
-                if "VID:PID=2886:802F" in port[2]:
+                # looking for this ID: USB\VID_2E8A&PID_000A
+                if "VID:PID=2E8A:000A" in port[2]:
                     print("Found: ", port[0])
                     SerComPort = port[0]
         # Setup instrument connection
         print("Trying to open ", SerComPort)
-        try:
-            ser = serial.Serial(SerComPort)  # open serial port
-        except:
-            return
+        ser = serial.Serial(SerComPort)  # open serial port
         if ser is None:
             print('Device not found!')
-            return
-            # Bcloseexit()
-            # exit()
+            Bcloseexit()
+            #exit()
         #
         ser.baudrate = 2000000 # Dummy number USB runs at max supported speed
 #
@@ -1050,14 +1017,28 @@ def ConnectDevice():
         ID = ID.replace("'","")
         print("ID string ", ID)
         #
-        ser.write(b't40\n') # send Scope sample time in uSec
+        ser.write(b'V\n') # Read Bacl VDD (.3.) supply voltage
         time.sleep(0.005)
-        print("set dt: 40 uSec")
-        MaxSampleRate = SAMPLErate = 25000*InterpRate
+        VDDstring = str(ser.readline())
+        # print("VDD string ", VDDstring)
+        if "V=" in VDDstring: #
+            VDD = VDDstring.replace("b'V=","")
+            VDD = VDD.replace("\\\\","")
+            VDD = VDD.replace("r","")
+            VDD = VDD.replace("n","")
+            VDD = VDD.replace("\\","")
+            VDD = VDD.replace("'","")
+            Vsys = (int(VDD) * LSBsize) * 3.0 # 1/3 voltage divider
+            print("Board Vsys = ", Vsys)
+        #
+        ser.write(b't50\n') # send Scope sample time in uSec
+        time.sleep(0.005)
+        print("set dt: 50 uSec")
+        MaxSampleRate = SAMPLErate = 20000*InterpRate
         #
         ser.write(b'T20\n') # send AWG sample time in uSec
         time.sleep(0.005)
-        print("set at: 20 uSec")
+        print("set at: 17 uSec")
         AWGSampleRate = 50000
         MinSamples = 1024 # 
         #
@@ -1066,17 +1047,16 @@ def ConnectDevice():
         print("set Scope Samples: 1024")
         #
         ser.write(b'N1024\n') # send AWG A Buffer Length
-        ser.write(b'M1024\n') # send AWG B Buffer Length
+        ser.write(b'M1024\n') # send AWG B Buffer Length 
         time.sleep(0.005)
         print("set AWG Samples: 1024")
-        ser.write(b'p64000\n') # send PWM (AWG) frequency
-        
+        #
+        # ser.write(b'p500000\n')
+        ser.write(b'Rx\n') # default with AWG reset off
+        #
+        ser.write(b'Sx\n') # turn off AWG A by default
+        ser.write(b'Sz\n') # turn off AWG B by default
         MaxSamples = 4096 # assume 4X interpolation
-        #
-        ser.write(b'Rx\n') # turn off AWG sync by default
-        #
-        ser.write(b'sx\n') # turn off PWM output by default
-        ser.write(b'Sx\n') # turn off PWM AWG by default
 #
         print("Get a sample: ")
         Get_Data() # grap a check set of samples
@@ -1088,24 +1068,24 @@ def ConnectDevice():
 #
 # AWG Stuff
 #
-def AWGASendWave(AWG3): # Analog DAC on A0
-    global ser, AWGARecLength, AWGBuffLen, AWGARes
+def AWGASendWave(AWG3):
+    global ser, AWGARecLength, AWGBuffLen, AWGRes
     global AWGAAmplvalue, AWGAOffsetvalue, AWGPeakToPeak
     # Expect array values normalized from -1 to 1
     # scale values to send to 0 to 255 8 bits
     AWG3 = AWG3 * 0.5 # scale by 1/2
     # Get Low and High voltage levels
-    MinCode = int((AWGAAmplvalue / AWGPeakToPeak) * AWGARes)
+    MinCode = int((AWGAAmplvalue / AWGPeakToPeak) * AWGRes)
     if MinCode < 0:
         MinCode = 0
-    if MinCode > AWGARes:
-        MinCode = AWGARes
-    MaxCode = int((AWGAOffsetvalue / AWGPeakToPeak) * AWGARes)
+    if MinCode > AWGRes:
+        MinCode = AWGRes
+    MaxCode = int((AWGAOffsetvalue / AWGPeakToPeak) * AWGRes)
     if MaxCode < 0:
         MaxCode = 0
-    if MaxCode > AWGARes:
-        MaxCode = AWGARes
-    # print("MinCode = ", MinCode, "MaxCode = ", MaxCode)
+    if MaxCode > AWGRes:
+        MaxCode = AWGRes
+    # print("MaxCode = ", MaxCode, "MinCode = ", MinCode)
     # Scale to high and low voltage values
     Gain = MaxCode - MinCode
     Offset = int((MaxCode + MinCode)/2)
@@ -1124,7 +1104,6 @@ def AWGASendWave(AWG3): # Analog DAC on A0
         # ser.write(b'B1024\n') # send AWG Buffer Length
         SendStr = 'N' + str(len(AWG1)) + '\n'
         #
-        # print(SendStr)
         SendByt = SendStr.encode('utf-8')
         ser.write(SendByt)
     else:
@@ -1132,37 +1111,37 @@ def AWGASendWave(AWG3): # Analog DAC on A0
         #
         SendByt = SendStr.encode('utf-8')
         ser.write(SendByt)
-    #
+    #    
+    #AWG1 = AWG1.tobytes()
     index = 0
-    # print(AWGARecLength)
     while index < AWGARecLength:
         data = AWG1[index]
         # send buffer index and waveform sample data
         SendStr = 'L' + str(index) + 'D' + str(data) + '\n'
-        #
+        # print(SendStr)
         SendByt = SendStr.encode('utf-8')
         ser.write(SendByt)
         index = index + 1
 #
 ##    
-def AWGBSendWave(AWG3): # PWM DAC on D10
-    global ser, AWGBLastWave, AWGBRecLength, AWGARecLength, AWGBuffLen, AWGBRes
+def AWGBSendWave(AWG3):
+    global ser, AWGBLastWave, AWGBRecLength, AWGBuffLen, AWGRes
     global AWGBAmplvalue, AWGBOffsetvalue, AWGPeakToPeak
     # Expect array values normalized from -1 to 1
     # AWG3 = numpy.roll(AWG3, -68)
     AWGBLastWave = AWG3
     AWG3 = AWG3 * 0.5 # scale by 1/2
     # Get Low and High voltage levels
-    MinCode = int((AWGBAmplvalue / AWGPeakToPeak) * AWGBRes)
+    MinCode = int((AWGBAmplvalue / AWGPeakToPeak) * AWGRes)
     if MinCode < 0:
         MinCode = 0
-    if MinCode > AWGBRes:
-        MinCode = AWGBRes
-    MaxCode = int((AWGBOffsetvalue / AWGPeakToPeak) * AWGBRes)
+    if MinCode > AWGRes:
+        MinCode = AWGRes
+    MaxCode = int((AWGBOffsetvalue / AWGPeakToPeak) * AWGRes)
     if MaxCode < 0:
         MaxCode = 0
-    if MaxCode > AWGBRes:
-        MaxCode = AWGBRes
+    if MaxCode > AWGRes:
+        MaxCode = AWGRes
     #
     Gain = MaxCode - MinCode
     Offset = int((MaxCode + MinCode)/2)
@@ -1180,7 +1159,6 @@ def AWGBSendWave(AWG3): # PWM DAC on D10
     if len(AWG1) < AWGBuffLen:
         SendStr = 'M' + str(len(AWG1)) + '\n'
         #
-        # print(SendStr)
         SendByt = SendStr.encode('utf-8')
         ser.write(SendByt)
     else:
@@ -1188,7 +1166,8 @@ def AWGBSendWave(AWG3): # PWM DAC on D10
         #
         SendByt = SendStr.encode('utf-8')
         ser.write(SendByt)
-    #
+    #    
+    #AWG1 = AWG1.tobytes()
     index = 0
     while index < AWGBRecLength:
         data = AWG1[index]
@@ -1199,6 +1178,7 @@ def AWGBSendWave(AWG3): # PWM DAC on D10
         ser.write(SendByt)
         index = index + 1
 #
+#
 def BAWGSync():
     global AWGSync
 
@@ -1207,18 +1187,16 @@ def BAWGSync():
     else:
         ser.write(b'Rx\n') # turn off sync
 #
-##    
-#
 def SetAwgSampleRate():
     global AWGAFreqEntry, AWGBFreqEntry, FSweepMode
     global AWGBuffLen, AWGSampleRate, AWGBuffLen
 
     BAWGAFreq()
-    # BAWGBFreq()
+    BAWGBFreq()
 
     MaxRepRate = numpy.ceil(AWGSampleRate / AWGBuffLen)
     FreqA = UnitConvert(AWGAFreqEntry.get())
-    #reqB = UnitConvert(AWGBFreqEntry.get())
+    FreqB = UnitConvert(AWGBFreqEntry.get())
     Cycles = 1
     if FSweepMode.get() == 1: # If doing a frequency sweep only make new AWG A sine wave
         if FreqA > MaxRepRate:
@@ -1230,16 +1208,36 @@ def SetAwgSampleRate():
         SetAwgSampleFrequency(FreqA)
         AWGRepRate = FreqA
         # AWGSampleRate = FreqA * AWGBuffLen
+    else:
+        if FreqA <= FreqB:
+            
+            if FreqA > MaxRepRate:
+                Cycles = numpy.ceil(FreqA/MaxRepRate)
+                if Cycles <= 0: # check if divide by zero
+                    Cycles = 1
+                FreqA = FreqA/Cycles
+        # Set the AWG buffer Rep rate (Freq for one cycle of buffer)
+            SetAwgSampleFrequency(FreqA)
+            AWGRepRate = FreqA
+            # AWGSampleRate = FreqA * MaxSamples
+        else:
+            if FreqB > MaxRepRate:
+                
+                Cycles = numpy.ceil(FreqB/MaxRepRate)
+                if Cycles <= 0: # check if divide by zero
+                    Cycles = 1
+                FreqB = FreqB/Cycles
+        # Set the AWG buffer Rep rate (Freq for one cycle of buffer)
+            AWGRepRate = FreqB
+            SetAwgSampleFrequency(FreqB)
             # AWGSampleRate = FreqB * MaxSamples
-    # print("Cycles = ", Cycles)
 #
 def SetAwgSampleFrequency(FreqANum):
     global AWGBuffLen
     #
     NewSampleRate = FreqANum * AWGBuffLen # Samples per second
     NewAT = int(1000000/NewSampleRate) # in uSec
-    if NewAT < 15:
-        NewAT = 15
+    NewAT = NewAT - 2
     SendStr = 'T' + str(NewAT) + '\n'
     # print(SendStr)
     SendByt = SendStr.encode('utf-8')
@@ -1251,25 +1249,25 @@ def SetAwgSampleFrequency(FreqANum):
 def SetAwgA_Ampl(Ampl): # used to toggle on / off AWG output
     global ser, AwgBOnOffBt, AwgaOnOffLb, AwgbOnOffLb
 
-    # AwgBOnOffBt.config(state=DISABLED)
+    AwgBOnOffBt.config(state=DISABLED)
     AwgaOnOffLb.config(text="AWG Output ")
-    # AwgbOnOffLb.config(text=" ")
+    AwgbOnOffLb.config(text=" ")
     if Ampl == 0:
         ser.write(b'Gx\n')
     else:
         ser.write(b'Go\n')
 #
 def SetAwgB_Ampl(Ampl): # used to toggle on / off AWG output
-    global ser, AwgBOnOffBt, AwgaOnOffLb, AwgbOnOffLb
+    global ser, AwgBOnOffBt, AwgAOnOffBt, AwgaOnOffLb, AwgbOnOffLb
 
-    # AwgBOnOffBt.config(state=DISABLED)
-    AwgbOnOffLb.config(text="AWG Output ")
-    # AwgbOnOffLb.config(text=" ")
+    AwgBOnOffBt.config(state=DISABLED)
+    AwgaOnOffLb.config(text="AWG Output ")
+    AwgbOnOffLb.config(text=" ")
     if Ampl == 0:
-        ser.write(b'Sx\n')
+        ser.write(b'Gx\n')
     else:
-        ser.write(b'p64000\n') # send PWM (AWG) frequency
-        ser.write(b'So\n')
+        AwgAOnOffBt.config(text='ON', style="Run.TButton")
+        ser.write(b'Go\n')
 #
 def SetAWG_Ampla():
     global AWGAAmplEntry, ADC_Cal, ser, AWGRes
@@ -1286,6 +1284,21 @@ def SetAWG_Ampla():
     SendByt = ByteStr.encode('utf-8')
     ser.write(SendByt) #
 #
+def SetAWG_Amplb():
+    global AWGBAmplEntry, ADC_Cal, ser, AWGRes
+
+    MaxLimit = int(AWGRes/2)
+    Vampl = float(AWGBAmplEntry.get())
+    Bampl = int((Vampl/ADC_Cal)*MaxLimit)
+    if Bampl > MaxLimit:
+        Bampl = MaxLimit
+    if Bampl < 0:
+        Bampl = 0
+    # print("Bampl = ", Bampl)
+    ByteStr = 'a' + str(Bampl) + "\n"
+    SendByt = ByteStr.encode('utf-8')
+    ser.write(SendByt) #
+#
 def SetAWG_Offseta():
     global AWGAOffsetEntry, ADC_Cal, ser, AWGRes
 
@@ -1293,6 +1306,16 @@ def SetAWG_Offseta():
     Boffset = int((Voffset/ADC_Cal)*(AWGRes+1))
     # print("Boffset = ", Boffset)
     ByteStr = 'O' + str(Boffset) + "\n"
+    SendByt = ByteStr.encode('utf-8')
+    ser.write(SendByt) #
+#
+def SetAWG_Offsetb():
+    global AWGBOffsetEntry, ADC_Cal, ser, AWGRes
+
+    Voffset = float(AWGBOffsetEntry.get())
+    Boffset = int((Voffset/ADC_Cal)*(AWGRes+1))
+    # print("Boffset = ", Boffset)
+    ByteStr = 'o' + str(Boffset) + "\n"
     SendByt = ByteStr.encode('utf-8')
     ser.write(SendByt) #
 #
@@ -1311,6 +1334,7 @@ AwgString10 = "Full Wave Sine"
 AwgString11 = "Half Wave Sine"
 AwgString12 = "Fourier Series"
 AwgString13 = "Schroeder Chirp"
+
 #
 ## Make or update the current selected AWG waveform
 def MakeAWGwaves(): # re make awg waveforms in case something changed
@@ -1367,7 +1391,7 @@ def MakeAWGwaves(): # re make awg waveforms in case something changed
         AWGAShapeLabel.config(text = AwgString11) # change displayed value
     elif AWGAShape.get()==12:
         AWGAMakeFourier()
-        AWGAShapeLabel.config(text = AwgString13) # change displayed value
+        AWGAShapeLabel.config(text = AwgString12) # change displayed value
     elif AWGAShape.get()==13:
         SetAwgSampleRate()
         AWGAAmplvalue = float(eval(AWGAAmplEntry.get()))
@@ -1382,19 +1406,22 @@ def MakeAWGwaves(): # re make awg waveforms in case something changed
     else:
         AWGAShapeLabel.config(text = "Other Shape") # change displayed value
 #
-    if AWGBShape.get()== 0:
+    if BisCompA.get() == 1:
+        SetBCompA()
+#
+    if AWGBShape.get() == 0:
         AWGBMakeDC()
         AWGBShapeLabel.config(text = "DC") # change displayed value
-    elif AWGBShape.get()==1:
+    elif AWGBShape.get() == 1:
         AWGBMakeSine()
         AWGBShapeLabel.config(text = AwgString1) # change displayed value
-    elif AWGBShape.get()==2:
+    elif AWGBShape.get() == 2:
         AWGBMakeSquare()
         AWGBShapeLabel.config(text = AwgString2) # change displayed value
-    elif AWGBShape.get()==3:
+    elif AWGBShape.get() == 3:
         AWGBMakeTriangle()
         AWGBShapeLabel.config(text = AwgString3) # change displayed value
-    elif AWGBShape.get()==4:
+    elif AWGBShape.get() == 4:
         AWGBMakePulse()
         AWGBShapeLabel.config(text = AwgString4) # change displayed value
     elif AWGBShape.get()==5:
@@ -1434,7 +1461,6 @@ def MakeAWGwaves(): # re make awg waveforms in case something changed
         AWGBShapeLabel.config(text = AwgString13) # change displayed value
     else:
         AWGBShapeLabel.config(text = "Other Shape") # change displayed value
-
 #
     time.sleep(0.01)
 #
@@ -1499,7 +1525,6 @@ def PWM_On_Off():
 
     if PWM_is_on:
         #print("Set pwm on")
-        UpdatePWM()
         ser.write(b'so\n')
     else:
         #print("Set pwm off")
@@ -1511,15 +1536,16 @@ def UpdatePWM():
     PWMLabel.config(text = "PWM Frequency")
 
     FreqValue = int(UnitConvert(PWMDivEntry.get()))
-    # print("FreqValue = ", FreqValue)
+    #PeriodValue = int(( 133e6 / 256 ) / FreqValue)
+    #print("FreqValue = ", FreqValue, "PeriodValue = ",PeriodValue)
     ByteStr = 'p' + str(FreqValue) + "\n"
     SendByt = ByteStr.encode('utf-8')
     ser.write(SendByt)
     time.sleep(0.1)
     
     DutyCycle = int(PWMWidthEntry.get())
-    DutyCycle = DutyCycle * 10 # value can be 0 to 1000
-    #
+    #WidthFraction = float((DutyCycle/100.0))
+    #Width = int(PeriodValue * WidthFraction)
     ByteStr = 'm' + str(DutyCycle) + "\n"
     SendByt = ByteStr.encode('utf-8')
     ser.write(SendByt)

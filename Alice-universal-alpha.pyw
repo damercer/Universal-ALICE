@@ -1,7 +1,7 @@
 #!/usr/bin/python
 # -*- coding: cp1252 -*-
 #
-# Alice-universal-alpha.py(w) (10-9-2023)
+# Alice-universal-alpha.py(w) (10-20-2023)
 # Written using Python version 3.10, Windows OS 
 # Requires a hardware interface level functions add-on file
 # Created by D Mercer ()
@@ -67,7 +67,7 @@ import webbrowser
 # check which operating system
 import platform
 #
-RevDate = "9 Oct 2023"
+RevDate = "20 Oct 2023"
 SWRev = "1.0 "
 #
 # small bit map of triangle logo for window icon
@@ -2225,6 +2225,7 @@ def AWGAMakeDC():
 def AWGAMakeSine():
     global AWGAAmplvalue, AWGAOffsetvalue, AWGAAmplEntry, AWGAOffsetEntry
     global AWGARecLength, AWGSampleRate, AWGBuffLen, MaxSamples, AWGALength
+    global AWGAShape
 
     SetAwgSampleRate()
     MaxRepRate = numpy.ceil(AWGSampleRate / AWGBuffLen)
@@ -2244,7 +2245,10 @@ def AWGAMakeSine():
     RecLength = int(Cycles * AWGAperiodvalue)
     #Make Sine Wave
     AWG3 = []
-    AWG3 = numpy.cos(numpy.linspace(0, 2*Cycles*numpy.pi, RecLength))
+    if AWGAShape.get() == 1:
+        AWG3 = numpy.sin(numpy.linspace(0, 2*Cycles*numpy.pi, RecLength))
+    else:
+        AWG3 = numpy.cos(numpy.linspace(0, 2*Cycles*numpy.pi, RecLength))
     #
     AWGALength.config(text = "L = " + str(int(len(AWG3)))) # change displayed value
     duty1lab.config(text="Percent")
@@ -2596,6 +2600,7 @@ def AWGBMakeDC():
 def AWGBMakeSine():
     global AWGBAmplvalue, AWGBOffsetvalue, AWGBAmplEntry, AWGBOffsetEntry
     global AWGBRecLength, AWGSampleRate, AWGBuffLen, MaxSamples, AWGBLength
+    global AWGBShape
 
     SetAwgSampleRate()
     MaxRepRate = numpy.ceil(AWGSampleRate / AWGBuffLen)
@@ -2615,7 +2620,10 @@ def AWGBMakeSine():
     RecLength = int(Cycles * AWGBperiodvalue)
     #Make Sine Wave
     AWG3 = []
-    AWG3 = numpy.cos(numpy.linspace(0, 2*Cycles*numpy.pi, RecLength))
+    if AWGBShape.get() == 1:
+        AWG3 = numpy.sin(numpy.linspace(0, 2*Cycles*numpy.pi, RecLength))
+    else:
+        AWG3 = numpy.cos(numpy.linspace(0, 2*Cycles*numpy.pi, RecLength))
     #
     AWGBLength.config(text = "L = " + str(int(len(AWG3)))) # change displayed value
     duty2lab.config(text="Percent")
@@ -7124,13 +7132,13 @@ def MakeTimeScreen():
         if (ShowC1_V.get() == 1 or MathTrace.get() == 1 or MathTrace.get() == 2 or MathFlag1):
             ca.create_text(x1-LeftOffset+1, 12, text="CHA", fill=COLORtrace1, anchor="e", font=("arial", FontSize-1 ))
         if (ShowC2_V.get() == 1 or MathTrace.get() == 3 or MathTrace.get() == 10 or MathFlag2):
-            ca.create_text(x1-RightOffset, 12, text="CHB", fill=COLORtrace2, anchor="e", font=("arial", FontSize-1 )) #26
+            ca.create_text(x1-RightOffset-2, 12, text="CHB", fill=COLORtrace2, anchor="e", font=("arial", FontSize-1 )) #26
         if ShowC3_V.get() == 1 and CHANNELS >= 3:
             ca.create_text(x2+LeftOffset, 12, text="CHC", fill=COLORtrace3, anchor="w", font=("arial", FontSize-1 ))
         if ShowC4_V.get() == 1 and CHANNELS >= 4:
             ca.create_text(x2+RightOffset+4, 12, text="CHD", fill=COLORtrace4, anchor="w", font=("arial", FontSize-1 )) #28
         elif MathTrace.get() > 0:
-            ca.create_text(x2+RightOffset+2, 12, text="Math", fill=COLORtrace5, anchor="e", font=("arial", FontSize-1 )) #26
+            ca.create_text(x2+RightOffset+20, 12, text="Math", fill=COLORtrace5, anchor="e", font=("arial", FontSize-1 )) #26
         #
         while (i < 11):
             y = Y0T + i * GRH/10.0
@@ -7157,7 +7165,7 @@ def MakeTimeScreen():
                 if (ShowC2_V.get() == 1 or MathTrace.get() == 3 or MathTrace.get() == 10 or MathFlag2):
                     Vaxis_value = (((5-i) * CH2pdvRange ) + CHBOffset)
                     Vaxis_label = str(round(Vaxis_value, 3))
-                    ca.create_text(x1-RightOffset+2, y, text=Vaxis_label, fill=COLORtrace2, anchor="e", font=("arial", FontSize )) # 26
+                    ca.create_text(x1-RightOffset-2, y, text=Vaxis_label, fill=COLORtrace2, anchor="e", font=("arial", FontSize )) # 26
             if ShowC3_V.get() == 1 and CHANNELS >= 3:
                 Iaxis_value = 1.0 * (((5-i) * CHCpdvRange ) + CHCOffset)
                 Iaxis_label = str(round(Iaxis_value, 3))
@@ -7169,7 +7177,7 @@ def MakeTimeScreen():
             if MathTrace.get() > 0:
                 Vaxis_value = (((5-i) * CHMpdvRange ) + CHMOffset)
                 Vaxis_label = str(round(Vaxis_value, 3))
-                ca.create_text(x2+RightOffset+2, y, text=Vaxis_label, fill=COLORtrace5, anchor="e", font=("arial", FontSize )) # 26
+                ca.create_text(x2+RightOffset+20, y, text=Vaxis_label, fill=COLORtrace5, anchor="e", font=("arial", FontSize )) # 26
     
             i = i + 1
         # Draw vertical grid lines
