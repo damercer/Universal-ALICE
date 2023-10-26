@@ -1,6 +1,6 @@
 #
 # Hardware specific interface functions
-# For PSoC 5 CyScope Dev Kits (8-14-2023)
+# For PSoC 5 CyScope Dev Kits (10-24-2023)
 # Written using Python version 3.10, Windows OS 
 #
 try:
@@ -20,6 +20,7 @@ DigChannels = 5 # Number of supported Dig channels
 LogicChannels = 0 # Number of supported Logic Analyzer channels
 EnablePGAGain = 1 # 
 Tdiv.set(10)
+ZeroGrid.set(-5)
 DevID = "CyScope"
 SerComPort = 'Auto'
 TimeSpan = 0.001
@@ -29,10 +30,27 @@ TriggerInt = 0x00 # bit 6
 AWGPeakToPeak = 4.08
 ADC_Cal = 4.745 # Calibrate this value based on the USB port voltage - diode drop
 RateDivider = 3
+InterpRate = 4
 SAMPLErate = MaxSampleRate / (2**RateDivider)
 LSBsizeA = LSBsizeB = LSBsizeC = LSBsizeD = LSBsize = ADC_Cal/4096.0
 SMPfft = 1024 # Set FFT size based on fixed acquisition record length
 PhaseOffset = 12.5
+AWGBuffLen = 1024
+MinSamples = 1024
+Cycles = 1
+#
+VBuffA = numpy.ones(MinSamples*InterpRate)
+VBuffB = numpy.ones(MinSamples*InterpRate)
+VBuffC = numpy.ones(MinSamples*InterpRate)
+VBuffD = numpy.ones(MinSamples*InterpRate)
+# VBuffG = numpy.ones(MinSamples*InterpRate)
+MBuff = numpy.ones(MinSamples*InterpRate)
+MBuffX = numpy.ones(MinSamples*InterpRate)
+MBuffY = numpy.ones(MinSamples*InterpRate)
+VmemoryA = numpy.ones(MinSamples*InterpRate) # The memory for averaging
+VmemoryB = numpy.ones(MinSamples*InterpRate) # The memory for averaging
+VmemoryC = numpy.ones(MinSamples*InterpRate)
+VmemoryD = numpy.ones(MinSamples*InterpRate)
 #
 ## hardware specific Fucntion to close and exit ALICE
 def Bcloseexit():
@@ -135,11 +153,13 @@ def CyScope_Get_data():
     #print("After S G: ", ser.in_waiting)
     time.sleep(0.003)
     Buffer = ser.read(ser.in_waiting)
-    if chr(Buffer[0]) == 'A' and len(Buffer) == 3:
+    index = 0
+    while chr(Buffer[index]) != 'A':
+        index = index + 1
 ##        if MissTrig > 0:
 ##            print("A: ", Buffer[1], Buffer[2])
-        ShiftA1 = Buffer[2]
-        ShiftB1 = Buffer[1]
+    ShiftA1 = Buffer[index+2]
+    ShiftB1 = Buffer[index+1]
     # 
     #time.sleep(0.01)
     # S B Scope: Read scope data buffer
@@ -537,7 +557,7 @@ def MakeAWGwaves(): # re make awg waveforms in case something changed
     global AWGAAmplEntry, AWGAOffsetEntry, AWGAFreqEntry, AWGASymmetryEntry, AWGADutyCycleEntry
     global AWGAAmplvalue, AWGBOffsetvalue, AWGBAmplvalue, AWGBOffsetvalue
     global AWGBAmplEntry, AWGBOffsetEntry, AWGBFreqEntry, AWGBSymmetryEntry, AWGBDutyCycleEntry
-    global FSweepMode, MaxSampleRate
+    global FSweepMode, MaxSampleRate, BisCompA
     global AwgString1, AwgString2, AwgString3, AwgString4, AwgString5, AwgString6
     global AwgString7, AwgString8, AwgString9, AwgString10, AwgString11, AwgString12
     global AwgString13, AwgString14, AwgString15, AwgString16
@@ -597,6 +617,9 @@ def MakeAWGwaves(): # re make awg waveforms in case something changed
         AWGAShapeLabel.config(text = AwgString12) # change displayed value
     else:
         AWGAShapeLabel.config(text = "Other Shape") # change displayed value
+#
+    if BisCompA.get() == 1:
+        SetBCompA()
 #
     if AWGBShape.get()== 0:
         AWGBMakeDC()
@@ -674,6 +697,9 @@ def SetAwgSampleRate():
     global AWGAFreqEntry, AWGBFreqEntry, FSweepMode
     global MaxSamples, MaxSampleRate, AWGSampleRate
 
+    BAWGAFreq()
+    BAWGBFreq()
+    
     MaxRepRate = numpy.ceil(MaxSampleRate / MaxSamples)
     FreqA = UnitConvert(AWGAFreqEntry.get())
     FreqB = UnitConvert(AWGBFreqEntry.get())
@@ -681,7 +707,8 @@ def SetAwgSampleRate():
     if FSweepMode.get() == 1: # If doing a frequency sweep only make new AWG A sine wave
         if FreqA > MaxRepRate:
             Cycles = numpy.ceil(FreqA/MaxRepRate)
-            #Cycles = Cycles + 1
+            if Cycles <= 0: # check if divide by zero
+                    Cycles = 1
             FreqA = FreqA/Cycles
     # Set the AWG buffer Rep rate (Freq for one cycle of buffer)
         SetAwgA_Frequency(FreqA)
@@ -692,7 +719,8 @@ def SetAwgSampleRate():
             
             if FreqA > MaxRepRate:
                 Cycles = numpy.ceil(FreqA/MaxRepRate)
-                #Cycles = Cycles + 1
+                if Cycles <= 0: # check if divide by zero
+                    Cycles = 1
                 FreqA = FreqA/Cycles
         # Set the AWG buffer Rep rate (Freq for one cycle of buffer)
             SetAwgA_Frequency(FreqA)
@@ -702,7 +730,8 @@ def SetAwgSampleRate():
             if FreqB > MaxRepRate:
                 
                 Cycles = numpy.ceil(FreqB/MaxRepRate)
-                #Cycles = Cycles + 1
+                if Cycles <= 0: # check if divide by zero
+                    Cycles = 1
                 FreqB = FreqB/Cycles
         # Set the AWG buffer Rep rate (Freq for one cycle of buffer)
             AWGRepRate = FreqB

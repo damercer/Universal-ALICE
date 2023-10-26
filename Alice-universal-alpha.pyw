@@ -1,7 +1,7 @@
 #!/usr/bin/python
 # -*- coding: cp1252 -*-
 #
-# Alice-universal-alpha.py(w) (10-20-2023)
+# Alice-universal-alpha.py(w) (10-26-2023)
 # Written using Python version 3.10, Windows OS 
 # Requires a hardware interface level functions add-on file
 # Created by D Mercer ()
@@ -67,7 +67,7 @@ import webbrowser
 # check which operating system
 import platform
 #
-RevDate = "20 Oct 2023"
+RevDate = "26 Oct 2023"
 SWRev = "1.0 "
 #
 # small bit map of triangle logo for window icon
@@ -2210,13 +2210,13 @@ def AWGAMakeDC():
     global AWGSampleRate
     
     try:
-        AWGBAmplvalue = float(eval(AWGBAmplEntry.get()))
+        AWGAAmplvalue = float(eval(AWGAAmplEntry.get()))
     except:
         AWGBAmplvalue = 0.0
     try:
-        AWGBOffsetvalue = float(eval(AWGBOffsetEntry.get()))
+        AWGAOffsetvalue = float(eval(AWGAOffsetEntry.get()))
     except:
-        AWGBOffsetvalue = 1.0
+        AWGAOffsetvalue = 1.0
     AWG3 = numpy.full(AWGBuffLen, 1.0)
     AWGALength.config(text = "L = " + str(int(len(AWG3)))) # change displayed value
     duty1lab.config(text="Percent")
@@ -4629,7 +4629,7 @@ def DMM_Analog_In():
     global MeterAGainEntry, MeterBGainEntry, MeterAOffsetEntry, MeterBOffsetEntry
     global MeterCGainEntry, MeterDGainEntry, MeterCOffsetEntry, MeterDOffsetEntry
     #
-    if CHANNELS >= 1:
+    if ShowC1_V.get() > 0 and CHANNELS >= 1:
         try:
             DMOffA = float(eval(MeterAOffsetEntry.get()))
         except:
@@ -4640,7 +4640,7 @@ def DMM_Analog_In():
         except:
             MeterAGainEntry.delete(0,END)
             MeterAGainEntry.insert(0, InGainA)
-    if CHANNELS >= 2:
+    if ShowC2_V.get() > 0 and CHANNELS >= 2:
         try:
             DMGainB = float(eval(MeterBGainEntry.get()))
         except:
@@ -4651,7 +4651,7 @@ def DMM_Analog_In():
         except:
             MeterBOffsetEntry.delete(0,END)
             MeterBOffsetEntry.insert(0, InOffB)
-    if CHANNELS >= 3:
+    if ShowC3_V.get() > 0 and CHANNELS >= 3:
         try:
             DMGainC = float(eval(MeterCGainEntry.get()))
         except:
@@ -4662,7 +4662,7 @@ def DMM_Analog_In():
         except:
             MeterCOffsetEntry.delete(0,END)
             MeterCOffsetEntry.insert(0, InOffC)
-    if CHANNELS >= 4:
+    if ShowC4_V.get() > 0 and CHANNELS >= 4:
         try:
             DMGainD = float(eval(MeterDGainEntry.get()))
         except:
@@ -4679,19 +4679,19 @@ def DMM_Analog_In():
     #
     VString1 = "A = "
     VString2 = "C = "
-    if CHANNELS >= 1:
+    if ShowC1_V.get() > 0 and CHANNELS >= 1:
         DCVA0 = numpy.mean(VBuffA) # calculate average
         DCVA0 = (DCVA0 - DMOffA) * DMGainA
         VString1 = VString1 + ' {0:.4f} '.format(DCVA0) # format with 4 decimal places
-    if CHANNELS >= 2:
+    if ShowC2_V.get() > 0 and CHANNELS >= 2:
         DCVB0 = numpy.mean(VBuffB) # calculate average
         DCVB0 = (DCVB0 - DMOffB) * DMGainB
         VString1 = VString1 + " B = " + ' {0:.4f} '.format(DCVB0) # format with 4 decimal places
-    if CHANNELS >= 3:
+    if ShowC3_V.get() > 0 and CHANNELS >= 3:
         DCVC0 = numpy.mean(VBuffC) # calculate average
         DCVC0 = (DCVC0 - DMOffC) * DMGainC
         VString2 = VString2 + ' {0:.4f} '.format(DCVC0) # format with 4 decimal places
-    if CHANNELS >= 4:
+    if ShowC4_V.get() > 0 and CHANNELS >= 4:
         DCVD0 = numpy.mean(VBuffD) # calculate average
         DCVD0 = (DCVD0 - DMOffD) * DMGainD
         VString2 = VString2 + " D = " + ' {0:.4f} '.format(DCVD0) # format with 4 decimal places
@@ -14548,8 +14548,11 @@ def MakeAWGWindow():
             AWGALength = Label(frame2, text="Length")
             AWGALength.pack(side=TOP)
             #
-            awgsync = Checkbutton(frame2, text="Sync AWG", variable=AWGSync, command=BAWGSync)
-            awgsync.pack(side=TOP)
+            try:
+                awgsync = Checkbutton(frame2, text="Sync AWG", variable=AWGSync, command=BAWGSync)
+                awgsync.pack(side=TOP)
+            except:
+                pass
         #
         if EnableAWGNoise == 1:
             awgaNoise = Frame( frame2 )
@@ -16908,7 +16911,9 @@ def Build_meter():
             # Add Text Label
             Increment = MajorDiv/MScale
             axis_value = float((tick/Increment)+Mmin)
-            axis_label = str(axis_value)
+            # axis_label = '{0:.2f}'.format(axis_value)
+            axis_label = str(round(axis_value,2 ))
+            # axis_label = str(axis_value)
             MAca.create_text(MXcenter+xt, MYcenter-yt, text = axis_label, fill=COLORtext, font=("arial", FontSize ))
             # Add minor Ticks
             TIradius = 1.05 * MRadius
@@ -16948,6 +16953,7 @@ def DestroyMAScreen():
 #
 def Update_Analog_Meter(ValueA, ValueB, ValueC, ValueD):
     global MXcenter, MYcenter, MRadius, MAca, MGRW, MGRH
+    global ShowC1_V, ShowC2_V, ShowC3_V, ShowC4_V
     global COLORtrace1, COLORtrace2, COLORtrace3, COLORtrace4, TRACEwidth, GridWidth, FontSize
     global Mmin, Mmax, MajorDiv, DialSpan, MeterMaxEntry
     global IndicatorA, IndicatorB, ValueDisA, ValueDisB, CHANNELS
@@ -16960,7 +16966,7 @@ def Update_Analog_Meter(ValueA, ValueB, ValueC, ValueD):
     MScale = Mmax - Mmin
     DialStart = 90 + (DialSpan/2)
     Tradius = 1.0 * MRadius
-    if CHANNELS >= 1:
+    if ShowC1_V.get() > 0 and CHANNELS >= 1:
         Angle = DialStart - ((DialSpan*(ValueA-Mmin))/MScale) # calculate angle of CHA indicator
         if Angle < 0.0:
             Angle = 360 - Angle
@@ -16974,7 +16980,7 @@ def Update_Analog_Meter(ValueA, ValueB, ValueC, ValueD):
         IndicatorA = MAca.create_line(MXcenter, MYcenter, MXcenter+xa, MYcenter-ya, fill=COLORtrace1, arrow="last", width=TRACEwidth.get())
         VString = ' {0:.4f} '.format(ValueA) # format with 4 decimal places
         ValueDisA = MAca.create_text(MXcenter-MRadius,MYcenter+MRadius, text = VString, fill=COLORtrace1, font=("arial", FontSize+4 ))
-    if CHANNELS >= 2:
+    if ShowC2_V.get() > 0 and CHANNELS >= 2:
         Angle = DialStart - ((DialSpan*(ValueB-Mmin))/MScale) # calculate angle of CHB indicator
         if Angle < 0.0:
             Angle = 360 - Angle
@@ -16988,7 +16994,7 @@ def Update_Analog_Meter(ValueA, ValueB, ValueC, ValueD):
         IndicatorB = MAca.create_line(MXcenter, MYcenter, MXcenter+xb, MYcenter-yb, fill=COLORtrace2, arrow="last", width=TRACEwidth.get())
         VString = ' {0:.4f} '.format(ValueB) # format with 4 decimal places
         ValueDisB = MAca.create_text(MXcenter-MRadius,MYcenter+MRadius+15, text = VString, fill=COLORtrace2, font=("arial", FontSize+4 ))
-    if CHANNELS >= 3:
+    if ShowC3_V.get() > 0 and CHANNELS >= 3:
         Angle = DialStart - ((DialSpan*(ValueC-Mmin))/MScale) # calculate angle of CHC indicator
         if Angle < 0.0:
             Angle = 360 - Angle
@@ -17002,7 +17008,7 @@ def Update_Analog_Meter(ValueA, ValueB, ValueC, ValueD):
         IndicatorC = MAca.create_line(MXcenter, MYcenter, MXcenter+xc, MYcenter-yc, fill=COLORtrace3, arrow="last", width=TRACEwidth.get())
         VString = ' {0:.4f} '.format(ValueC) # format with 4 decimal places
         ValueDisC = MAca.create_text(MXcenter-MRadius,MYcenter+MRadius+30, text = VString, fill=COLORtrace3, font=("arial", FontSize+4 ))
-    if CHANNELS >= 4:
+    if ShowC4_V.get() > 0 and CHANNELS >= 4:
         Angle = DialStart - ((DialSpan*(ValueD-Mmin))/MScale) # calculate angle of CHD indicator
         if Angle < 0.0:
             Angle = 360 - Angle
@@ -17086,7 +17092,8 @@ def MakeMeterDial():
         # Add Text Label
         Increment = MajorDiv/MScale
         axis_value = float((tick/Increment)+Mmin)
-        axis_label = str(axis_value)
+        axis_label = str(round(axis_value,2 ))
+        # axis_label = str(axis_value)
         MAca.create_text(MXcenter+xt, MYcenter-yt, text = axis_label, fill=COLORtext, font=("arial", FontSize ))
         # Add minor Ticks
         TIradius = 1.05 * MRadius
