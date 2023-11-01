@@ -1,7 +1,7 @@
 #!/usr/bin/python
 # -*- coding: cp1252 -*-
 #
-# Alice-universal-alpha.py(w) (10-26-2023)
+# Alice-universal-alpha.py(w) (11-01-2023)
 # Written using Python version 3.10, Windows OS 
 # Requires a hardware interface level functions add-on file
 # Created by D Mercer ()
@@ -67,7 +67,7 @@ import webbrowser
 # check which operating system
 import platform
 #
-RevDate = "26 Oct 2023"
+RevDate = "1 Nov 2023"
 SWRev = "1.0 "
 #
 # small bit map of triangle logo for window icon
@@ -1030,10 +1030,10 @@ def BSaveConfig(filename):
     global AWGBAmplEntry, AWGBOffsetEntry, AWGBFreqEntry, AWGBDutyCycleEntry
     global AWGASymmetryEntry, AWGBShape, AWGBMode, AWGSync
     global CHAVGainEntry, CHBVGainEntry, CHAVOffsetEntry, CHBVOffsetEntry
-    global MeasDCV1, MeasMinV1, MeasMaxV1, MeasMidV1, MeasPPV1, MeasDCI1, MeasMinI1
-    global MeasMaxI1, MeasMidI1, MeasPPI1, MeasDCV2, MeasMinV2, MeasMaxV2, MeasMidV2
-    global MeasPPV2, MeasDCI2, MeasMinI2, MeasMaxI2, MeasMidI2, MeasPPI2, MeasDiffAB, MeasDiffBA
-    global MeasRMSV1, MeasRMSV2, MeasRMSI1, MeasRMSI2, MeasPhase
+    global MeasDCV1, MeasMinV1, MeasMaxV1, MeasMidV1, MeasPPV1, MeasDCV3, MeasMinV3
+    global MeasMaxV3, MeasMidV3, MeasPPV3, MeasDCV2, MeasMinV2, MeasMaxV2, MeasMidV2
+    global MeasPPV2, MeasDCV4, MeasMinV4, MeasMaxV4, MeasMidV4, MeasPPV4, MeasDiffAB, MeasDiffBA
+    global MeasRMSV1, MeasRMSV2, MeasRMSV3, MeasRMSV4, MeasPhase
     global MeasAHW, MeasALW, MeasADCy, MeasAPER, MeasAFREQ, IASource, DisplaySeries
     global MeasBHW, MeasBLW, MeasBDCy, MeasBPER, MeasBFREQ
     global ShowC1_VdB, ShowC1_P, ShowC2_VdB, ShowC2_P, CutDC, DacScreenStatus, DigScreenStatus
@@ -1436,6 +1436,18 @@ def BSaveConfig(filename):
     ConfgFile.write('MeasPPV2.set(' + str(MeasPPV2.get()) + ')\n')
     ConfgFile.write('MeasRMSV2.set(' + str(MeasRMSV2.get()) + ')\n')
     ConfgFile.write('MeasDiffBA.set(' + str(MeasDiffBA.get()) + ')\n')
+    ConfgFile.write('MeasDCV3.set(' + str(MeasDCV3.get()) + ')\n')
+    ConfgFile.write('MeasMinV3.set(' + str(MeasMinV3.get()) + ')\n')
+    ConfgFile.write('MeasMaxV3.set(' + str(MeasMaxV3.get()) + ')\n')
+    ConfgFile.write('MeasMidV3.set(' + str(MeasMidV3.get()) + ')\n')
+    ConfgFile.write('MeasRMSV3.set(' + str(MeasRMSV3.get()) + ')\n')
+    ConfgFile.write('MeasPPV3.set(' + str(MeasPPV3.get()) + ')\n')
+    ConfgFile.write('MeasDCV4.set(' + str(MeasDCV4.get()) + ')\n')
+    ConfgFile.write('MeasMinV4.set(' + str(MeasMinV4.get()) + ')\n')
+    ConfgFile.write('MeasMaxV4.set(' + str(MeasMaxV4.get()) + ')\n')
+    ConfgFile.write('MeasMidV4.set(' + str(MeasMidV4.get()) + ')\n')
+    ConfgFile.write('MeasPPV4.set(' + str(MeasPPV4.get()) + ')\n')
+    ConfgFile.write('MeasRMSV4.set(' + str(MeasRMSV4.get()) + ')\n')
     #
     ConfgFile.write('MeasAHW.set(' + str(MeasAHW.get()) + ')\n')
     ConfgFile.write('MeasALW.set(' + str(MeasALW.get()) + ')\n')
@@ -1510,10 +1522,10 @@ def BLoadConfig(filename):
     global AWGBAmplEntry, AWGBOffsetEntry, AWGBFreqEntry, AWGBDutyCycleEntry
     global AWGBPhaseEntry, AWGBShape, AWGBTerm, AWGBMode, AWGSync, AWGAIOMode, AWGBIOMode
     global CHAVGainEntry, CHBVGainEntry, CHAVOffsetEntry, CHBVOffsetEntry
-    global MeasDCV1, MeasMinV1, MeasMaxV1, MeasMidV1, MeasPPV1, MeasDCI1, MeasMinI1
-    global MeasMaxI1, MeasMidI1, MeasPPI1, MeasDCV2, MeasMinV2, MeasMaxV2, MeasMidV2
-    global MeasPPV2, MeasDCI2, MeasMinI2, MeasMaxI2, MeasMidI2, MeasPPI2, MeasDiffAB, MeasDiffBA
-    global MeasRMSV1, MeasRMSV2, MeasRMSI1, MeasRMSI2, MeasPhase, MeasDelay
+    global MeasDCV1, MeasMinV1, MeasMaxV1, MeasMidV1, MeasPPV1, MeasDCV3, MeasMinV3
+    global MeasMaxV3, MeasMidV3, MeasPPV3, MeasDCV2, MeasMinV2, MeasMaxV2, MeasMidV2
+    global MeasPPV2, MeasDCV4, MeasMinV4, MeasMaxV4, MeasMidV4, MeasPPV4, MeasDiffAB, MeasDiffBA
+    global MeasRMSV1, MeasRMSV2, MeasRMSV3, MeasRMSV4, MeasPhase, MeasDelay
     global MeasAHW, MeasALW, MeasADCy, MeasAPER, MeasAFREQ, IASource, DisplaySeries
     global MeasBHW, MeasBLW, MeasBDCy, MeasBPER, MeasBFREQ
     global CHAIGainEntry, CHBIGainEntry, CHAIOffsetEntry, CHBIOffsetEntry
