@@ -1,6 +1,6 @@
 #
 # Hardware specific interface functions
-# For Arduino XIAO Two analog + 2 AWG + 6 digital channel scope (10-9-2023)
+# For Arduino XIAO Two analog + 2 AWG + 6 digital channel scope (11-04-2023)
 # Written using Python version 3.10, Windows OS 
 #
 try:
@@ -19,7 +19,8 @@ PWMChannels = 1 # Number of supported PWM output channels
 DigChannels = 6 # Number of supported Dig channels
 LogicChannels = 6 # Number of supported Logic Analyzer channels
 EnablePGAGain = 0 #
-EnableAWGNoise = 0 # 
+EnableAWGNoise = 0 #
+AllowFlashFirmware = 1
 Tdiv.set(10)
 AWG_Amp_Mode.set(0)
 AWGPeakToPeak = 3.30
@@ -57,22 +58,26 @@ VmemoryD = numpy.ones(MinSamples*InterpRate)
 #
 ## hardware specific Fucntion to close and exit ALICE
 def Bcloseexit():
-    global RUNstatus, Closed, ser
+    global RUNstatus, Closed, ser, Sucess
     
     RUNstatus.set(0)
     Closed = 1
-    # 
-    try:
-        ser.write(b'Gx\n') # Turn off AWG
-        ser.write(b'sx\n') # turn off PWM
-        # try to write last config file, Don't crash if running in Write protected space
+    #
+    if Sucess:
+        try:
+            ser.write(b'Gx\n') # Turn off AWG
+            ser.write(b'sx\n') # turn off PWM
+            # try to write last config file, Don't crash if running in Write protected space
+            BSaveConfig("alice-last-config.cfg")
+            # May need to be changed for specific hardware port
+            ser.close()
+            # exit
+        except:
+            donothing()
+    else:
         BSaveConfig("alice-last-config.cfg")
-        # May need to be changed for specific hardware port
-        ser.close()
-        # exit
-    except:
-        donothing()
-
+        ser.close() 
+#
     root.destroy()
     exit()
 #
@@ -1039,50 +1044,73 @@ def ConnectDevice():
         #
         ser.baudrate = 2000000 # Dummy number USB runs at max supported speed
 #
+        #print("sending I")
         ser.write(b'I\n') # request board ID
-        time.sleep(0.005)
-        IDstring = str(ser.readline())
-        ID = IDstring.replace("b'","")
-        ID = ID.replace("\\\\","")
-        ID = ID.replace("r","")
-        ID = ID.replace("n","")
-        ID = ID.replace("\\","")
-        ID = ID.replace("'","")
-        print("ID string ", ID)
-        #
-        ser.write(b't40\n') # send Scope sample time in uSec
-        time.sleep(0.005)
-        print("set dt: 40 uSec")
-        MaxSampleRate = SAMPLErate = 25000*InterpRate
-        #
-        ser.write(b'T20\n') # send AWG sample time in uSec
-        time.sleep(0.005)
-        print("set at: 20 uSec")
-        AWGSampleRate = 50000
-        MinSamples = 1024 # 
-        #
-        ser.write(b'b1024\n') # send Scope Buffer Length 
-        time.sleep(0.005)
-        print("set Scope Samples: 1024")
-        #
-        ser.write(b'N1024\n') # send AWG A Buffer Length
-        ser.write(b'M1024\n') # send AWG B Buffer Length
-        time.sleep(0.005)
-        print("set AWG Samples: 1024")
-        ser.write(b'p64000\n') # send PWM (AWG) frequency
-        
-        MaxSamples = 4096 # assume 4X interpolation
-        #
-        ser.write(b'Rx\n') # turn off AWG sync by default
-        #
-        ser.write(b'sx\n') # turn off PWM output by default
-        ser.write(b'Sx\n') # turn off PWM AWG by default
-#
-        print("Get a sample: ")
-        Get_Data() # grap a check set of samples
-        print("After Interp ", len(VBuffA), len(VBuffB))
-        SHOWsamples = len(VBuffA)
-        return(True) # return a logical true if sucessful!
+        time.sleep(0.05)
+        #print("sent I, wating for response")
+        if ser.in_waiting > 0:
+            IDstring = str(ser.readline())
+            ID = IDstring.replace("b'","")
+            ID = ID.replace("\\\\","")
+            ID = ID.replace("r","")
+            ID = ID.replace("n","")
+            ID = ID.replace("\\","")
+            ID = ID.replace("'","")
+            print("ID string ", ID)
+            if ID != "XIAO Scope 3.0":
+                showwarning("WARNING","Board firmware does match this interface. Switch boards or interface software.")
+            #
+            ser.write(b't40\n') # send Scope sample time in uSec
+            time.sleep(0.005)
+            print("set dt: 40 uSec")
+            MaxSampleRate = SAMPLErate = 25000*InterpRate
+            #
+            ser.write(b'T20\n') # send AWG sample time in uSec
+            time.sleep(0.005)
+            print("set at: 20 uSec")
+            AWGSampleRate = 50000
+            MinSamples = 1024 # 
+            #
+            ser.write(b'b1024\n') # send Scope Buffer Length 
+            time.sleep(0.005)
+            print("set Scope Samples: 1024")
+            #
+            ser.write(b'N1024\n') # send AWG A Buffer Length
+            ser.write(b'M1024\n') # send AWG B Buffer Length
+            time.sleep(0.005)
+            print("set AWG Samples: 1024")
+            ser.write(b'p64000\n') # send PWM (AWG) frequency
+            
+            MaxSamples = 4096 # assume 4X interpolation
+            #
+            ser.write(b'Rx\n') # turn off AWG sync by default
+            #
+            ser.write(b'sx\n') # turn off PWM output by default
+            ser.write(b'Gx\n') # turn off AWG A by default
+            ser.write(b'Sx\n') # turn off PWM AWG by default
+    #
+            print("Get a sample: ")
+            Get_Data() # grap a check set of samples
+            print("After Interp ", len(VBuffA), len(VBuffB))
+            SHOWsamples = len(VBuffA)
+            return(True) # return a logical true if sucessful!
+        else:
+            print("No response so asking to load firmware")
+            if askyesno("Load Firmware?", "Do You Wish to load firmware on this board?"):
+                ser.baudrate = 1200 # Opening serial port at 1200 Baud for a short while will reset board
+                time.sleep(0.05)
+                if ser.in_waiting > 0:
+                    IDstring = str(ser.readline()) # read something
+                    print(IDstring)
+                time.sleep(0.05)
+                ser.close()
+                # if this worked a USB drive window should open.
+                time.sleep(1.0) # wait 1 sec
+                # attempt to copy .uf2 file to USB drive
+                if platform.system() == "Windows":
+                    os.system("copy XIAO_Scope_pwm_awg.uf2 E:")
+
+            return(False)
     else:
         return(False)
 #
@@ -1249,10 +1277,11 @@ def SetAwgSampleFrequency(FreqANum):
 # for built in firmware waveforms...
 #
 def SetAwgA_Ampl(Ampl): # used to toggle on / off AWG output
-    global ser, AwgBOnOffBt, AwgaOnOffLb, AwgbOnOffLb
+    global ser, AwgBOnOffBt, AwgaOnOffLb, AwgbOnOffLb, AWGSampleRate
 
     # AwgBOnOffBt.config(state=DISABLED)
-    AwgaOnOffLb.config(text="AWG Output ")
+    AwgaOnOffLb.config(text="AWG A Output ")
+    AwgbOnOffLb.config(text="PWM AWG Output ")
     # AwgbOnOffLb.config(text=" ")
     if Ampl == 0:
         ser.write(b'Gx\n')
@@ -1260,10 +1289,10 @@ def SetAwgA_Ampl(Ampl): # used to toggle on / off AWG output
         ser.write(b'Go\n')
 #
 def SetAwgB_Ampl(Ampl): # used to toggle on / off AWG output
-    global ser, AwgBOnOffBt, AwgaOnOffLb, AwgbOnOffLb
+    global ser, AwgBOnOffBt, AwgaOnOffLb, AwgbOnOffLb, AWGSampleRate
 
     # AwgBOnOffBt.config(state=DISABLED)
-    AwgbOnOffLb.config(text="AWG Output ")
+    AwgbOnOffLb.config(text="PWM AWG Output ")
     # AwgbOnOffLb.config(text=" ")
     if Ampl == 0:
         ser.write(b'Sx\n')
