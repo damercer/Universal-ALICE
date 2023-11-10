@@ -1,7 +1,7 @@
 #!/usr/bin/python
 # -*- coding: cp1252 -*-
 #
-# Alice-universal-alpha.py(w) (11-01-2023)
+# Alice-universal-alpha.py(w) (11-09-2023)
 # Written using Python version 3.10, Windows OS 
 # Requires a hardware interface level functions add-on file
 # Created by D Mercer ()
@@ -67,7 +67,7 @@ import webbrowser
 # check which operating system
 import platform
 #
-RevDate = "1 Nov 2023"
+RevDate = "9 Nov 2023"
 SWRev = "1.0 "
 #
 # small bit map of triangle logo for window icon
@@ -87,6 +87,7 @@ HardwareFile = "Alice_Interface_Level.py"
 CHANNELS = 1                # Number of Channel traces 1 to 4
 AWGChannels = 1
 AWGPeakToPeak = 5.0
+AllowFlashFirmware = 0
 TRACESread = 0              # Number of traces that have been read
 ## Window graphics area Values that can be modified
 GRW = 720                   # Width of the time grid 720 default
@@ -357,6 +358,8 @@ EnableCommandInterface = 0
 EnablePGAGain = 1
 EnableAWGNoise = 0 #
 EnableDigitalFilter = 0
+EnableInterpFilter = IntVar()
+EnableInterpFilter.set(0)
 EnableMeasureScreen = 0
 EnableUserEntries = 0
 CHANNELS = 2 # Number of supported Analog input channels
@@ -2256,6 +2259,7 @@ def AWGAMakeSine():
         Cycles = 1
     RecLength = int(Cycles * AWGAperiodvalue)
     #Make Sine Wave
+    # print("Cycles = ", Cycles)
     AWG3 = []
     if AWGAShape.get() == 1:
         AWG3 = numpy.sin(numpy.linspace(0, 2*Cycles*numpy.pi, RecLength))
@@ -8789,6 +8793,14 @@ def onCanvasAverage(event):
         TRACEmodeTime.set(1)
     else:
         TRACEmodeTime.set(0)
+#
+def onCanvasInterp(event):
+    global EnableInterpFilter
+
+    if EnableInterpFilter.get() == 0:
+        EnableInterpFilter.set(1)
+    else:
+        EnableInterpFilter.set(0)
 #
 def onCanvasShowTcur(event):
     global ShowTCur
@@ -18443,7 +18455,7 @@ tgb.pack(side=LEFT)
 #
 hozlab = Button(frame1, text="Horz Pos", style="W8.TButton", command=SetHorzPoss)
 hozlab.pack(side=LEFT)
-HozPossentry = Entry(frame1, width=4, cursor='double_arrow')
+HozPossentry = Entry(frame1, width=6, cursor='double_arrow')
 HozPossentry.bind('<MouseWheel>', onHzPosScroll)
 HozPossentry.bind("<Button-4>", onHzPosScroll)# with Linux OS
 HozPossentry.bind("<Button-5>", onHzPosScroll)
@@ -18541,6 +18553,7 @@ ca.bind("8", onCanvasEight)
 ca.bind("9", onCanvasNine)
 ca.bind("0", onCanvasZero)
 ca.bind("a", onCanvasAverage)
+ca.bind("i", onCanvasInterp)
 ca.bind("t", onCanvasShowTcur)
 ca.bind("v", onCanvasShowVcur)
 ca.bind("s", onCanvasSnap)
@@ -18579,9 +18592,9 @@ Optionmenu["menu"]  = Optionmenu.menu
 Optionmenu.menu.add_command(label='Change Settings', command=MakeSettingsMenu)
 Optionmenu.menu.add_checkbutton(label='Smooth', variable=SmoothCurves, command=UpdateTimeTrace)
 Optionmenu.menu.add_checkbutton(label='Z-O-Hold', variable=ZOHold, command=UpdateTimeTrace)
-Optionmenu.menu.add_checkbutton(label='Decimate', variable=DecimateOption)
-Optionmenu.menu.add_checkbutton(label='Gated Meas', variable=MeasGateStatus)
+Optionmenu.menu.add_checkbutton(label='Iterpolate (i)', variable=EnableInterpFilter)
 Optionmenu.menu.add_checkbutton(label='Trace Avg (a)', variable=TRACEmodeTime)
+Optionmenu.menu.add_checkbutton(label='Gated Meas', variable=MeasGateStatus)
 Optionmenu.menu.add_checkbutton(label='Persistance', variable=ScreenTrefresh)
 Optionmenu.menu.add_command(label='Set Marker Location', command=BSetMarkerLocation)
 Optionmenu.menu.add_command(label='Change Plot Label', command=BUserCustomPlotText)
@@ -18589,6 +18602,9 @@ Optionmenu.menu.add_command(label="SnapShot (s)", command=BSnapShot)
 Optionmenu.menu.add_command(label="Color Selector", command=ColorSelector)
 Optionmenu.menu.add_radiobutton(label='Black BG', variable=ColorMode, value=0, command=BgColor)
 Optionmenu.menu.add_radiobutton(label='White BG', variable=ColorMode, value=1, command=BgColor)
+if AllowFlashFirmware == 1:
+    Optionmenu.menu.add_command(label="Update Firmware", command=UpdateFirmware)
+
 if EnableScopeOnly != 0:
     Optionmenu.menu.add_command(label="Open Instruments", command=OpenOtherTools)
 Optionmenu.pack(side=LEFT, anchor=W)
