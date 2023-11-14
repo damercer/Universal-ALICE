@@ -1122,7 +1122,7 @@ def ConnectDevice():
         return(False)
 #
 def UpdateFirmware():
-    global ser
+    global ser, Sucess, bcon
 
     if askyesno("Load Firmware?", "Do You Wish to load firmware on this board?"):
         try:
@@ -1133,6 +1133,8 @@ def UpdateFirmware():
                 print(IDstring)
             time.sleep(0.05)
             ser.close()
+            Sucess = False
+            bcon.configure(text="Recon", style="RConn.TButton")
         except:
             pass
         # if this worked a USB drive window should open.
@@ -1363,6 +1365,8 @@ AwgString10 = "Full Wave Sine"
 AwgString11 = "Half Wave Sine"
 AwgString12 = "Fourier Series"
 AwgString13 = "Schroeder Chirp"
+AwgString14 = "Uniform Noise"
+AwgString15 = "Gaussian Noise"
 #
 ## Make or update the current selected AWG waveform
 def MakeAWGwaves(): # re make awg waveforms in case something changed
@@ -1431,6 +1435,12 @@ def MakeAWGwaves(): # re make awg waveforms in case something changed
             ampl = 0.25
         AWGASendWave(SchroederPhase(MaxSamples, NrTones, ampl))
         AWGAShapeLabel.config(text = AwgString13) # change displayed value
+    elif AWGAShape.get()==14:
+        AWGAMakeUUNoise()
+        AWGAShapeLabel.config(text = AwgString14) # change displayed value
+    elif AWGAShape.get()==15:
+        AWGAMakeUGNoise()
+        AWGAShapeLabel.config(text = AwgString15) # change displayed value
     else:
         AWGAShapeLabel.config(text = "Other Shape") # change displayed value
 #
@@ -1484,6 +1494,12 @@ def MakeAWGwaves(): # re make awg waveforms in case something changed
             ampl = 0.25
         AWGBSendWave(SchroederPhase(MaxSamples, NrTones, ampl))
         AWGBShapeLabel.config(text = AwgString13) # change displayed value
+    elif AWGBShape.get()==14:
+        AWGBMakeUUNoise()
+        AWGBShapeLabel.config(text = AwgString14) # change displayed value
+    elif AWGBShape.get()==15:
+        AWGBMakeUGNoise()
+        AWGBShapeLabel.config(text = AwgString15) # change displayed value
     else:
         AWGBShapeLabel.config(text = "Other Shape") # change displayed value
 

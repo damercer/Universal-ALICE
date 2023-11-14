@@ -1359,7 +1359,8 @@ AwgString10 = "Full Wave Sine"
 AwgString11 = "Half Wave Sine"
 AwgString12 = "Fourier Series"
 AwgString13 = "Schroeder Chirp"
-AwgString14 = "Sine Power Pulse"
+AwgString14 = "Uniform Noise"
+AwgString15 = "Gaussian Noise"
 
 #
 ## Make or update the current selected AWG waveform
@@ -1430,15 +1431,11 @@ def MakeAWGwaves(): # re make awg waveforms in case something changed
         AWGASendWave(SchroederPhase(MaxSamples, NrTones, ampl))
         AWGAShapeLabel.config(text = AwgString13) # change displayed value
     elif AWGAShape.get()==14:
-        SetAwgSampleRate()
-        AWGAAmplvalue = float(eval(AWGAAmplEntry.get()))
-        AWGAOffsetvalue = float(eval(AWGAOffsetEntry.get()))
-        AWGAFreqvalue = UnitConvert(AWGAFreqEntry.get())
-        Power = int(eval(AWGADutyCycleEntry.get()))
-        Power = Power / 100.0
-        ampl = 1
-        AWGASendWave(SinePower(100, Power, 180, ampl))
+        AWGAMakeUUNoise()
         AWGAShapeLabel.config(text = AwgString14) # change displayed value
+    elif AWGAShape.get()==15:
+        AWGAMakeUGNoise()
+        AWGAShapeLabel.config(text = AwgString15) # change displayed value
     else:
         AWGAShapeLabel.config(text = "Other Shape") # change displayed value
 #
@@ -1495,6 +1492,12 @@ def MakeAWGwaves(): # re make awg waveforms in case something changed
             ampl = 0.25
         AWGBSendWave(SchroederPhase(MaxSamples, NrTones, ampl))
         AWGBShapeLabel.config(text = AwgString13) # change displayed value
+    elif AWGBShape.get()==14:
+        AWGBMakeUUNoise()
+        AWGBShapeLabel.config(text = AwgString14) # change displayed value
+    elif AWGBShape.get()==15:
+        AWGBMakeUGNoise()
+        AWGBShapeLabel.config(text = AwgString15) # change displayed value
     else:
         AWGBShapeLabel.config(text = "Other Shape") # change displayed value
 #

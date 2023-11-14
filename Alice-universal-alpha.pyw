@@ -1,7 +1,7 @@
 #!/usr/bin/python
 # -*- coding: cp1252 -*-
 #
-# Alice-universal-alpha.py(w) (11-09-2023)
+# Alice-universal-alpha.py(w) (11-13-2023)
 # Written using Python version 3.10, Windows OS 
 # Requires a hardware interface level functions add-on file
 # Created by D Mercer ()
@@ -67,7 +67,7 @@ import webbrowser
 # check which operating system
 import platform
 #
-RevDate = "9 Nov 2023"
+RevDate = "13 Nov 2023"
 SWRev = "1.0 "
 #
 # small bit map of triangle logo for window icon
@@ -234,7 +234,7 @@ MinSamples = SHOWsamples = RecordLength = 1024
 AWGARecLength = 2048
 AWGBRecLength = 2048
 MaxSamples = 2048
-SMPfft = 128
+SMPfft = 4096
 DISsamples = GRW
 First_Slow_sweep = 0
 Slow_Sweep_Limit = 200
@@ -2591,6 +2591,71 @@ def AWGAMakeFourier():
     duty1lab.config(text="Harmonics")
     AWGASendWave(AWG3)
 #
+def AWGAMakeUUNoise():
+    global AWGAAmplvalue, AWGAOffsetvalue, AWGAAmplEntry, AWGAOffsetEntry
+    global AWGARecLength, AWGSampleRate, AWGBuffLen, MaxSamples, AWGALength
+
+    SetAwgSampleRate()
+    MaxRepRate = numpy.ceil(AWGSampleRate / AWGBuffLen)
+    AWGAAmplvalue = float(eval(AWGAAmplEntry.get()))
+    AWGAOffsetvalue = float(eval(AWGAOffsetEntry.get()))
+    AWGAFreqvalue = UnitConvert(AWGAFreqEntry.get())
+    if AWGAFreqvalue == 0.0:
+        AWGAFreqvalue = 10.0
+        AWGAFreqEntry.delete(0,"end")
+        AWGAFreqEntry.insert(0,AWGAFreqvalue)
+    AWGAperiodvalue = AWGSampleRate/AWGAFreqvalue
+    #Cycles = numpy.ceil(MaxSamples/AWGAperiodvalue)
+    Cycles = numpy.ceil(AWGAFreqvalue/MaxRepRate)
+    if Cycles < 1:
+        Cycles = 1
+    RecLength = int(Cycles * AWGAperiodvalue)
+    CycleLen = int(RecLength / Cycles)
+    #
+    #Make Wave
+    AWG0 = numpy.random.uniform(1.0, -1.0, CycleLen)
+    AWG3 = AWG0
+    # print( index , len(AWG3) )
+    while len(AWG3) < AWGBuffLen-CycleLen:
+        AWG3 = numpy.concatenate((AWG3, numpy.random.uniform(1.0, -1.0, CycleLen)))
+    #
+    AWGALength.config(text = "L = " + str(int(len(AWG3)))) # change displayed value
+    duty1lab.config(text="Percent")
+    AWGASendWave(AWG3)
+#
+def AWGAMakeUGNoise():
+    global AWGAAmplvalue, AWGAOffsetvalue, AWGAAmplEntry, AWGAOffsetEntry
+    global AWGARecLength, AWGSampleRate, AWGBuffLen, MaxSamples, AWGALength
+
+    SetAwgSampleRate()
+    MaxRepRate = numpy.ceil(AWGSampleRate / AWGBuffLen)
+    AWGAAmplvalue = float(eval(AWGAAmplEntry.get()))
+    AWGAOffsetvalue = float(eval(AWGAOffsetEntry.get()))
+    AWGAFreqvalue = UnitConvert(AWGAFreqEntry.get())
+    if AWGAFreqvalue == 0.0:
+        AWGAFreqvalue = 10.0
+        AWGAFreqEntry.delete(0,"end")
+        AWGAFreqEntry.insert(0,AWGAFreqvalue)
+    AWGAperiodvalue = AWGSampleRate/AWGAFreqvalue
+    #Cycles = numpy.ceil(MaxSamples/AWGAperiodvalue)
+    Cycles = numpy.ceil(AWGAFreqvalue/MaxRepRate)
+    if Cycles < 1:
+        Cycles = 1
+    RecLength = int(Cycles * AWGAperiodvalue)
+    CycleLen = int(RecLength / Cycles)
+    #
+    #Make Wave
+    AWG0 = numpy.random.normal(0.0, 1.0, CycleLen)
+    AWG3 = AWG0
+    # print( index , len(AWG3) )
+    while len(AWG3) < AWGBuffLen-CycleLen:
+        AWG3 = numpy.concatenate((AWG3, numpy.random.normal(0.0, 1.0, CycleLen)))
+    #
+    AWGALength.config(text = "L = " + str(int(len(AWG3)))) # change displayed value
+    duty1lab.config(text="Percent")
+    AWGASendWave(AWG3)
+#
+#
 # Start AWG B here
 #
 def AWGBMakeDC():
@@ -2968,7 +3033,71 @@ def AWGBMakeFourier():
     AWGBLength.config(text = "L = " + str(int(len(AWG3)))) # change displayed value
     duty2lab.config(text="Harmonics")
     AWGBSendWave(AWG3)
-#
+##
+def AWGBMakeUUNoise():
+    global AWGBAmplvalue, AWGBOffsetvalue ,AWGBAmplEntry, AWGBOffsetEntry
+    global AWGBRecLength, AWGBuffLen, MaxSamples, AWGSampleRate, AWGBLength
+    
+    SetAwgSampleRate()
+    MaxRepRate = numpy.ceil(AWGSampleRate / AWGBuffLen)
+    AWGBAmplvalue = float(eval(AWGBAmplEntry.get()))
+    AWGBOffsetvalue = float(eval(AWGBOffsetEntry.get()))
+    AWGBFreqvalue = UnitConvert(AWGBFreqEntry.get())
+    if AWGBFreqvalue == 0.0:
+        AWGBFreqvalue = 10.0
+        AWGBFreqEntry.delete(0,"end")
+        AWGBFreqEntry.insert(0,AWGBFreqvalue)
+    AWGBperiodvalue = AWGSampleRate/AWGBFreqvalue
+    # Cycles = int(MaxSamples/AWGBperiodvalue)
+    Cycles = numpy.ceil(AWGBFreqvalue/MaxRepRate)
+    if Cycles < 1:
+        Cycles = 1
+    RecLength = int(Cycles * AWGBperiodvalue)
+    CycleLen = int(RecLength / Cycles)
+    #
+    #Make Wave
+    AWG0 = numpy.random.uniform(-1.0, 1.0, CycleLen)
+    AWG3 = AWG0
+    # print( index , len(AWG3) )
+    while len(AWG3) < AWGBuffLen-CycleLen:
+        AWG3 = numpy.concatenate((AWG3, numpy.random.uniform(-1.0, 1.0, CycleLen)))
+    #
+    AWGBLength.config(text = "L = " + str(int(len(AWG3)))) # change displayed value
+    duty2lab.config(text="Percent")
+    AWGBSendWave(AWG3)
+##
+def AWGBMakeUGNoise():
+    global AWGBAmplvalue, AWGBOffsetvalue ,AWGBAmplEntry, AWGBOffsetEntry
+    global AWGBRecLength, AWGBuffLen, MaxSamples, AWGSampleRate, AWGBLength
+    
+    SetAwgSampleRate()
+    MaxRepRate = numpy.ceil(AWGSampleRate / AWGBuffLen)
+    AWGBAmplvalue = float(eval(AWGBAmplEntry.get()))
+    AWGBOffsetvalue = float(eval(AWGBOffsetEntry.get()))
+    AWGBFreqvalue = UnitConvert(AWGBFreqEntry.get())
+    if AWGBFreqvalue == 0.0:
+        AWGBFreqvalue = 10.0
+        AWGBFreqEntry.delete(0,"end")
+        AWGBFreqEntry.insert(0,AWGBFreqvalue)
+    AWGBperiodvalue = AWGSampleRate/AWGBFreqvalue
+    # Cycles = int(MaxSamples/AWGBperiodvalue)
+    Cycles = numpy.ceil(AWGBFreqvalue/MaxRepRate)
+    if Cycles < 1:
+        Cycles = 1
+    RecLength = int(Cycles * AWGBperiodvalue)
+    CycleLen = int(RecLength / Cycles)
+    #
+    #Make Wave
+    AWG0 = numpy.random.normal(0.0, 1.0, CycleLen)
+    AWG3 = AWG0
+    # print( index , len(AWG3) )
+    while len(AWG3) < AWGBuffLen-CycleLen:
+        AWG3 = numpy.concatenate((AWG3, numpy.random.normal(0.0, 1.0, CycleLen)))
+    #
+    AWGBLength.config(text = "L = " + str(int(len(AWG3)))) # change displayed value
+    duty2lab.config(text="Percent")
+    AWGBSendWave(AWG3)
+##
 def AWGAOutToggle():
     global AwgAOnOffBt
 
@@ -10336,6 +10465,7 @@ def MakeFreqTrace():        # Update the grid and trace
     global SAfreq_max, SAfreq_min, SAnum_bins, FBinWidth
 
     # Set the TRACEsize variable
+    FFTsamples = len(FFTresultA)
     TRACEsize = 0
     try:
         StartFrequency = float(StartFreqEntry.get())
@@ -10437,9 +10567,8 @@ def MakeFreqTrace():        # Update the grid and trace
     if FSweepMode.get() > 0 and LoopNum.get() == NSteps.get():
         PhaseA = PhaseMemoryA
         PhaseB = PhaseMemoryB
-    # global SAfreq_max, SAfreq_min, SAnum_bins
-    FBinWidth = (SAfreq_max - SAfreq_min) / SAnum_bins # CZT done from star to stop
-    # FBinWidth = float(SAMPLErate / 2.0) / (TRACEsize - 1)   # Frequency step per sample
+    #
+    FBinWidth = (SAfreq_max - SAfreq_min) / SAnum_bins # CZT done from start to stop
     # Vertical conversion factors (level dBs) and border limits
     Yconv = float(GRHF) / (Vdiv.get() * DBdivlist[DBdivindex.get()])     # Conversion factors, Yconv is the number of screenpoints per dB
     YVconv = float(GRHF) / (SAvertmax - SAvertmin) # * Vdiv.get()
@@ -10451,8 +10580,8 @@ def MakeFreqTrace():        # Update the grid and trace
     Yp = float(Y0TF) + Yphconv + 180
     # Horizontal conversion factors (frequency Hz) and border limits
     Fpixel = (SAfreq_max - SAfreq_min) / GRWF    # Frequency step per screen pixel
-    Fsample = (SAfreq_max - SAfreq_min) / SAnum_bins # CZT done from start to stop
-    # Fsample = float(SAMPLErate / 2) / (TRACEsize - 1)   # Frequency step per sample
+    Fsample = (SAfreq_max - SAfreq_min) / SAnum_bins  # CZT done from start to stop
+    #
     try:
         LogFStop = math.log10(SAfreq_max)
     except:
@@ -10473,13 +10602,11 @@ def MakeFreqTrace():        # Update the grid and trace
         LogVStart = -10
     LogVpixel = (LogVStop - LogVStart) / GRHF
     ## CZT done from start to stop
-    STARTsample = int(SAfreq_min / Fsample)     # First sample in FFTresult[] that is used
+    STARTsample = int(SAfreq_min / Fsample)   # First sample in FFTresult[] that is used
+    # print("SAfreq_min = ", SAfreq_min, "Fsample = ", Fsample )
     #print("Start Sample: ", STARTsample)
-    #STARTsample = int(math.ceil(STARTsample))   # First within screen range
-
+    STARTsample = 1   # First within screen range
     STOPsample = SAnum_bins - 1 #
-    # STOPsample = SAfreq_max / (Fsample + 1)       # Last sample in FFTresult[] that is used
-    #STOPsample = int(math.floor(STOPsample)) - 1    # Last within screen range, math.floor actually not necessary, part of int
     #print("Stop Sample: ", STOPsample)
     MAXsample = SAnum_bins - 1                      # Just an out of range check
     if STARTsample > (MAXsample - 1):
@@ -10495,11 +10622,13 @@ def MakeFreqTrace():        # Update the grid and trace
     T1Pline = []
     T2Pline = []
     TFMline = []
+    #print("Start Sample: ", STARTsample)
+    #print("Start Freq: ", STARTsample * Fsample)
     n = STARTsample
     PeakIndexA = PeakIndexB = n
     PeakdbA = PeakdbB = PeakMdb = -200 # PeakdbB
     while n < STOPsample:
-        F = n * Fsample
+        F = (n * Fsample) + SAfreq_min
         if HScale.get() == 1:
             try:
                 LogF = math.log10(F) # convet to log Freq
@@ -13493,7 +13622,7 @@ def MakeFreqScreen():       # Update the screen with traces and text
         if ShowMarker.get() > 0:
             k = 1
             while k <= HarmonicMarkers.get():
-                FreqA = k*PeakIndexA*Fsample
+                FreqA = k*PeakfreqA # * PeakIndexA*Fsample
                 #
                 if SAVScale.get() == 0: # In dB
                     if SAVPSD.get() == 1:
@@ -13560,7 +13689,7 @@ def MakeFreqScreen():       # Update the screen with traces and text
         if ShowMarker.get() > 0:
             k = 1
             while k <= HarmonicMarkers.get():
-                FreqB = k*PeakIndexB*Fsample
+                FreqB = k*PeakfreqB # PeakIndexB*Fsample
                 #
                 if SAVScale.get() == 0: # In dB
                     if SAVPSD.get() == 1:

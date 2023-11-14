@@ -1,6 +1,6 @@
 #
 # Hardware specific interface functions
-# For Arduino pi pico Three analog + 2 AWG + 6 digital channel scope (9-18-2023)
+# For Arduino pi pico Three analog + 2 AWG + 6 digital channel scope (11-08-2023)
 # Written using Python version 3.10, Windows OS 
 #
 try:
@@ -16,19 +16,21 @@ except:
 CHANNELS = 3 # Number of supported Analog input channels
 AWGChannels = 2 # Number of supported Analog output channels
 PWMChannels = 1 # Number of supported PWM output channels
-DigChannels = 6 # Number of supported Dig channels
+DigChannels = 8 # Number of supported Dig channels
 LogicChannels = 6 # Number of supported Logic Analyzer channels
 EnablePGAGain = 0 #
-EnableAWGNoise = 0 # 
+EnableAWGNoise = 0 #
+AllowFlashFirmware = 1
 Tdiv.set(10)
 AWG_Amp_Mode.set(0)
 AWGPeakToPeak = 3.29
-DevID = "Pico 3"
+DevID = "Pico MCP 3"
 SerComPort = 'Auto'
 TimeSpan = 0.01
 ADC_Cal = 3.29
-AWGRes = 4095 # For 8 bits, 4095 for 12 bits, 1023 for 10 bits
+AWGRes = 3300 # limit 4.096V / 4096 range to 3.3V
 InterpRate = 4
+EnableInterpFilter.set(1)
 MaxSampleRate = SAMPLErate = 12500*InterpRate
 AWGSampleRate = 50000 # 20 uSec
 LSBsizeA =  LSBsizeB = LSBsizeC = LSBsize = ADC_Cal/4096.0
@@ -91,16 +93,16 @@ def SetSampleRate():
         pass
     #print("TimeDiv = ", TimeDiv)
     if TimeDiv < 0.000099:
-        ser.write(b't9\n') # 90.909 KSPS
+        ser.write(b't5\n') # 90.909 KSPS
         MaxSampleRate = SAMPLErate = 90909*InterpRate
     elif TimeDiv > 0.000099 and TimeDiv < 0.000199:
-        ser.write(b't10\n') # 90.909 KSPS
+        ser.write(b't6\n') # 90.909 KSPS
         MaxSampleRate = SAMPLErate = 90909*InterpRate
     elif TimeDiv > 0.000199 and TimeDiv < 0.0005:
-        ser.write(b't12\n') # 90.909KSPS
+        ser.write(b't8\n') # 90.909KSPS
         MaxSampleRate = SAMPLErate = 90909*InterpRate
     elif TimeDiv >= 0.0005 and TimeDiv < 0.001:
-        ser.write(b't14\n') # 90.909 KSPS
+        ser.write(b't12\n') # 90.909 KSPS
         MaxSampleRate = SAMPLErate = 90909*InterpRate
     elif TimeDiv >= 0.001 and TimeDiv < 0.002:
         ser.write(b't16\n') # 62.5 KSPS
@@ -151,7 +153,7 @@ def Get_Data_One():
     global VBuffA, VBuffB, VBuffC, VBuffG
     global ShowC1_V, ShowC2_V, ShowC3_V, ShowC4_V
     global LSBsizeA, LSBsizeB, LSBsizeC
-    global MaxSampleRate, SAMPLErate
+    global MaxSampleRate, SAMPLErate, EnableInterpFilter
     global ser, SHOWsamples, TRIGGERsample, TgInput, TimeSpan
     global TrigSource, TriggerEdge, TriggerInt, Is_Triggered
     global vct_btn, vdt_btn, HoldOff, MinSamples, Interp4Filter
@@ -281,10 +283,11 @@ def Get_Data_One():
                 pointer = pointer + 1
             index = index + 1
         SHOWsamples = len(VBuffA)
-        VBuffA = numpy.pad(VBuffA, (4, 0), "edge")
-        VBuffA = numpy.convolve(VBuffA, Interp4Filter )
+        if EnableInterpFilter.get() == 1:
+            VBuffA = numpy.pad(VBuffA, (4, 0), "edge")
+            VBuffA = numpy.convolve(VBuffA, Interp4Filter )
+            VBuffA = VBuffA[4:SHOWsamples+4]
         #
-        VBuffA = VBuffA[4:SHOWsamples+4]
     elif ShowC2_V.get() > 0:
         VBuffB=[]
         while index < len(VBuff1): # build array 
@@ -297,10 +300,11 @@ def Get_Data_One():
                 pointer = pointer + 1
             index = index + 1
         SHOWsamples = len(VBuffB)
-        VBuffB = numpy.pad(VBuffB, (4, 0), "edge")
-        VBuffB = numpy.convolve(VBuffB, Interp4Filter )
+        if EnableInterpFilter.get() == 1:
+            VBuffB = numpy.pad(VBuffB, (4, 0), "edge")
+            VBuffB = numpy.convolve(VBuffB, Interp4Filter )
+            VBuffB = VBuffB[4:SHOWsamples+4]
         #
-        VBuffB = VBuffB[4:SHOWsamples+4]
     elif ShowC3_V.get() > 0:
         VBuffC=[]
         while index < len(VBuff1): # build array 
@@ -313,10 +317,11 @@ def Get_Data_One():
                 pointer = pointer + 1
             index = index + 1
         SHOWsamples = len(VBuffB)
-        VBuffC = numpy.pad(VBuffC, (4, 0), "edge")
-        VBuffC = numpy.convolve(VBuffC, Interp4Filter )
+        if EnableInterpFilter.get() == 1:
+            VBuffC = numpy.pad(VBuffC, (4, 0), "edge")
+            VBuffC = numpy.convolve(VBuffC, Interp4Filter )
+            VBuffC = VBuffC[4:SHOWsamples+4]
         #
-        VBuffC = VBuffC[4:SHOWsamples+4]
     else:
         return
     VBuffG = numpy.array(VBuffG) * 1
@@ -416,7 +421,7 @@ def Get_Data_Two():
     global VBuffA, VBuffB, VBuffC, VBuffG
     global ShowC1_V, ShowC2_V, ShowC3_V, ShowC4_V
     global LSBsizeA, LSBsizeB, LSBsizeC
-    global MaxSampleRate, SAMPLErate
+    global MaxSampleRate, SAMPLErate, EnableInterpFilter
     global ser, SHOWsamples, TRIGGERsample, TgInput, TimeSpan
     global TrigSource, TriggerEdge, TriggerInt, Is_Triggered
     global vct_btn, vdt_btn, HoldOff, MinSamples, Interp4Filter
@@ -564,13 +569,14 @@ def Get_Data_Two():
                 pointer = pointer + 1
             index = index + 1
         SHOWsamples = len(VBuffA)
-        VBuffA = numpy.pad(VBuffA, (4, 0), "edge")
-        VBuffA = numpy.convolve(VBuffA, Interp4Filter )
-        VBuffB = numpy.pad(VBuffB, (4, 0), "edge")
-        VBuffB = numpy.convolve(VBuffB, Interp4Filter )
+        if EnableInterpFilter.get() == 1:
+            VBuffA = numpy.pad(VBuffA, (4, 0), "edge")
+            VBuffA = numpy.convolve(VBuffA, Interp4Filter )
+            VBuffB = numpy.pad(VBuffB, (4, 0), "edge")
+            VBuffB = numpy.convolve(VBuffB, Interp4Filter )
+            VBuffA = VBuffA[4:SHOWsamples+4]
+            VBuffB = VBuffB[4:SHOWsamples+4]
         #
-        VBuffA = VBuffA[4:SHOWsamples+4]
-        VBuffB = VBuffB[4:SHOWsamples+4]
     elif ShowC1_V.get() > 0 and ShowC3_V.get() > 0:
         VBuffA=[]
         VBuffC=[]
@@ -608,13 +614,14 @@ def Get_Data_Two():
                 pointer = pointer + 1
             index = index + 1
         SHOWsamples = len(VBuffB)
-        VBuffB = numpy.pad(VBuffB, (4, 0), "edge")
-        VBuffB = numpy.convolve(VBuffB, Interp4Filter )
-        VBuffC = numpy.pad(VBuffC, (4, 0), "edge")
-        VBuffC = numpy.convolve(VBuffC, Interp4Filter )
+        if EnableInterpFilter.get() == 1:
+            VBuffB = numpy.pad(VBuffB, (4, 0), "edge")
+            VBuffB = numpy.convolve(VBuffB, Interp4Filter )
+            VBuffC = numpy.pad(VBuffC, (4, 0), "edge")
+            VBuffC = numpy.convolve(VBuffC, Interp4Filter )
+            VBuffB = VBuffB[4:SHOWsamples+4]
+            VBuffC = VBuffC[4:SHOWsamples+4]
         #
-        VBuffB = VBuffB[4:SHOWsamples+4]
-        VBuffC = VBuffC[4:SHOWsamples+4]
     else:
         return
     VBuffG = numpy.array(VBuffG) * 1
@@ -714,7 +721,7 @@ def Get_Data_Three():
     global VBuffA, VBuffB, VBuffC, VBuffG
     global ShowC1_V, ShowC2_V, ShowC3_V, ShowC4_V
     global LSBsizeA, LSBsizeB, LSBsizeC
-    global MaxSampleRate, SAMPLErate
+    global MaxSampleRate, SAMPLErate, EnableInterpFilter
     global ser, SHOWsamples, TRIGGERsample, TgInput, TimeSpan
     global TrigSource, TriggerEdge, TriggerInt, Is_Triggered
     global vct_btn, vdt_btn, HoldOff, MinSamples, Interp4Filter
@@ -870,16 +877,17 @@ def Get_Data_Three():
             pointer = pointer + 1
         index = index + 1
     SHOWsamples = len(VBuffA)
-    VBuffA = numpy.pad(VBuffA, (4, 0), "edge")
-    VBuffA = numpy.convolve(VBuffA, Interp4Filter )
-    VBuffB = numpy.pad(VBuffB, (4, 0), "edge")
-    VBuffB = numpy.convolve(VBuffB, Interp4Filter )
-    VBuffC = numpy.pad(VBuffC, (4, 0), "edge")
-    VBuffC = numpy.convolve(VBuffC, Interp4Filter )
+    if EnableInterpFilter.get() == 1:
+        VBuffA = numpy.pad(VBuffA, (4, 0), "edge")
+        VBuffA = numpy.convolve(VBuffA, Interp4Filter )
+        VBuffB = numpy.pad(VBuffB, (4, 0), "edge")
+        VBuffB = numpy.convolve(VBuffB, Interp4Filter )
+        VBuffC = numpy.pad(VBuffC, (4, 0), "edge")
+        VBuffC = numpy.convolve(VBuffC, Interp4Filter )
+        VBuffA = VBuffA[4:SHOWsamples+4]
+        VBuffB = VBuffB[4:SHOWsamples+4]
+        VBuffC = VBuffC[4:SHOWsamples+4]
     #
-    VBuffA = VBuffA[4:SHOWsamples+4]
-    VBuffB = VBuffB[4:SHOWsamples+4]
-    VBuffC = VBuffC[4:SHOWsamples+4]
     VBuffG = numpy.array(VBuffG) * 1
     # Extract Digital buffers if needed
     if SaveDig:
@@ -987,7 +995,7 @@ def ConnectDevice():
     global d0btn, d1btn, d2btn, d3btn, d4btn, d5btn, d6btn, d7btn
 
     # print("SerComPort: ", SerComPort)
-    if DevID == "No Device" or DevID == "Pico 3":
+    if DevID == "No Device" or DevID == "Pico MCP 3":
         #
         if SerComPort == 'Auto':
             ports = serial.tools.list_ports.comports()
@@ -1036,10 +1044,12 @@ def ConnectDevice():
         print("set dt: 50 uSec")
         MaxSampleRate = SAMPLErate = 20000*InterpRate
         #
-        ser.write(b'T20\n') # send AWG sample time in uSec
+        ser.write(b'T10\n') # send AWG sample time in uSec
         time.sleep(0.005)
-        print("set at: 17 uSec")
-        AWGSampleRate = 50000
+        print("set at: 15 uSec")
+        AWGSampleRate = 1.0 / 0.00001
+        ser.write(b'Gx\n') # default with both AWG off
+        ser.write(b'gx\n')
         MinSamples = 1024 # 
         #
         ser.write(b'b1024\n') # send Scope Buffer Length 
@@ -1055,7 +1065,7 @@ def ConnectDevice():
         ser.write(b'Rx\n') # default with AWG reset off
         #
         ser.write(b'Sx\n') # turn off AWG A by default
-        ser.write(b'Sz\n') # turn off AWG B by default
+        # ser.write(b'Sz\n') # turn off AWG B by default
         MaxSamples = 4096 # assume 4X interpolation
 #
         print("Get a sample: ")
@@ -1066,6 +1076,24 @@ def ConnectDevice():
     else:
         return(False)
 #
+def UpdateFirmware():
+    global ser, Sucess, bcon
+
+    if askyesno("Load Firmware?", "Do You Wish to load firmware on this board?"):
+        try:
+            ser.baudrate = 1200 # Opening serial port at 1200 Baud for a short while will reset board
+            time.sleep(0.05)
+            if ser.in_waiting > 0:
+                IDstring = str(ser.readline()) # read something
+                print(IDstring)
+            time.sleep(0.05)
+            ser.close()
+            Sucess = False
+            bcon.configure(text="Recon", style="RConn.TButton")
+        except:
+            pass
+        # if this worked a USB drive window should open.
+#
 # AWG Stuff
 #
 def AWGASendWave(AWG3):
@@ -1073,7 +1101,7 @@ def AWGASendWave(AWG3):
     global AWGAAmplvalue, AWGAOffsetvalue, AWGPeakToPeak
     # Expect array values normalized from -1 to 1
     # scale values to send to 0 to 255 8 bits
-    AWG3 = AWG3 * 0.5 # scale by 1/2
+    AWG3 = numpy.array(AWG3) * 0.5 # scale by 1/2
     # Get Low and High voltage levels
     MinCode = int((AWGAAmplvalue / AWGPeakToPeak) * AWGRes)
     if MinCode < 0:
@@ -1129,8 +1157,8 @@ def AWGBSendWave(AWG3):
     global AWGBAmplvalue, AWGBOffsetvalue, AWGPeakToPeak
     # Expect array values normalized from -1 to 1
     # AWG3 = numpy.roll(AWG3, -68)
-    AWGBLastWave = AWG3
-    AWG3 = AWG3 * 0.5 # scale by 1/2
+    AWGBLastWave = numpy.array(AWG3)
+    AWG3 = numpy.array(AWG3) * 0.5 # scale by 1/2
     # Get Low and High voltage levels
     MinCode = int((AWGBAmplvalue / AWGPeakToPeak) * AWGRes)
     if MinCode < 0:
@@ -1231,13 +1259,13 @@ def SetAwgSampleRate():
             AWGRepRate = FreqB
             SetAwgSampleFrequency(FreqB)
             # AWGSampleRate = FreqB * MaxSamples
+    # print("AWGSampleRate = ", AWGSampleRate)
 #
 def SetAwgSampleFrequency(FreqANum):
-    global AWGBuffLen
+    global AWGBuffLen, AWGSampleRate
     #
     NewSampleRate = FreqANum * AWGBuffLen # Samples per second
     NewAT = int(1000000/NewSampleRate) # in uSec
-    NewAT = NewAT - 2
     SendStr = 'T' + str(NewAT) + '\n'
     # print(SendStr)
     SendByt = SendStr.encode('utf-8')
@@ -1248,10 +1276,8 @@ def SetAwgSampleFrequency(FreqANum):
 #
 def SetAwgA_Ampl(Ampl): # used to toggle on / off AWG output
     global ser, AwgBOnOffBt, AwgaOnOffLb, AwgbOnOffLb
-
-    AwgBOnOffBt.config(state=DISABLED)
-    AwgaOnOffLb.config(text="AWG Output ")
-    AwgbOnOffLb.config(text=" ")
+    global AWGSampleRate
+    
     if Ampl == 0:
         ser.write(b'Gx\n')
     else:
@@ -1259,15 +1285,12 @@ def SetAwgA_Ampl(Ampl): # used to toggle on / off AWG output
 #
 def SetAwgB_Ampl(Ampl): # used to toggle on / off AWG output
     global ser, AwgBOnOffBt, AwgAOnOffBt, AwgaOnOffLb, AwgbOnOffLb
+    global AWGSampleRate
 
-    AwgBOnOffBt.config(state=DISABLED)
-    AwgaOnOffLb.config(text="AWG Output ")
-    AwgbOnOffLb.config(text=" ")
     if Ampl == 0:
-        ser.write(b'Gx\n')
+        ser.write(b'gx\n')
     else:
-        AwgAOnOffBt.config(text='ON', style="Run.TButton")
-        ser.write(b'Go\n')
+        ser.write(b'go\n')
 #
 def SetAWG_Ampla():
     global AWGAAmplEntry, ADC_Cal, ser, AWGRes
@@ -1334,7 +1357,9 @@ AwgString10 = "Full Wave Sine"
 AwgString11 = "Half Wave Sine"
 AwgString12 = "Fourier Series"
 AwgString13 = "Schroeder Chirp"
-
+AwgString14 = "Sine Power Pulse"
+AwgString14 = "Uniform Noise"
+AwgString15 = "Gaussian Noise"
 #
 ## Make or update the current selected AWG waveform
 def MakeAWGwaves(): # re make awg waveforms in case something changed
@@ -1403,6 +1428,22 @@ def MakeAWGwaves(): # re make awg waveforms in case something changed
             ampl = 0.25
         AWGASendWave(SchroederPhase(MaxSamples, NrTones, ampl))
         AWGAShapeLabel.config(text = AwgString13) # change displayed value
+    elif AWGAShape.get()==14:
+        SetAwgSampleRate()
+        AWGAAmplvalue = float(eval(AWGAAmplEntry.get()))
+        AWGAOffsetvalue = float(eval(AWGAOffsetEntry.get()))
+        AWGAFreqvalue = UnitConvert(AWGAFreqEntry.get())
+        Power = int(eval(AWGADutyCycleEntry.get()))
+        Power = Power / 100.0
+        ampl = 1
+        AWGASendWave(SinePower(100, Power, 180, ampl))
+        AWGAShapeLabel.config(text = AwgString14) # change displayed value
+    elif AWGAShape.get()==14:
+        AWGAMakeUUNoise()
+        AWGAShapeLabel.config(text = AwgString14) # change displayed value
+    elif AWGAShape.get()==15:
+        AWGAMakeUGNoise()
+        AWGAShapeLabel.config(text = AwgString15) # change displayed value
     else:
         AWGAShapeLabel.config(text = "Other Shape") # change displayed value
 #
@@ -1459,6 +1500,12 @@ def MakeAWGwaves(): # re make awg waveforms in case something changed
             ampl = 0.25
         AWGBSendWave(SchroederPhase(MaxSamples, NrTones, ampl))
         AWGBShapeLabel.config(text = AwgString13) # change displayed value
+    elif AWGBShape.get()==14:
+        AWGBMakeUUNoise()
+        AWGBShapeLabel.config(text = AwgString14) # change displayed value
+    elif AWGBShape.get()==15:
+        AWGBMakeUGNoise()
+        AWGBShapeLabel.config(text = AwgString15) # change displayed value
     else:
         AWGBShapeLabel.config(text = "Other Shape") # change displayed value
 #
