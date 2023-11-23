@@ -1,7 +1,7 @@
 #!/usr/bin/python
 # -*- coding: cp1252 -*-
 #
-# Alice-universal-alpha.py(w) (11-13-2023)
+# Alice-universal-alpha.py(w) (11-22-2023)
 # Written using Python version 3.10, Windows OS 
 # Requires a hardware interface level functions add-on file
 # Created by D Mercer ()
@@ -67,7 +67,7 @@ import webbrowser
 # check which operating system
 import platform
 #
-RevDate = "13 Nov 2023"
+RevDate = "22 Nov 2023"
 SWRev = "1.0 "
 #
 # small bit map of triangle logo for window icon
@@ -1022,12 +1022,12 @@ def BSaveConfig(filename):
     global TgInput, TgEdge, ManualTrigger, SingleShot, AutoLevel, SingleShotSA
     global root, freqwindow, awgwindow, iawindow, xywindow, win1, win2
     global TRIGGERentry, TMsb, Xsignal, AutoCenterA, AutoCenterB
-    global YsignalVA, YsignalIA, YsignalVB, YsignalIB, YsignalM, YsignalMX, YsignalMY
-    global CHAsb, CHAIsb, CHBsb, CHBIsb, HScale, FreqTraceMode
+    global YsignalVA, YsignalVB, YsignalM, YsignalMX, YsignalMY
+    global CHAsb, CHBsb, CHMsb, HScale, FreqTraceMode
     global CHAsbxy, CHCsbxy, CHBsbxy, CHDsbxy, CHANNELS
     global CHAVPosEntryxy, CHBVPosEntryxy, CHMXPosEntry, CHMYPosEntry
     global ShowC1_V, ShowC3_v, ShowC2_V, ShowC24_V, MathTrace, MathXUnits, MathYUnits
-    global CHAVPosEntry, CHCVPosEntry, CHBVPosEntry, CHDVPosEntry
+    global CHAVPosEntry, CHCVPosEntry, CHBVPosEntry, CHDVPosEntry, CHMVPosEntry
     global AWGAAmplEntry, AWGAOffsetEntry, AWGAFreqEntry, AWGADutyCycleEntry
     global AWGAPhaseEntry, AWGAShape, AWGAMode
     global AWGBAmplEntry, AWGBOffsetEntry, AWGBFreqEntry, AWGBDutyCycleEntry
@@ -1065,7 +1065,7 @@ def BSaveConfig(filename):
     global cha_TC1Entry, cha_TC2Entry, chb_TC1Entry, chb_TC2Entry
     global cha_A1Entry, cha_A2Entry, chb_A1Entry, chb_A2Entry
     global Show_Rseries, Show_Xseries, Show_Magnitude, Show_Angle
-    global AWGAWidthEntry, AWGChannels
+    global AWGBPhaseEntry, AWGChannels
     global DigFiltStatus, DigFiltABoxCar, DigFiltBBoxCar, BCALenEntry, BCBLenEntry
     global phawindow, PhAca, PhAScreenStatus, PhADisp
     global GRWPhA, X0LPhA, GRHPhA, Y0TPhA, BoardStatus, boardwindow, BrdSel
@@ -1387,6 +1387,10 @@ def BSaveConfig(filename):
         ConfgFile.write('CHDVGainEntry.insert(4, ' + CHDVGainEntry.get() + ')\n')
         ConfgFile.write('CHDVOffsetEntry.delete(0,END)\n')
         ConfgFile.write('CHDVOffsetEntry.insert(4, ' + CHDVOffsetEntry.get() + ')\n')
+    ConfgFile.write('CHMVPosEntry.delete(0,END)\n')
+    ConfgFile.write('CHMVPosEntry.insert(4, ' + CHMVPosEntry.get() + ')\n')
+    ConfgFile.write('CHMsb.delete(0,END)\n')
+    ConfgFile.write('CHMsb.insert(0, "' + CHMsb.get() + '")\n')
     # AWG stuff
     ConfgFile.write('AWG_Amp_Mode.set('+ str(AWG_Amp_Mode.get()) + ')\n')
     if AWGChannels >=1:
@@ -1399,8 +1403,8 @@ def BSaveConfig(filename):
         ConfgFile.write('AWGAFreqEntry.insert(4, ' + AWGAFreqEntry.get() + ')\n')
         #ConfgFile.write('AWGASymmetryEntry.delete(0,END)\n')
         #ConfgFile.write('AWGASymmetryEntry.insert(4, ' + AWGASymmetryEntry.get() + ')\n')
-        ConfgFile.write('AWGAWidthEntry.delete(0,END)\n')
-        ConfgFile.write('AWGAWidthEntry.insert(4, ' + AWGAWidthEntry.get() + ')\n')
+        #ConfgFile.write('AWGAWidthEntry.delete(0,END)\n')
+        #ConfgFile.write('AWGAWidthEntry.insert(4, ' + AWGAWidthEntry.get() + ')\n')
         ConfgFile.write('AWGADutyCycleEntry.delete(0,END)\n')
         ConfgFile.write('AWGADutyCycleEntry.insert(4, ' + AWGADutyCycleEntry.get() + ')\n')
         ConfgFile.write('AWGAShape.set(' + str(AWGAShape.get()) + ')\n')
@@ -1415,8 +1419,10 @@ def BSaveConfig(filename):
         ConfgFile.write('AWGBFreqEntry.insert(4, ' + AWGBFreqEntry.get() + ')\n')
         #ConfgFile.write('AWGBSymmetryEntry.delete(0,END)\n')
         #ConfgFile.write('AWGBSymmetryEntry.insert(4, ' + AWGBSymmetryEntry.get() + ')\n')
-        ConfgFile.write('AWGBWidthEntry.delete(0,END)\n')
-        ConfgFile.write('AWGBWidthEntry.insert(4, ' + AWGBWidthEntry.get() + ')\n')
+        #ConfgFile.write('AWGBWidthEntry.delete(0,END)\n')
+        #ConfgFile.write('AWGBWidthEntry.insert(4, ' + AWGBWidthEntry.get() + ')\n')
+        ConfgFile.write('AWGBPhaseEntry.delete(0,END)\n')
+        ConfgFile.write('AWGBPhaseEntry.insert(4, ' + AWGBPhaseEntry.get() + ')\n')
         ConfgFile.write('AWGBDutyCycleEntry.delete(0,END)\n')
         ConfgFile.write('AWGBDutyCycleEntry.insert(4, ' + AWGBDutyCycleEntry.get() + ')\n')
         ConfgFile.write('AWGBShape.set(' + str(AWGBShape.get()) + ')\n')
@@ -1514,12 +1520,12 @@ def BLoadConfig(filename):
     global TgInput, TgEdge, SingleShot, AutoLevel, SingleShotSA, ManualTrigger
     global root, freqwindow, awgwindow, iawindow, xywindow, win1, win2
     global TRIGGERentry, TMsb, Xsignal, AutoCenterA, AutoCenterB
-    global YsignalVA, YsignalIA, YsignalVB, YsignalIB, YsignalM, YsignalMX, YsignalMY
-    global CHAsb, CHAIsb, CHBsb, CHBIsb, HScale, FreqTraceMode
-    global CHAsbxy, CHAIsbxy, CHBsbxy, CHBIsbxy, CHANNELS
-    global CHAVPosEntryxy, CHBVPosEntryxy, CHAIPosEntryxy, CHBIPosEntryxy
+    global YsignalVA, YsignalVB, YsignalM, YsignalMX, YsignalMY
+    global CHAsb, CHBsb, CHMsb, HScale, FreqTraceMode
+    global CHAsbxy, CHAsbxy, CHBsbxy, CHBsbxy, CHANNELS
+    global CHAVPosEntryxy, CHBVPosEntryxy
     global ShowC1_V, ShowC3_V, ShowC2_V, ShowC4_V, MathTrace, MathXUnits, MathYUnits
-    global CHAVPosEntry, CHAIPosEntry, CHBVPosEntry, CHBIPosEntry, HozPossentry
+    global CHAVPosEntry, CHBVPosEntry, CHMPosEntry, HozPossentry
     global AWGAAmplEntry, AWGAOffsetEntry, AWGAFreqEntry, AWGADutyCycleEntry
     global AWGAPhaseEntry, AWGAShape, AWGATerm, AWGAMode, AWGARepeatFlag, AWGBRepeatFlag
     global AWGBAmplEntry, AWGBOffsetEntry, AWGBFreqEntry, AWGBDutyCycleEntry
@@ -3146,18 +3152,18 @@ def BLoadConfigTime():
     UpdateTimeTrace()
 ## Run a script file
 def RunScript():
-    global VBuffA, VBuffB, NoiseCH1, NoiseCH2, VFilterA, VFilterB
-    global VmemoryA, VmemoryB, AWGAwaveform, AWGBwaveform
+    global VBuffA, VBuffB, VBuffC, VBuffD, NoiseCH1, NoiseCH2, VFilterA, VFilterB
+    global VmemoryA, VmemoryB, VmemoryC, VmemoryD, AWGAwaveform, AWGBwaveform
     global VUnAvgA, VUnAvgB, IUnAvgA, IUnAvgB, UnAvgSav
     global TgInput, TgEdge, SingleShot, AutoLevel, SingleShotSA, ManualTrigger
     global root, freqwindow, awgwindow, iawindow, xywindow, win1, win2
     global TRIGGERentry, TMsb, Xsignal, AutoCenterA, AutoCenterB
-    global YsignalVA, YsignalIA, YsignalVB, YsignalIB, YsignalM, YsignalMX, YsignalMY
-    global CHAsb, CHAIsb, CHBsb, CHBIsb, HScale, FreqTraceMode
-    global CHAsbxy, CHAIsbxy, CHBsbxy, CHBIsbxy
-    global CHAVPosEntryxy, CHBVPosEntryxy, CHAIPosEntryxy, CHBIPosEntryxy
-    global ShowC1_V, ShowC1_I, ShowC2_V, ShowC2_I, MathTrace, MathXUnits, MathYUnits
-    global CHAVPosEntry, CHAIPosEntry, CHBVPosEntry, CHBIPosEntry, HozPossentry
+    global YsignalVA, YsignalVB, YsignalM, YsignalMX, YsignalMY
+    global CHAsb, CHBsb, CHMsb, HScale, FreqTraceMode
+    global CHAsbxy, CHBsbxy, CHANNELS
+    global CHAVPosEntryxy, CHBVPosEntryxy
+    global ShowC1_V, ShowC4_V, ShowC2_V, ShowC3_V, MathTrace, MathXUnits, MathYUnits
+    global CHAVPosEntry, CHMPosEntry, CHBVPosEntry, HozPossentry
     global AWGAAmplEntry, AWGAOffsetEntry, AWGAFreqEntry, AWGADutyCycleEntry
     global AWGAPhaseEntry, AWGAShape, AWGATerm, AWGAMode, AWGARepeatFlag, AWGBRepeatFlag
     global AWGSync, AWGAIOMode
@@ -4692,7 +4698,7 @@ def Analog_In():
     global PhADisp, IADisp, IAScreenStatus, CutDC, DevOne, BodeScreenStatus, BodeDisp
     global MuxScreenStatus, VBuffA, VBuffB, NoiseCH1, NoiseCH2
     global CHANNELS, ShowC1_V, ShowC2_V, ShowC3_V, ShowC4_V
-    global InGainA, InGainB, InOffA, InOffB, InGainC, InGainD, InOffD, InOffD
+    global InGainA, InGainB, InOffA, InOffB, InGainC, InGainD, InOffC, InOffD
     global CHAVGainEntry, CHAVOffsetEntry, CHBVGainEntry, CHBVOffsetEntry
     global CHCVGainEntry, CHCVOffsetEntry, CHDVGainEntry, CHDVOffsetEntry
     global DCV1, DCV2, MinV1, MaxV1, MinV2, MaxV2
@@ -5037,7 +5043,7 @@ def Analog_Roll_time():
     global CHAVGainEntry, CHBVGainEntry, CHAVOffsetEntry, CHBVOffsetEntry
     global CHAVPosEntry, CHBVPosEntry
     global CHCVGainEntry, CHDVGainEntry, CHCVOffsetEntry, CHDVOffsetEntry
-    global InOffA, InGainA, InOffB, InGainB, CurOffA, CurOffB, CurGainA, CurGainB
+    global InOffA, InGainA, InOffB, InGainB
     global DigFiltA, DigFiltB, DFiltACoef, DFiltBCoef
     global CHA_RC_HP, CHB_RC_HP, CHA_TC1, CHA_TC2, CHB_TC1, CHB_TC2
     global CHA_A1, CHA_A2, CHB_A1, CHB_A2
@@ -5108,7 +5114,7 @@ def Analog_Fast_time():
     global CHAVPosEntry, CHBVPosEntry
     global CHCVGainEntry, CHDVGainEntry, CHCVOffsetEntry, CHDVOffsetEntry
     global CHCVPosEntry, CHDVPosEntry
-    global InOffA, InGainA, InOffB, InGainB, CurOffA, CurOffB, CurGainA, CurGainB
+    global InOffA, InGainA, InOffB, InGainB, InOffC, InGainC, InOffD, InGainD
     global DigFiltA, DigFiltB, DFiltACoef, DFiltBCoef, DigBuffA, DigBuffB
     global CHA_A1, CHA_A2, CHB_A1, CHB_A2
     global MeasGateLeft, MeasGateRight, MeasGateNum, MeasGateStatus
@@ -5148,21 +5154,13 @@ def Analog_Fast_time():
     # number of samples to acquire, 2 screen widths
     onescreen = 1024
 #
-# Starting acquisition    
+# Starting acquisition
+# Triggering handeled in Get_Data if softwhere or hardware
+#
+    TRACESread = 1
     Get_Data()
     #
-    TRACESread = 1
-    if ShowC1_V.get() > 0:
-        VBuffA = (VBuffA - InOffA) * InGainA
-    if ShowC2_V.get() > 0 and CHANNELS >= 2:
-        VBuffB = (VBuffB - InOffB) * InGainB
-        TRACESread = TRACESread + 1
-    if ShowC3_V.get() > 0 and CHANNELS >= 3:
-        VBuffC = (VBuffC - InOffC) * InGainC
-        TRACESread = TRACESread + 1
-    if ShowC4_V.get() > 0 and CHANNELS >= 4:
-        VBuffD = (VBuffD - InOffD) * InGainD
-        TRACESread = TRACESread + 1
+    
 # print("in Fast Time:", len(VBuffA), len(VBuffB))
     # SHOWsamples = len(VBuffA)
 # Check if Input channel RC high pass compensation checked
@@ -6275,7 +6273,6 @@ def MakeTimeTrace():
     global TRIGGERlevel, TRIGGERentry, AutoLevel
     global InOffA, InGainA, InOffB, InGainB
     global CH1pdvRange, CH2pdvRange, CHCpdvRange, CHDpdvRange
-    global CurOffA, CurOffB, CurGainA, CurGainB
     global DCV1, DCV2, MinV1, MaxV1, MinV2, MaxV2
     global DCV3, DCV4, MinV3, MaxV3, MinV4, MaxV4
     global CHAVGainEntry, CHBVGainEntry, CHAVOffsetEntry, CHBVOffsetEntry
@@ -14537,11 +14534,11 @@ def onSpinBoxScroll(event):
 # ================ Make awg sub window ==========================
 def MakeAWGWindow():
     global AWGAShape, AWGBShape, awgwindow, AWGChannels
-    global AWGScreenStatus, AWGAShapeLabel, AwgAOnOffBt, AWGAWidthEntry
-    global AWGAAmplEntry, AWGAOffsetEntry, AWGAFreqEntry, AWGASymmetryEntry, AWGADutyCycleEntry
-    global AWGBShapeLabel, AwgBOnOffBt, AWGBWidthEntry, AWGRelPhaseEntry, AuxDACEntry
-    global AWGBAmplEntry, AWGBOffsetEntry, AWGBFreqEntry, AWGBSymmetryEntry, AWGBDutyCycleEntry
-    global RevDate, phasealab, duty1lab, duty2lab, awgaph, awgadel, AwgaOnOffLb, AwgbOnOffLb
+    global AWGScreenStatus, AWGAShapeLabel, AwgAOnOffBt
+    global AWGAAmplEntry, AWGAOffsetEntry, AWGAFreqEntry, AWGADutyCycleEntry
+    global AWGBShapeLabel, AwgBOnOffBt, AuxDACEntry, awgbph, AWGBPhaseEntry
+    global AWGBAmplEntry, AWGBOffsetEntry, AWGBFreqEntry, AWGBDutyCycleEntry
+    global RevDate, phaseblab, duty1lab, duty2lab, AwgaOnOffLb, AwgbOnOffLb
     global AwgANoiseBt, PWMDivEntry, PWMWidthEntry, AWGALength, AWGBLength
     global AwgLayout, AWG_Amp_Mode, SWRev, BisCompA, LockFreq, bcompa # 0 = Min/Max mode, 1 = Amp/Offset
     global AwgString1, AwgString2, AwgString3, AwgString4, AwgString5, AwgString6
@@ -14666,21 +14663,21 @@ def MakeAWGWindow():
             freq1lab = Label(awg1freq, text="Freq")
             freq1lab.pack(side=LEFT, anchor=W)
             #
-            awg1width = Frame( frame2 )
-            awg1width.pack(side=TOP)
-            awgawd = Button(awg1width, text="Width", style="W8.TButton") #, command=SetAwgWidth)
-            awgawd.pack(side=LEFT, anchor=W)
-            AWGAWidthEntry = Entry(awg1width, width=6, cursor='double_arrow')
-            AWGAWidthEntry.bind("<Return>", UpdateAwgContRet)
-            AWGAWidthEntry.bind('<MouseWheel>', onAWGAscroll)
-            AWGAWidthEntry.bind("<Button-4>", onAWGAscroll)# with Linux OS
-            AWGAWidthEntry.bind("<Button-5>", onAWGAscroll)
-            AWGAWidthEntry.bind('<Key>', onTextKeyAWG)
-            AWGAWidthEntry.pack(side=LEFT, anchor=W)
-            AWGAWidthEntry.delete(0,"end")
-            AWGAWidthEntry.insert(0,"0.5m")
-            widthalab = Label(awg1width, text="Sec")
-            widthalab.pack(side=LEFT, anchor=W)
+##            awg1width = Frame( frame2 )
+##            awg1width.pack(side=TOP)
+##            awgawd = Button(awg1width, text="Width", style="W8.TButton") #, command=SetAwgWidth)
+##            awgawd.pack(side=LEFT, anchor=W)
+##            AWGAWidthEntry = Entry(awg1width, width=6, cursor='double_arrow')
+##            AWGAWidthEntry.bind("<Return>", UpdateAwgContRet)
+##            AWGAWidthEntry.bind('<MouseWheel>', onAWGAscroll)
+##            AWGAWidthEntry.bind("<Button-4>", onAWGAscroll)# with Linux OS
+##            AWGAWidthEntry.bind("<Button-5>", onAWGAscroll)
+##            AWGAWidthEntry.bind('<Key>', onTextKeyAWG)
+##            AWGAWidthEntry.pack(side=LEFT, anchor=W)
+##            AWGAWidthEntry.delete(0,"end")
+##            AWGAWidthEntry.insert(0,"0.5m")
+##            widthalab = Label(awg1width, text="Sec")
+##            widthalab.pack(side=LEFT, anchor=W)
             # AWG duty cycle frame
             awg1dc = Frame( frame2 )
             awg1dc.pack(side=TOP)
@@ -14810,21 +14807,38 @@ def MakeAWGWindow():
             freq2lab = Label(awg2freq, text="Freq")
             freq2lab.pack(side=LEFT, anchor=W)
             #
-            awg2width = Frame( frame3 )
-            awg2width.pack(side=TOP)
-            AWGBwd = Button(awg2width, text="Width", style="W8.TButton") #, command=SetAwgWidth)
-            AWGBwd.pack(side=LEFT, anchor=W)
-            AWGBWidthEntry = Entry(awg2width, width=6, cursor='double_arrow')
-            AWGBWidthEntry.bind("<Return>", UpdateAwgContRet)
-            AWGBWidthEntry.bind('<MouseWheel>', onAWGBscroll)
-            AWGBWidthEntry.bind("<Button-4>", onAWGBscroll)# with Linux OS
-            AWGBWidthEntry.bind("<Button-5>", onAWGBscroll)
-            AWGBWidthEntry.bind('<Key>', onTextKeyAWG)
-            AWGBWidthEntry.pack(side=LEFT, anchor=W)
-            AWGBWidthEntry.delete(0,"end")
-            AWGBWidthEntry.insert(0,"0.5m")
-            widthblab = Label(awg2width, text="Sec")
-            widthblab.pack(side=LEFT, anchor=W)
+            # AWG Phase or delay select sub frame
+            # AWG Phase sub frame
+            awg2phase = Frame( frame3 )
+            awg2phase.pack(side=TOP)
+            awgbph = Button(awg2phase, text="Phase", style="W5.TButton", command=ToggleAWGBPhaseDelay)
+            awgbph.pack(side=LEFT, anchor=W)
+            AWGBPhaseEntry = Entry(awg2phase, width=4, cursor='double_arrow')
+            AWGBPhaseEntry.bind("<Return>", UpdateAwgContRet)
+            AWGBPhaseEntry.bind('<MouseWheel>', onAWGBscroll)
+            AWGBPhaseEntry.bind("<Button-4>", onAWGBscroll)# with Linux OS
+            AWGBPhaseEntry.bind("<Button-5>", onAWGBscroll)
+            AWGBPhaseEntry.bind('<Key>', onTextKeyAWG)
+            AWGBPhaseEntry.pack(side=LEFT, anchor=W)
+            AWGBPhaseEntry.delete(0,"end")
+            AWGBPhaseEntry.insert(0,0)
+            phaseblab = Label(awg2phase, text="Deg")
+            phaseblab.pack(side=LEFT, anchor=W)
+##            awg2width = Frame( frame3 )
+##            awg2width.pack(side=TOP)
+##            AWGBwd = Button(awg2width, text="Width", style="W8.TButton") #, command=SetAwgWidth)
+##            AWGBwd.pack(side=LEFT, anchor=W)
+##            AWGBWidthEntry = Entry(awg2width, width=6, cursor='double_arrow')
+##            AWGBWidthEntry.bind("<Return>", UpdateAwgContRet)
+##            AWGBWidthEntry.bind('<MouseWheel>', onAWGBscroll)
+##            AWGBWidthEntry.bind("<Button-4>", onAWGBscroll)# with Linux OS
+##            AWGBWidthEntry.bind("<Button-5>", onAWGBscroll)
+##            AWGBWidthEntry.bind('<Key>', onTextKeyAWG)
+##            AWGBWidthEntry.pack(side=LEFT, anchor=W)
+##            AWGBWidthEntry.delete(0,"end")
+##            AWGBWidthEntry.insert(0,"0.5m")
+##            widthblab = Label(awg2width, text="Sec")
+##            widthblab.pack(side=LEFT, anchor=W)
             # AWG duty cycle frame
             awg2dc = Frame( frame3 )
             awg2dc.pack(side=TOP)
@@ -14845,26 +14859,26 @@ def MakeAWGWindow():
             AWGBLength = Label(frame3, text="Length")
             AWGBLength.pack(side=TOP)
             # Shift relative phase when channels are same frequency?
-            awg2shift = Frame( frame3 )
-            awg2shift.pack(side=TOP)
-            left10 = Button(awg2shift, style='Left2.TButton', text='-10', command=Left10RelPhase)
-            left10.pack(side=LEFT, anchor=W)
-            right10 = Button(awg2shift, style='Right2.TButton', text='10', command=Right10RelPhase)
-            right10.pack(side=LEFT, anchor=W)
-            awg2phase = Frame( frame3 )
-            awg2phase.pack(side=TOP)
-            AWGRelPh = Button(awg2phase, text="Rel Phase", style="W8.TButton", command=SetAwgRelPhase)
-            AWGRelPh.pack(side=LEFT, anchor=W)
-            AWGRelPhaseEntry = Entry(awg2phase, width=6, cursor='double_arrow')
+##            awg2shift = Frame( frame3 )
+##            awg2shift.pack(side=TOP)
+##            left10 = Button(awg2shift, style='Left2.TButton', text='-10', command=Left10RelPhase)
+##            left10.pack(side=LEFT, anchor=W)
+##            right10 = Button(awg2shift, style='Right2.TButton', text='10', command=Right10RelPhase)
+##            right10.pack(side=LEFT, anchor=W)
+##            awg2phase = Frame( frame3 )
+##            awg2phase.pack(side=TOP)
+##            AWGRelPh = Button(awg2phase, text="Rel Phase", style="W8.TButton", command=SetAwgRelPhase)
+##            AWGRelPh.pack(side=LEFT, anchor=W)
+##            AWGRelPhaseEntry = Entry(awg2phase, width=6, cursor='double_arrow')
             # AWGRelPhaseEntry.bind("<Return>", UpdateAwContRet)
-            AWGRelPhaseEntry.bind('<MouseWheel>', onTextScroll)
-            AWGRelPhaseEntry.bind("<Button-4>", onTextScroll)# with Linux OS
-            AWGRelPhaseEntry.bind("<Button-5>", onTextScroll)
+##            AWGRelPhaseEntry.bind('<MouseWheel>', onTextScroll)
+##            AWGRelPhaseEntry.bind("<Button-4>", onTextScroll)# with Linux OS
+##            AWGRelPhaseEntry.bind("<Button-5>", onTextScroll)
             # AWGRelPhaseEntry.bind('<Key>', onTextKeyAWG)
-            AWGRelPhaseEntry.pack(side=LEFT, anchor=W)
-            AWGRelPhaseEntry.delete(0,"end")
-            AWGRelPhaseEntry.insert(0,"0")
-            widthblab = Label(awg2width, text="Sec")
+##            AWGRelPhaseEntry.pack(side=LEFT, anchor=W)
+##            AWGRelPhaseEntry.delete(0,"end")
+##            AWGRelPhaseEntry.insert(0,"0")
+##            widthblab = Label(awg2width, text="Sec")
             #
             bcompa = Checkbutton(frame3, text="B = Comp A", variable=BisCompA, command=MakeAWGwaves)#SetBCompA)
             bcompa.pack(side=TOP)
@@ -14898,6 +14912,18 @@ def MakeAWGWindow():
             except:
                 pass
         awgwindow.deiconify()
+#
+def ToggleAWGBPhaseDelay():
+    global AWGBPhaseDelay, phaseblab, awgbph, awgbdel
+
+    if AWGBPhaseDelay.get() == 1:
+        AWGBPhaseDelay.set(0)
+        awgbph.configure(text="Phase")
+        phaseblab.configure(text="Deg")
+    elif AWGBPhaseDelay.get() == 0:
+        AWGBPhaseDelay.set(1)
+        awgbph.configure(text="Delay")
+        phaseblab.configure(text="mSec")
 #
 def AlignPhase():
     global AWGRelPhaseEntry
@@ -18802,7 +18828,7 @@ MeasmenuB.menu.add_checkbutton(label='L-Width', variable=MeasBLW)
 MeasmenuB.menu.add_checkbutton(label='DutyCyle', variable=MeasBDCy)
 MeasmenuB.menu.add_checkbutton(label='Period', variable=MeasBPER)
 MeasmenuB.menu.add_checkbutton(label='Freq', variable=MeasBFREQ)
-MeasmenuB.menu.add_checkbutton(label='2-1 Delay', variable=MeasDelay)
+MeasmenuB.menu.add_checkbutton(label='B-A Delay', variable=MeasDelay)
 if CHANNELS >= 4:
     MeasmenuB.menu.add_separator()
     MeasmenuB.menu.add_command(label="-CD-V-", foreground="blue", command=donothing)

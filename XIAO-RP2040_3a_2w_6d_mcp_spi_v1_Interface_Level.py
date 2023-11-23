@@ -1,6 +1,6 @@
 #
 # Hardware specific interface functions
-# For XIAO RP2040 Three analog + 2 AWG + 6 digital channel scope (11-08-2023)
+# For XIAO RP2040 Three analog + 2 AWG + 6 digital channel scope (11-22-2023)
 # Written using Python version 3.10, Windows OS 
 #
 try:
@@ -131,7 +131,21 @@ def only_numerics(seq):
 #
 def Get_Data():
     global ShowC1_V, ShowC2_V, ShowC3_V, ShowC4_V
+    global TgInput, VBuffA, VBuffB, VBuffC, VBuffG
+    global D0_is_on, D1_is_on, D2_is_on, D3_is_on
+    global D4_is_on, D5_is_on, D6_is_on, D7_is_on
+    global DBuff0, DBuff1, DBuff2, DBuff3, DBuff4, DBuff5, DBuff6, DBuff7
+    global D0line, D1line, D2line, D3line, D4line, D5line, D6line, D7line
+    global TRIGGERentry, TRIGGERsample, SaveDig, CHANNELS, TRACESread
 
+    # Get data from pi pico
+    #
+    SaveDig = False
+    if D0_is_on or D1_is_on or D2_is_on or D3_is_on or D4_is_on or D5_is_on or D6_is_on:
+        SaveDig = True
+    else:
+        SaveDig = False
+    #
     if ShowC1_V.get() > 0 and ShowC2_V.get() > 0 and ShowC3_V.get() == 0:
         Get_Data_Two()
     elif ShowC1_V.get() > 0 and ShowC2_V.get() == 0 and ShowC3_V.get() > 0:
@@ -148,6 +162,75 @@ def Get_Data():
         Get_Data_Three()
     else:
         return
+    # do external Gain / Offset calculations before software triggering
+    if ShowC1_V.get() > 0:
+        VBuffA = (VBuffA - InOffA) * InGainA
+    if ShowC2_V.get() > 0 and CHANNELS >= 2:
+        VBuffB = (VBuffB - InOffB) * InGainB
+        TRACESread = TRACESread + 1
+    if ShowC3_V.get() > 0 and CHANNELS >= 3:
+        VBuffC = (VBuffC - InOffC) * InGainC
+        TRACESread = TRACESread + 1
+    if ShowC4_V.get() > 0 and CHANNELS >= 4:
+        VBuffD = (VBuffD - InOffD) * InGainD
+        TRACESread = TRACESread + 1
+    # Find trigger sample point if necessary
+    # print("Array Len ",len(VBuffA), "SHOWsamples ", SHOWsamples)
+    LShift = 0
+    if TgInput.get() == 1 and ShowC1_V.get() > 0:
+        FindTriggerSample(VBuffA)
+    if TgInput.get() == 2 and ShowC2_V.get() > 0:
+        FindTriggerSample(VBuffB)
+    if TgInput.get() == 3 and ShowC3_V.get() > 0:
+        FindTriggerSample(VBuffC)
+    if TgInput.get() > 4:
+        TRIGGERentry.delete(0,"end")
+        TRIGGERentry.insert(0,0.5)
+        if TgInput.get() == 5:
+            FindTriggerSample(DBuff0)
+        if TgInput.get() == 6:
+            FindTriggerSample(DBuff1)
+        if TgInput.get() == 7:
+            FindTriggerSample(DBuff2)
+        if TgInput.get() == 8:
+            FindTriggerSample(DBuff3)
+        if TgInput.get() == 9:
+            FindTriggerSample(DBuff4)
+        if TgInput.get() == 10:
+            FindTriggerSample(DBuff5)
+        if TgInput.get() == 11:
+            FindTriggerSample(DBuff6)
+    if TgInput.get() > 0: # if triggering left shift all arrays such that trigger point is at index 0
+        LShift = 0 - TRIGGERsample
+        if ShowC1_V.get() > 0:
+            VBuffA = numpy.roll(VBuffA, LShift)
+        if ShowC2_V.get() > 0:
+            VBuffB = numpy.roll(VBuffB, LShift+2)
+        if ShowC3_V.get() > 0:
+            VBuffC = numpy.roll(VBuffC, LShift+2)
+        if SaveDig:
+            VBuffG = numpy.roll(VBuffG, LShift)
+            if D0_is_on:
+                DBuff0 = numpy.roll(DBuff0, LShift)
+            if D1_is_on:
+                DBuff1 = numpy.roll(DBuff1, LShift)
+            if D2_is_on:
+                DBuff2 = numpy.roll(DBuff2, LShift)
+            if D3_is_on:
+                DBuff3 = numpy.roll(DBuff3, LShift)
+            if D4_is_on:
+                DBuff4 = numpy.roll(DBuff4, LShift)
+            if D5_is_on:
+                DBuff5 = numpy.roll(DBuff5, LShift)
+            if D6_is_on:
+                DBuff6 = numpy.roll(DBuff6, LShift)
+            if D7_is_on:
+                DBuff7 = numpy.roll(DBuff7, LShift)
+    else:
+        VBuffA = numpy.roll(VBuffA, -2)
+        # VBuffA = numpy.roll(VBuffA, -8)
+        VBuffB = numpy.roll(VBuffB, -1)
+        # VBuffC = numpy.roll(VBuffC, -6)
 #
 def Get_Data_One():
     global VBuffA, VBuffB, VBuffC, VBuffG
@@ -157,19 +240,11 @@ def Get_Data_One():
     global ser, SHOWsamples, TRIGGERsample, TgInput, TimeSpan
     global TrigSource, TriggerEdge, TriggerInt, Is_Triggered
     global vct_btn, vdt_btn, HoldOff, MinSamples, Interp4Filter
-    global D0_is_on, D1_is_on, D2_is_on, D3_is_on
+    global SaveDig, D0_is_on, D1_is_on, D2_is_on, D3_is_on
     global D4_is_on, D5_is_on, D6_is_on, D7_is_on
     global DBuff0, DBuff1, DBuff2, DBuff3, DBuff4, DBuff5, DBuff6, DBuff7
     global D0line, D1line, D2line, D3line, D4line, D5line, D6line, D7line
     
-    # Get data from pi pico
-    #
-    ser.flush()
-    SaveDig = False
-    if D0_is_on or D1_is_on or D2_is_on or D3_is_on or D4_is_on or D5_is_on or D6_is_on:
-        SaveDig = True
-    else:
-        SaveDig = False
     #
     Wait = 0.02
     if SAMPLErate <= 4000:
@@ -362,60 +437,6 @@ def Get_Data_One():
         DBuff5 = []
         DBuff6 = []
         DBuff7 = []
-    # Find trigger sample point if necessary
-    # print("Array Len ",len(VBuffA), "SHOWsamples ", SHOWsamples)
-    LShift = 0
-    if TgInput.get() == 1 and ShowC1_V.get() > 0:
-        FindTriggerSample(VBuffA)
-    if TgInput.get() == 2 and ShowC2_V.get() > 0:
-        FindTriggerSample(VBuffB)
-    if TgInput.get() == 3 and ShowC3_V.get() > 0:
-        FindTriggerSample(VBuffC)
-    if TgInput.get() > 4:
-        TRIGGERentry.delete(0,"end")
-        TRIGGERentry.insert(0,0.5)
-        if TgInput.get() == 5:
-            FindTriggerSample(DBuff0)
-        if TgInput.get() == 6:
-            FindTriggerSample(DBuff1)
-        if TgInput.get() == 7:
-            FindTriggerSample(DBuff2)
-        if TgInput.get() == 8:
-            FindTriggerSample(DBuff3)
-        if TgInput.get() == 9:
-            FindTriggerSample(DBuff4)
-        if TgInput.get() == 10:
-            FindTriggerSample(DBuff5)
-        if TgInput.get() == 11:
-            FindTriggerSample(DBuff6)
-    if TgInput.get() > 0: # if triggering left shift all arrays such that trigger point is at index 0
-        LShift = 0 - TRIGGERsample
-        if ShowC1_V.get() > 0:
-            VBuffA = numpy.roll(VBuffA, LShift)
-        if ShowC2_V.get() > 0:
-            VBuffB = numpy.roll(VBuffB, LShift+2)
-        if ShowC3_V.get() > 0:
-            VBuffC = numpy.roll(VBuffC, LShift+2)
-        if SaveDig:
-            VBuffG = numpy.roll(VBuffG, LShift)
-            if D0_is_on:
-                DBuff0 = numpy.roll(DBuff0, LShift)
-            if D1_is_on:
-                DBuff1 = numpy.roll(DBuff1, LShift)
-            if D2_is_on:
-                DBuff2 = numpy.roll(DBuff2, LShift)
-            if D3_is_on:
-                DBuff3 = numpy.roll(DBuff3, LShift)
-            if D4_is_on:
-                DBuff4 = numpy.roll(DBuff4, LShift)
-            if D5_is_on:
-                DBuff5 = numpy.roll(DBuff5, LShift)
-            if D6_is_on:
-                DBuff6 = numpy.roll(DBuff6, LShift)
-            if D7_is_on:
-                DBuff7 = numpy.roll(DBuff7, LShift)
-    else:
-        VBuffA = numpy.roll(VBuffA, -2)
 #
 def Get_Data_Two():
     global VBuffA, VBuffB, VBuffC, VBuffG
@@ -425,19 +446,11 @@ def Get_Data_Two():
     global ser, SHOWsamples, TRIGGERsample, TgInput, TimeSpan
     global TrigSource, TriggerEdge, TriggerInt, Is_Triggered
     global vct_btn, vdt_btn, HoldOff, MinSamples, Interp4Filter
-    global D0_is_on, D1_is_on, D2_is_on, D3_is_on
+    global SaveDig, D0_is_on, D1_is_on, D2_is_on, D3_is_on
     global D4_is_on, D5_is_on, D6_is_on, D7_is_on
     global DBuff0, DBuff1, DBuff2, DBuff3, DBuff4, DBuff5, DBuff6, DBuff7
     global D0line, D1line, D2line, D3line, D4line, D5line, D6line, D7line
     
-    # Get data from Xiao
-    #
-    ser.flush()
-    SaveDig = False
-    if D0_is_on or D1_is_on or D2_is_on or D3_is_on or D4_is_on or D5_is_on or D6_is_on:
-        SaveDig = True
-    else:
-        SaveDig = False
     #
     Wait = 0.02
     if SAMPLErate <= 4000:
@@ -663,60 +676,6 @@ def Get_Data_Two():
         DBuff5 = []
         DBuff6 = []
         DBuff7 = []
-    # Find trigger sample point if necessary
-    # print("Array Len ",len(VBuffA), "SHOWsamples ", SHOWsamples)
-    LShift = 0
-    if TgInput.get() == 1 and ShowC1_V.get() > 0:
-        FindTriggerSample(VBuffA)
-    if TgInput.get() == 2 and ShowC2_V.get() > 0:
-        FindTriggerSample(VBuffB)
-    if TgInput.get() == 3 and ShowC3_V.get() > 0:
-        FindTriggerSample(VBuffC)
-    if TgInput.get() > 4:
-        TRIGGERentry.delete(0,"end")
-        TRIGGERentry.insert(0,0.5)
-        if TgInput.get() == 5:
-            FindTriggerSample(DBuff0)
-        if TgInput.get() == 6:
-            FindTriggerSample(DBuff1)
-        if TgInput.get() == 7:
-            FindTriggerSample(DBuff2)
-        if TgInput.get() == 8:
-            FindTriggerSample(DBuff3)
-        if TgInput.get() == 9:
-            FindTriggerSample(DBuff4)
-        if TgInput.get() == 10:
-            FindTriggerSample(DBuff5)
-        if TgInput.get() == 11:
-            FindTriggerSample(DBuff6)
-    if TgInput.get() > 0: # if triggering left shift all arrays such that trigger point is at index 0
-        LShift = 0 - TRIGGERsample
-        if ShowC1_V.get() > 0:
-            VBuffA = numpy.roll(VBuffA, LShift)
-        if ShowC2_V.get() > 0:
-            VBuffB = numpy.roll(VBuffB, LShift+2)
-        if ShowC3_V.get() > 0:
-            VBuffC = numpy.roll(VBuffC, LShift+2)
-        if SaveDig:
-            VBuffG = numpy.roll(VBuffG, LShift)
-            if D0_is_on:
-                DBuff0 = numpy.roll(DBuff0, LShift)
-            if D1_is_on:
-                DBuff1 = numpy.roll(DBuff1, LShift)
-            if D2_is_on:
-                DBuff2 = numpy.roll(DBuff2, LShift)
-            if D3_is_on:
-                DBuff3 = numpy.roll(DBuff3, LShift)
-            if D4_is_on:
-                DBuff4 = numpy.roll(DBuff4, LShift)
-            if D5_is_on:
-                DBuff5 = numpy.roll(DBuff5, LShift)
-            if D6_is_on:
-                DBuff6 = numpy.roll(DBuff6, LShift)
-            if D7_is_on:
-                DBuff7 = numpy.roll(DBuff7, LShift)
-    else:
-        VBuffA = numpy.roll(VBuffA, -2)
 #
 def Get_Data_Three():
     global VBuffA, VBuffB, VBuffC, VBuffG
@@ -726,18 +685,11 @@ def Get_Data_Three():
     global ser, SHOWsamples, TRIGGERsample, TgInput, TimeSpan
     global TrigSource, TriggerEdge, TriggerInt, Is_Triggered
     global vct_btn, vdt_btn, HoldOff, MinSamples, Interp4Filter
-    global D0_is_on, D1_is_on, D2_is_on, D3_is_on
+    global SaveDig, D0_is_on, D1_is_on, D2_is_on, D3_is_on
     global D4_is_on, D5_is_on, D6_is_on, D7_is_on
     global DBuff0, DBuff1, DBuff2, DBuff3, DBuff4, DBuff5, DBuff6, DBuff7
     global D0line, D1line, D2line, D3line, D4line, D5line, D6line, D7line
     
-    # Get data from pi pico
-    #
-    SaveDig = False
-    if D0_is_on or D1_is_on or D2_is_on or D3_is_on or D4_is_on or D5_is_on or D6_is_on:
-        SaveDig = True
-    else:
-        SaveDig = False
     #
     Wait = 0.02
     if SAMPLErate <= 4000:
@@ -927,66 +879,11 @@ def Get_Data_Three():
         DBuff5 = []
         DBuff6 = []
         DBuff7 = []
-    # Find trigger sample point if necessary
-    # print("Array Len ",len(VBuffA), "SHOWsamples ", SHOWsamples)
-    LShift = 0
-    if TgInput.get() == 1:
-        FindTriggerSample(VBuffA)
-    if TgInput.get() == 2:
-        FindTriggerSample(VBuffB)
-    if TgInput.get() == 3:
-        FindTriggerSample(VBuffC)
-    if TgInput.get() > 4:
-        TRIGGERentry.delete(0,"end")
-        TRIGGERentry.insert(0,0.5)
-        if TgInput.get() == 5:
-            FindTriggerSample(DBuff0)
-        if TgInput.get() == 6:
-            FindTriggerSample(DBuff1)
-        if TgInput.get() == 7:
-            FindTriggerSample(DBuff2)
-        if TgInput.get() == 8:
-            FindTriggerSample(DBuff3)
-        if TgInput.get() == 9:
-            FindTriggerSample(DBuff4)
-        if TgInput.get() == 10:
-            FindTriggerSample(DBuff5)
-        if TgInput.get() == 11:
-            FindTriggerSample(DBuff6)
-    if TgInput.get() > 0: # if triggering left shift all arrays such that trigger point is at index 0
-        LShift = 0 - TRIGGERsample
-        if ShowC1_V.get() > 0:
-            VBuffA = numpy.roll(VBuffA, LShift)
-        if ShowC2_V.get() > 0:
-            VBuffB = numpy.roll(VBuffB, LShift+1)
-        if ShowC3_V.get() > 0:
-            VBuffC = numpy.roll(VBuffC, LShift+2)
-        if SaveDig:
-            VBuffG = numpy.roll(VBuffG, LShift)
-            if D0_is_on:
-                DBuff0 = numpy.roll(DBuff0, LShift)
-            if D1_is_on:
-                DBuff1 = numpy.roll(DBuff1, LShift)
-            if D2_is_on:
-                DBuff2 = numpy.roll(DBuff2, LShift)
-            if D3_is_on:
-                DBuff3 = numpy.roll(DBuff3, LShift)
-            if D4_is_on:
-                DBuff4 = numpy.roll(DBuff4, LShift)
-            if D5_is_on:
-                DBuff5 = numpy.roll(DBuff5, LShift)
-            if D6_is_on:
-                DBuff6 = numpy.roll(DBuff6, LShift)
-            if D7_is_on:
-                DBuff7 = numpy.roll(DBuff7, LShift)
-    else:
-        VBuffA = numpy.roll(VBuffA, -8)
-        VBuffB = numpy.roll(VBuffB, -7)
-        VBuffC = numpy.roll(VBuffC, -6)
+#
 #
 # Hardware Help
 #
-## try to connect to Arduino Pi Pico board
+## try to connect to Arduino RP-2040 board
 #
 def ConnectDevice():
     global SerComPort, DevID, MaxSamples, SAMPLErate, MinSamples, AWGSampleRate
@@ -1156,11 +1053,26 @@ def AWGASendWave(AWG3):
 ##    
 def AWGBSendWave(AWG3):
     global ser, AWGBLastWave, AWGBRecLength, AWGBuffLen, AWGRes
-    global AWGBAmplvalue, AWGBOffsetvalue, AWGPeakToPeak
+    global AWGBAmplvalue, AWGBOffsetvalue, AWGPeakToPeak, AWGSampleRate
+    global AWGBFreqvalue, AWGBFreqEntry, AWGBPhaseEntry
+    global AWGBdelayvalue, AWGBPhaseDelay, AWGBperiodvalue, AWGBPhasevalue
     # Expect array values normalized from -1 to 1
-    # AWG3 = numpy.roll(AWG3, -68)
+    # 
     AWGBLastWave = numpy.array(AWG3)
     AWG3 = numpy.array(AWG3) * 0.5 # scale by 1/2
+    # shift waveform array left or right based on phase / delay entry
+    AWGBFreqvalue = UnitConvert(AWGBFreqEntry.get())
+    AWGBPhasevalue = float(eval(AWGBPhaseEntry.get()))
+    AWGBperiodvalue = AWGSampleRate/AWGBFreqvalue
+    if AWGBPhaseDelay.get() == 0:
+        if AWGBPhasevalue > 0:
+            AWGBdelayvalue = AWGBperiodvalue * AWGBPhasevalue / 360.0
+        else:
+            AWGBdelayvalue = 0.0
+    elif AWGBPhaseDelay.get() == 1:
+        AWGBdelayvalue = AWGBPhasevalue * AWGSAMPLErate / 1000
+    AWG3 = numpy.roll(AWG3, int(AWGBdelayvalue))
+    #
     # Get Low and High voltage levels
     MinCode = int((AWGBAmplvalue / AWGPeakToPeak) * AWGRes)
     if MinCode < 0:
