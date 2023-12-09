@@ -1,6 +1,6 @@
 #
 # Hardware specific interface functions
-# For Arduino XIAO Two analog + 2 AWG + 6 digital channel scope (12-2-2023)
+# For Arduino XIAO Two analog + 2 AWG + 6 digital channel scope (11-22-2023)
 # Written using Python version 3.10, Windows OS 
 #
 try:
@@ -23,14 +23,14 @@ EnableAWGNoise = 0 #
 AllowFlashFirmware = 1
 Tdiv.set(10)
 AWG_Amp_Mode.set(0)
-AWGPeakToPeak = 3.30
-ADC_Cal = 3.30
+AWGPeakToPeak = 3.28
+ADC_Cal = 3.28
 ScopeRes = 4096.0
 LSBsizeA =  LSBsizeB = LSBsizeC = LSBsize = ADC_Cal/ScopeRes
 Rint = 2.0E7 # ~2 Meg Ohm internal resistor to ground
 AWGARes = 1023 # For 10 bits, 4095 for 12 bits, 255 for 8 bits
 AWGBRes = 1000
-DevID = "XIAO 3"
+DevID = "Bitsy 3"
 SerComPort = 'Auto'
 TimeSpan = 0.01
 InterpRate = 4
@@ -142,7 +142,7 @@ def Get_Data():
     global D0line, D1line, D2line, D3line, D4line, D5line, D6line, D7line
     global TRIGGERentry, TRIGGERsample, SaveDig, CHANNELS, TRACESread
 
-    # Get data from pi pico
+    # Get data from QT Py
     #
     SaveDig = False
     if D0_is_on or D1_is_on or D2_is_on or D3_is_on or D4_is_on or D5_is_on or D6_is_on:
@@ -282,7 +282,7 @@ def Get_Data_One():
         SampleTime = UnitConvert(DTime) * 1.0e-6 # convert to uSec
         # set actual samplerate from returned time per sample
         MaxSampleRate = SAMPLErate = (1.0/SampleTime)*InterpRate
-        #print("Sample Time: ", SampleTime)
+        # print("Sample Time: ", SampleTime)
         #print("Sample Rate = ", SAMPLErate )
     # 
     iterCount = (MinSamples * 3) # 3 bytes for one channel plus digital byte
@@ -929,13 +929,13 @@ def ConnectDevice():
     global d0btn, d1btn, d2btn, d3btn, d4btn, d5btn, d6btn, d7btn
 
     # print("SerComPort: ", SerComPort)
-    if DevID == "No Device" or DevID == "XIAO 3":
+    if DevID == "No Device" or DevID == "Bitsy 3":
         #
         if SerComPort == 'Auto':
             ports = serial.tools.list_ports.comports()
             for port in ports: # ports:
-                # looking for this ID: USB\VID:PID=2886:802F
-                if "VID:PID=2886:802F" in port[2]:
+                # looking for this ID: USB\VID:PID=239A:800F
+                if "VID:PID=239A:800F" in port[2]:
                     print("Found: ", port[0])
                     SerComPort = port[0]
         # Setup instrument connection
@@ -965,13 +965,13 @@ def ConnectDevice():
             ID = ID.replace("\\","")
             ID = ID.replace("'","")
             print("ID string ", ID)
-            if ID != "XIAO Scope 3.0":
+            if ID != "QT Py Scope 3.0":
                 showwarning("WARNING","Board firmware does match this interface. Switch boards or interface software.")
             #
-            ser.write(b't40\n') # send Scope sample time in uSec
+            ser.write(b't25\n') # send Scope sample time in uSec
             time.sleep(0.005)
-            print("set dt: 40 uSec")
-            MaxSampleRate = SAMPLErate = 25000*InterpRate
+            print("set dt: 25 uSec")
+            MaxSampleRate = SAMPLErate = 40000*InterpRate
             #
             ser.write(b'T20\n') # send AWG sample time in uSec
             time.sleep(0.005)
@@ -987,7 +987,7 @@ def ConnectDevice():
             ser.write(b'M1024\n') # send AWG B Buffer Length
             time.sleep(0.005)
             print("set AWG Samples: 1024")
-            ser.write(b'p64000\n') # send PWM (AWG) frequency
+            # ser.write(b'p64000\n') # send PWM (AWG) frequency
             
             MaxSamples = 4096 # assume 4X interpolation
             #

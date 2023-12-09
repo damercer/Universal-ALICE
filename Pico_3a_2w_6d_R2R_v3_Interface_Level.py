@@ -164,14 +164,18 @@ def Get_Data():
         return
     # do external Gain / Offset calculations before software triggering
     if ShowC1_V.get() > 0:
+        VBuffA = numpy.array(VBuffA)
         VBuffA = (VBuffA - InOffA) * InGainA
     if ShowC2_V.get() > 0 and CHANNELS >= 2:
+        VBuffB = numpy.array(VBuffB)
         VBuffB = (VBuffB - InOffB) * InGainB
         TRACESread = TRACESread + 1
     if ShowC3_V.get() > 0 and CHANNELS >= 3:
+        VBuffC = numpy.array(VBuffC)
         VBuffC = (VBuffC - InOffC) * InGainC
         TRACESread = TRACESread + 1
     if ShowC4_V.get() > 0 and CHANNELS >= 4:
+        VBuffD = numpy.array(VBuffD)
         VBuffD = (VBuffD - InOffD) * InGainD
         TRACESread = TRACESread + 1
     # Find trigger sample point if necessary

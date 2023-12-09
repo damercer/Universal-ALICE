@@ -1,7 +1,7 @@
 #!/usr/bin/python
 # -*- coding: cp1252 -*-
 #
-# Alice-universal-alpha.py(w) (11-22-2023)
+# Alice-universal-alpha.py(w) (11-28-2023)
 # Written using Python version 3.10, Windows OS 
 # Requires a hardware interface level functions add-on file
 # Created by D Mercer ()
@@ -67,7 +67,7 @@ import webbrowser
 # check which operating system
 import platform
 #
-RevDate = "22 Nov 2023"
+RevDate = "28 Nov 2023"
 SWRev = "1.0 "
 #
 # small bit map of triangle logo for window icon
@@ -1707,6 +1707,9 @@ def BLoadConfig(filename):
 # Add this to turn off outputs after first time loading a config?
     #BTime()
 #
+#
+# Waveform Function Gen Stuff
+#
 def AWGAReadFile():
     global AWGALength, awgwindow, AWGAcsvFile
 
@@ -2018,9 +2021,7 @@ def SetBCompA():
     AWGBDutyCycleEntry.insert(0, AWGBDutyCyclevalue)
     AWGBShape.set(AWGAShape.get())
     #
-#
-# Waveform Function Gen Stuff
-#
+
 def UpdateAWGA():
     global ana_out, fg
     global AWGAAmplvalue, AWGAOffsetvalue, EnableScopeOnly
@@ -2191,12 +2192,14 @@ def build_square_wave(cycle_len, num_cycles=1, duty_cycle=50.0, phase_degree=0, 
     return numpy.array(wav).astype('i1')
 
 def Left10RelPhase():
+    global AWGBLastWave
 
     ShiftVal = int((-2047/360)*10)
     AWGBNewWave = numpy.roll(AWGBLastWave, ShiftVal)
     AWGBSendWave(AWGBNewWave)
 
 def Right10RelPhase():
+    global AWGBLastWave
 
     ShiftVal = int((2047/360)*10)
     AWGBNewWave = numpy.roll(AWGBLastWave, ShiftVal)
@@ -3706,7 +3709,7 @@ def BSaveScreenBP():
         UpdateBodeScreen()
 ## Save scope all time array data to file
 def BSaveData():
-    global VBuffA, VBuffB, VBuffC, VBuffd, SAMPLErate, NoiseCH1, NoiseCH2
+    global VBuffA, VBuffB, VBuffC, VBuffD, SAMPLErate, NoiseCH1, NoiseCH2
 
     # open file to save data
     filename = asksaveasfilename(defaultextension = ".csv", filetypes=[("Comma Separated Values", "*.csv")])
@@ -3722,10 +3725,10 @@ def BSaveData():
 
 ## Save selected scope time array data to file
 def BSaveChannelData():
-    global SAMPLErate, VBuffA, VBuffB, VBuffA, VBuffB, NoiseCH1, NoiseCH2
+    global SAMPLErate, VBuffA, VBuffB, VBuffC, VBuffD, NoiseCH1, NoiseCH2
 
     # ask user for channel to save
-    Channel = askstring("Choose Channel", "CA-V, CB-V\n Channel:\n", initialvalue="CA-V")
+    Channel = askstring("Choose Channel", "CA-V, CB-V, CC-V, CD-V\n Channel:\n", initialvalue="CA-V")
     if (Channel == None):         # If Cancel pressed, then None
         return
     # open file to save data
@@ -3750,8 +3753,9 @@ def BSaveChannelData():
         DataFile.write( 'Sample-#, CD-V\n' )
         for index in range(len(VBuffD)):
             TimePnt = float((index+0.0)/SAMPLErate)
-            DataFile.write( str(TimePnt) + ', ' + str(VBuffd[index]) + '\n')
+            DataFile.write( str(TimePnt) + ', ' + str(VBuffD[index]) + '\n')
     DataFile.close()
+#
 # place text string on clipboard
 def BSaveToClipBoard(TempBuffer):
     global VBuffA, VBuffB, VBuffC, VBuffD, SAMPLErate, NoiseCH1, NoiseCH2
@@ -3760,7 +3764,7 @@ def BSaveToClipBoard(TempBuffer):
     for index in range(len(TempBuffer)):
         root.clipboard_append(str(TempBuffer[index])+ '\n')
     root.update()
-
+#
 # Get text string from clipboard
 def BReadFromClipboard():
 
@@ -3771,19 +3775,19 @@ def BReadFromClipboard():
         return(TempBuffer)
     except:
         return(TempBuffer)
-
+#
 def BLoadDFiltAClip():
     global DFiltACoef
     
     DFiltACoef = BReadFromClipboard()
     DifFiltALength.config(text = "Length = " + str(int(len(DFiltACoef)))) # change displayed length value
-
+#
 def BLoadDFiltBClip():
     global DFiltBCoef
     
     DFiltBCoef = BReadFromClipboard()
     DifFiltBLength.config(text = "Length = " + str(int(len(DFiltBCoef)))) # change displayed length value
-
+#
 ## Read scope all time array data from saved file
 def BReadData():
     global VBuffA, VBuffB, VBuffC, VBuffD, NoiseCH1, NoiseCH2, SHOWsamples
@@ -4180,7 +4184,7 @@ def CheckMathXString():
 
     t = 0
     TempString = xformentry.get()
-    print(TempString)
+    # print(TempString)
     MathResult = eval(TempString)
     try:
         MathResult = eval(TempString)
@@ -4757,107 +4761,80 @@ def Analog_In():
         if (RUNstatus.get() == 1) or (RUNstatus.get() == 2):
             if SettingsStatus.get() == 1:
                 SettingsUpdate() # Make sure current entries in Settings controls are up to date
-            if TimeDisp.get() > 0 or XYDisp.get() > 0 or PhADisp.get() > 0:
-                Analog_Time_In()
-                
+            # if TimeDisp.get() > 0 or XYDisp.get() > 0 or PhADisp.get() > 0:
+            Analog_Time_In()
+            if TimeDisp.get() > 0: #
+                UpdateTimeAll() # Update Data, trace and time screen
+            if XYDisp.get() > 0 and XYScreenStatus.get() > 0:
+                UpdateXYAll() # Update Data, trace and XY screen
+            if MeasureStatus.get() > 0:
+                UpdateMeasureScreen()
             if (FreqDisp.get() > 0 and SpectrumScreenStatus.get() == 1) or (IADisp.get() > 0 and IAScreenStatus.get() == 1) or (BodeDisp.get() > 0 and BodeScreenStatus.get() == 1):
                 if IADisp.get() > 0 or BodeDisp.get() > 0:
-                    CutDC.set(1) # remove DC portion of waveform
-                    #   
+                    CutDC.set(1) # remove DC portion of waveform  
                 Analog_Freq_In()
-        if OhmRunStatus.get() == 1 and OhmDisp.get() == 1:
-            Ohm_Analog_In()
-        if DMMRunStatus.get() == 1 and DMMDisp.get() == 1:
-            DMM_Analog_In()
+            if OhmRunStatus.get() == 1 and OhmDisp.get() == 1:
+                Ohm_Analog_In()
+            if DMMRunStatus.get() == 1 and DMMDisp.get() == 1:
+                DMM_Analog_In()
         else:
             time.sleep(0.01) # slow down loop while not running to reduce CPU usage
         root.update_idletasks()
         root.update()
 ##
 def DMM_Analog_In():
-    global VBuffA, VBuffB, VBuffC, VBuffD, DmmLabel1, LSBsizeA, LSBsizeB
-    global ShowC1_V, ShowC2_V, ShowC3_V, ShowC4_V, CHANNELS, DmmLabel2
-    global MeterAGainEntry, MeterBGainEntry, MeterAOffsetEntry, MeterBOffsetEntry
-    global MeterCGainEntry, MeterDGainEntry, MeterCOffsetEntry, MeterDOffsetEntry
+    global VBuffA, VBuffB, VBuffC, VBuffD, MBuff, MBuffX, MBuffY
+    global DmmLabel1, DmmLabel2, DmmLabel3, DmmLabel4
+    global ShowC1_V, ShowC2_V, ShowC3_V, ShowC4_V, CHANNELS
+    global MathTrace, Show_MathX, Show_MathY, YsignalMX, YsignalMY
     #
-    if ShowC1_V.get() > 0 and CHANNELS >= 1:
-        try:
-            DMOffA = float(eval(MeterAOffsetEntry.get()))
-        except:
-            MeterAOffsetEntry.delete(0,END)
-            MeterAOffsetEntry.insert(0, InOffA)
-        try:
-            DMGainA = float(eval(MeterAGainEntry.get()))
-        except:
-            MeterAGainEntry.delete(0,END)
-            MeterAGainEntry.insert(0, InGainA)
-    if ShowC2_V.get() > 0 and CHANNELS >= 2:
-        try:
-            DMGainB = float(eval(MeterBGainEntry.get()))
-        except:
-            MeterBGainEntry.delete(0,END)
-            MeterBGainEntry.insert(0, InGainB)
-        try:
-            DMOffB = float(eval(MeterBOffsetEntry.get()))
-        except:
-            MeterBOffsetEntry.delete(0,END)
-            MeterBOffsetEntry.insert(0, InOffB)
-    if ShowC3_V.get() > 0 and CHANNELS >= 3:
-        try:
-            DMGainC = float(eval(MeterCGainEntry.get()))
-        except:
-            MeterCGainEntry.delete(0,END)
-            MeterCGainEntry.insert(0, InGainC)
-        try:
-            DMOffC = float(eval(MeterCOffsetEntry.get()))
-        except:
-            MeterCOffsetEntry.delete(0,END)
-            MeterCOffsetEntry.insert(0, InOffC)
-    if ShowC4_V.get() > 0 and CHANNELS >= 4:
-        try:
-            DMGainD = float(eval(MeterDGainEntry.get()))
-        except:
-            MeterDGainEntry.delete(0,END)
-            MeterDGainEntry.insert(0, InGainD)
-        try:
-            DMOffD = float(eval(MeterDOffsetEntry.get()))
-        except:
-            MeterDOffsetEntry.delete(0,END)
-            MeterDOffsetEntry.insert(0, InOffD)
-    DCVA0 = DCVB0 = DCVC0 = DCVD0 = 0.0 # initalize measurment variable
+    DCVA0 = DCVB0 = DCVC0 = DCVD0 = DCMath = DCMathX = DCMathY = 0.0 # initalize measurment variable
     RIN = 1000000 # nominal
-    Get_Data()
+    # Get_Data()
     #
+    DmmLabel1.config(text = " " ) # Reset display
+    DmmLabel2.config(text = " " ) # Reset display
+    DmmLabel3.config(text = " " ) # Reset display
+    DmmLabel4.config(text = " " ) # Reset display
     VString1 = "A = "
     VString2 = "C = "
+    VString3 = "Math = "
+    VString4 = "MathX = "
     if ShowC1_V.get() > 0 and CHANNELS >= 1:
         DCVA0 = numpy.mean(VBuffA) # calculate average
-        DCVA0 = (DCVA0 - DMOffA) * DMGainA
         VString1 = VString1 + ' {0:.4f} '.format(DCVA0) # format with 4 decimal places
+        DmmLabel1.config(text = VString1) # change displayed values
     if ShowC2_V.get() > 0 and CHANNELS >= 2:
         DCVB0 = numpy.mean(VBuffB) # calculate average
-        DCVB0 = (DCVB0 - DMOffB) * DMGainB
         VString1 = VString1 + " B = " + ' {0:.4f} '.format(DCVB0) # format with 4 decimal places
+        DmmLabel1.config(text = VString1) # change displayed values
     if ShowC3_V.get() > 0 and CHANNELS >= 3:
         DCVC0 = numpy.mean(VBuffC) # calculate average
-        DCVC0 = (DCVC0 - DMOffC) * DMGainC
         VString2 = VString2 + ' {0:.4f} '.format(DCVC0) # format with 4 decimal places
+        DmmLabel2.config(text = VString2) # change displayed values
     if ShowC4_V.get() > 0 and CHANNELS >= 4:
         DCVD0 = numpy.mean(VBuffD) # calculate average
-        DCVD0 = (DCVD0 - DMOffD) * DMGainD
         VString2 = VString2 + " D = " + ' {0:.4f} '.format(DCVD0) # format with 4 decimal places
-    # print VString
-    DmmLabel1.config(text = VString1) # change displayed values
-    try:
         DmmLabel2.config(text = VString2) # change displayed values
-    except:
-        donothing()
-    Update_Analog_Meter(DCVA0, DCVB0, DCVC0, DCVD0)
+    if MathTrace.get() > 0:
+        DCMath = numpy.mean(MBuff) # calculate average
+        VString3 = VString3 + ' {0:.4f} '.format(DCMath) # format with 4 decimal places
+        DmmLabel3.config(text = VString3) # change displayed values
+    if Show_MathX.get() > 0 or YsignalMX.get() == 1:
+        DCMathX = numpy.mean(MBuffX) # calculate average
+        VString4 = VString4 + ' {0:.4f} '.format(DCMathX) # format with 4 decimal places
+        DmmLabel4.config(text = VString4) # change displayed values
+    if Show_MathY.get() > 0 or YsignalMY.get() == 1:
+        DCMathY = numpy.mean(MBuffY) # calculate average
+        VString4 = VString4 + " MathY = " + ' {0:.4f} '.format(DCMathY) # format with 4 decimal places
+        DmmLabel4.config(text = VString4) # change displayed values
+    # print VString
+    Update_Analog_Meter(DCVA0, DCVB0, DCVC0, DCVD0, DCMath, DCMathX, DCMathY)
 #    
 ## Ohmmeter loop
 def Ohm_Analog_In():
     global RMode, CHATestVEntry, CHATestREntry, CHA, CHB, OhmA0, OhmA1
-    global AWGAShape, AWGAOffsetEntry, VBuffA, VBuffB, CHANNELS
+    global Rint, AWGAShape, CHBIntREntry, VBuffA, VBuffB, CHANNELS
 
     if CHANNELS < 2:
         return
@@ -4875,27 +4852,34 @@ def Ohm_Analog_In():
     except:
         CHATestREntry.delete(0,END)
         CHATestREntry.insert(0, chatestr)
+    try:
+        Rint = float(eval(CHBIntREntry.get()))
+    except:
+        CHBIntREntry.delete(0,END)
+        CHBIntREntry.insert(0, 10000000)
     # 
-    RIN = 1000000 # nominal
-    Get_Data()
+    # RIN = 2000000 # nominal
+    # Get_Data()
     #
     DCVA0 = numpy.mean(VBuffA) # calculate average
     DCVB0 = numpy.mean(VBuffB) # calculate average
-    DCVA0 = (DCVA0 - InOffA) * InGainA
-    DCVB0 = (DCVB0 - InOffB) * InGainB
+    #DCVA0 = (DCVA0 - InOffA) * InGainA
+    #DCVB0 = (DCVB0 - InOffB) * InGainB
     # external resistor
     DCM = chatestr * (DCVB0/(DCVA0-DCVB0))
-    if (RIN - DCM) > 0: # trying to measure a resistor > RIN?
-        DCR = (DCM * RIN) / (RIN - DCM) # correct for channel B input resistance
+    if (Rint - DCM) > 0: # trying to measure a resistor > RIN?
+        DCR = (DCM * Rint) / (Rint - DCM) # correct for channel B input resistance
     else:
         DCR = DCM
     if DCR < 1000:
         OhmString = '{0:.2f} '.format(DCR) + "Ohms "# format with 2 decimal places
     else:
         OhmString = '{0:.3f} '.format(DCR/1000) + "KOhms " # divide by 1000 and format with 3 decimal places
-    IAString = "Meas " + ' {0:.2f} '.format(DCVB0) + " V"
+    IAString = "Meas " + ' {0:.4f} '.format(DCVB0) + " V"
     OhmA0.config(text = OhmString) # change displayed value
     OhmA1.config(text = IAString) # change displayed value
+    CHATestVEntry.delete(0,END)
+    CHATestVEntry.insert(0, DCVA0)
 #
     time.sleep(0.1)
 #
@@ -4918,7 +4902,7 @@ def Analog_Time_In():
     else:
         First_Slow_sweep = 0
         Analog_Fast_time()
-        #MakeMathWaves()
+        #
 #
         if PhADisp.get() > 0 and PhAScreenStatus.get() == 1:
             Analog_Phase_In()
@@ -5265,52 +5249,60 @@ def Analog_Fast_time():
 # Calculate scalar values
     if (len(VBuffA) > 1000) or (len(VBuffB) > 1000) or (len(VBuffC) > 1000) or (len(VBuffD) > 1000):
         Endsample = len(VBuffA) - 5
-    try:
-        if TRIGGERsample > 0:
-            Cal_trace_scalars(5, Endsample-TRIGGERsample)
-        else:
-            Cal_trace_scalars(1, Endsample)
-    except:
-        pass
+        Cal_trace_scalars(1, Endsample)
 #
     # update screens
-    if TimeDisp.get() > 0: #
-        UpdateTimeAll() # Update Data, trace and time screen
-    if XYDisp.get() > 0 and XYScreenStatus.get() > 0:
-        UpdateXYAll() # Update Data, trace and XY screen
-    if MeasureStatus.get() > 0:
-        UpdateMeasureScreen()
-#
+##    if TimeDisp.get() > 0: #
+##        UpdateTimeAll() # Update Data, trace and time screen
+##    if XYDisp.get() > 0 and XYScreenStatus.get() > 0:
+##        UpdateXYAll() # Update Data, trace and XY screen
+##    if MeasureStatus.get() > 0:
+##        UpdateMeasureScreen()
+###
 # Calculate waveform scalar values
 def Cal_trace_scalars(SampleStart, SampleEnd):
-    global VBuffA, VBuffB, VBuffC, VBuffD, NoiseCH1, NoiseCH2
+    global ShowC1_V, ShowC2_V, ShowC3_V, ShowC4_V, MathTrace
+    global VBuffA, VBuffB, VBuffC, VBuffD, MBuff, MBuffX, MBuffY
     global DCV1, DCV2, MinV1, MaxV1, MinV2, MaxV2
     global DCV3, DCV4, MinV3, MaxV3, MinV4, MaxV4
     global SV1, SV2, SVA_B, SV3, SV4
+    global DCM, DCMX, DCMY, MinM, MinMX, MinMY, MaxM, MaxMX, MaxMY
 
     # RMS value = square root of average of the data record squared
-    if len(VBuffA) > 0:
+    if ShowC1_V.get() > 0 and len(VBuffA) > 0:
         DCV1 = numpy.mean(VBuffA[SampleStart:SampleEnd])
         MinV1 = numpy.amin(VBuffA[SampleStart:SampleEnd])
         MaxV1 = numpy.amax(VBuffA[SampleStart:SampleEnd])
         SV1 = numpy.sqrt(numpy.mean(numpy.square(VBuffA[SampleStart:SampleEnd])))
-    if len(VBuffB) > 0:
+    if ShowC2_V.get() > 0 and len(VBuffB) > 0:
         DCV2 = numpy.mean(VBuffB[SampleStart:SampleEnd])
         MinV2 = numpy.amin(VBuffB[SampleStart:SampleEnd])
         MaxV2 = numpy.amax(VBuffB[SampleStart:SampleEnd])
         SV2 = numpy.sqrt(numpy.mean(numpy.square(VBuffB[SampleStart:SampleEnd])))
-    if len(VBuffC) > 0:
+    if ShowC3_V.get() > 0 and len(VBuffC) > 0:
         DCV3 = numpy.mean(VBuffC[SampleStart:SampleEnd])
         MinV3 = numpy.amin(VBuffC[SampleStart:SampleEnd])
         MaxV3 = numpy.amax(VBuffC[SampleStart:SampleEnd])
         SV3 = numpy.sqrt(numpy.mean(numpy.square(VBuffC[SampleStart:SampleEnd])))
-    if len(VBuffD) > 0:
+    if ShowC4_V.get() > 0 and len(VBuffD) > 0:
         DCV4 = numpy.mean(VBuffD[SampleStart:SampleEnd])
         MinV4 = numpy.amin(VBuffD[SampleStart:SampleEnd])
         MaxV4 = numpy.amax(VBuffD[SampleStart:SampleEnd])
         SV4 = numpy.sqrt(numpy.mean(numpy.square(VBuffD[SampleStart:SampleEnd])))
     if len(VBuffA) > 0 and len(VBuffB) > 0:
         SVA_B = numpy.sqrt(numpy.mean(numpy.square(VBuffA[SampleStart:SampleEnd]-VBuffB[SampleStart:SampleEnd])))
+    if MathTrace.get() > 0 and len(MBuff) > 0:
+        DCM = numpy.mean(MBuff[SampleStart:SampleEnd])
+        MinM = numpy.amin(MBuff[SampleStart:SampleEnd])
+        MaxM = numpy.amax(MBuff[SampleStart:SampleEnd])
+    if Show_MathX.get() > 0 or YsignalMX.get():
+        DCMX = numpy.mean(MBuffX[SampleStart:SampleEnd])
+        MinMX = numpy.amin(MBuffX[SampleStart:SampleEnd])
+        MaxMX = numpy.amax(MBuffX[SampleStart:SampleEnd])
+    if Show_MathY.get() > 0 or YsignalMY.get():
+        DCMY = numpy.mean(MBuffY[SampleStart:SampleEnd])
+        MinMY = numpy.amin(MBuffY[SampleStart:SampleEnd])
+        MaxMY = numpy.amax(MBuffY[SampleStart:SampleEnd])
 #
 # Function to calculate relative phase angle between two sine waves of the same frequency
 # Removes any DC content
@@ -6565,7 +6557,7 @@ def MakeTimeTrace():
                         Tmathline.append(int(y1))
                     ypm = y1
                 if Show_MathX.get() > 0:
-                    y1 = int(c1 - XconvMx * (MBuffX[t] - CHMXOffset))
+                    y1 = int(c1 - YconvMx * (MBuffX[t] - CHMXOffset))
                         
                     if y1 < Ymin: # clip waveform if going off grid
                         y1 = Ymin
@@ -7493,23 +7485,30 @@ def MakeTimeScreen():
         #
         # TString = ' {0:.2f} '.format(Tpoint)
         if Roll_Mode.get() == 0: # should be same as First_Slow_sweep == 0
-            DT = (MeasGateRight-MeasGateLeft)/Mulx
+            DeltaT = ' ? '
+            DT = (MeasGateRight-MeasGateLeft)
             if DT == 0.0:
                 DT = 1.0
-            if DT >= 1000:
-                axis_value = DT / 1000.0
-                DeltaT = ' {0:.2f} '.format(axis_value) + " S "
-            if DT < 1000 and DT >= 1:
+            if DT >= 1:
                 axis_value = DT
-                DeltaT = ' {0:.2f} '.format(axis_value) + " mS "
-            if DT < 1:
+                DeltaT = ' {0:.2f} '.format(axis_value) + " S "
+            if DT < 1.0 and DT >= 0.001:
                 axis_value = DT * 1000.0
+                DeltaT = ' {0:.2f} '.format(axis_value) + " mS "
+            if DT < 0.001:
+                axis_value = DT * 1000000.0
                 DeltaT = ' {0:.2f} '.format(axis_value) + " uS "
             # DeltaT = ' {0:.3f} '.format(Tpoint-PrevT)
-            DFreq = ' {0:.3f} '.format(1.0/DT)
+            DF = (1.0/DT)
+            if DF < 1000:
+                DFreq = ' {0:.2f} '.format(DF) + " Hz "
+            if DF > 1000 and DF < 1000000:
+                DFreq = ' {0:.1f} '.format(DF/1000) + " KHz "
+            if DF > 1000000:
+                DFreq = ' {0:.1f} '.format(DF/1000000) + " MHz "
+            #
             V_label = " Delta T" + DeltaT
-            #V_label = V_label + Units
-            V_label = V_label + ", Freq " + DFreq + " KHz"
+            V_label = V_label + ", Freq " + DFreq
         # place in upper left unless specified otherwise
         TxScale = FontSize + 2
         x = X0L + 5
@@ -17039,11 +17038,14 @@ def onStopBodeScroll(event):
 # Draw analog meter face
 def Build_meter():
     global MXcenter, MYcenter, MRadius, MGRW, MGRH, MAScreenStatus, MeterMaxEntry
-    global COLORtrace1, COLORtrace2, COLORtext, TRACEwidth, GridWidth, FontSize
+    global COLORtrace1, COLORtrace2, COLORtrace3, COLORtrace4, COLORtrace5, COLORtrace6, COLORtrace7
+    global COLORtext, TRACEwidth, GridWidth, FontSize
     global COLORcanvas, COLORgrid, COLORdial, SWRev, RevDate, MAca, mawindow
     global Mmin, Mmax, MajorDiv, MinorDiv, MeterLabelText, MeterLabel
     global IndicatorA, IndicatorB, IndicatorC, IndicatorD
+    global IndicatorM, IndicatorMX, IndicatorMY
     global ValueDisA, ValueDisB, ValueDisC, ValueDisD, DialSpan, CHANNELS
+    global ValueDisM, ValueDisMX, ValueDisMY
 
     if MAScreenStatus.get() == 0:
         MAScreenStatus.set(1)
@@ -17113,16 +17115,28 @@ def Build_meter():
         MeterLabel = MAca.create_text(MXcenter-MRadius/2,MYcenter+MRadius/2, text = MeterLabelText, fill=COLORtext, font=("arial", FontSize+4 ))
         
         IndicatorA = MAca.create_line(MXcenter, MYcenter, MXcenter+x, MYcenter-y, fill=COLORtrace1, arrow="last", width=TRACEwidth.get())
-        IndicatorB = IndicatorC = IndicatorD = IndicatorA
+        IndicatorB = IndicatorC = IndicatorD = IndicatorM = IndicatorMX = IndicatorMY = IndicatorA
         VString = ' {0:.4f} '.format(0.0) # format with 4 decimal places
+        TextX = MXcenter - MRadius
+        TextY = MYcenter + MRadius
         if CHANNELS >= 1:
-            ValueDisA = MAca.create_text(MXcenter-MRadius,MYcenter+MRadius, text = VString, fill=COLORtrace1, font=("arial", FontSize+4 ))
+            ValueDisA = MAca.create_text(TextX, TextY, text = VString, fill=COLORtrace1, font=("arial", FontSize+4 ))
         if CHANNELS >= 2:
-            ValueDisB = MAca.create_text(MXcenter-MRadius,MYcenter+MRadius+FontSize+5, text = VString, fill=COLORtrace2, font=("arial", FontSize+4 ))
+            TextY = TextY + FontSize + 5
+            ValueDisB = MAca.create_text(TextX, TextY , text = VString, fill=COLORtrace2, font=("arial", FontSize+4 ))
         if CHANNELS >= 3:
-            ValueDisC = MAca.create_text(MXcenter-MRadius,MYcenter+MRadius+FontSize+20, text = VString, fill=COLORtrace3, font=("arial", FontSize+4 ))
+            TextY = TextY + FontSize + 5
+            ValueDisC = MAca.create_text(TextX, TextY , text = VString, fill=COLORtrace3, font=("arial", FontSize+4 ))
         if CHANNELS >= 4:
-            ValueDisD = MAca.create_text(MXcenter-MRadius,MYcenter+MRadius+FontSize+35, text = VString, fill=COLORtrace4, font=("arial", FontSize+4 ))
+            TextY = TextY + FontSize + 5
+            ValueDisD = MAca.create_text(TextX, TextY , text = VString, fill=COLORtrace4, font=("arial", FontSize+4 ))
+        TextX = TextX + 7 * FontSize
+        TextY = MYcenter + MRadius
+        ValueDisM = MAca.create_text(TextX, TextY, text = VString, fill=COLORtrace5, font=("arial", FontSize+4 ))
+        TextY = TextY + FontSize + 5
+        ValueDisMX = MAca.create_text(TextX, TextY, text = VString, fill=COLORtrace6, font=("arial", FontSize+4 ))
+        TextY = TextY + FontSize + 5
+        ValueDisMXY = MAca.create_text(TextX, TextY, text = VString, fill=COLORtrace7, font=("arial", FontSize+4 ))
 #
 def DestroyMAScreen():
     global mawindow, MAScreenStatus #, MAca, MADisp
@@ -17130,13 +17144,16 @@ def DestroyMAScreen():
     MAScreenStatus.set(0)
     mawindow.destroy()
 #
-def Update_Analog_Meter(ValueA, ValueB, ValueC, ValueD):
+def Update_Analog_Meter(ValueA, ValueB, ValueC, ValueD, ValueM, ValueMX, ValueMY):
     global MXcenter, MYcenter, MRadius, MAca, MGRW, MGRH
     global ShowC1_V, ShowC2_V, ShowC3_V, ShowC4_V
     global COLORtrace1, COLORtrace2, COLORtrace3, COLORtrace4, TRACEwidth, GridWidth, FontSize
     global Mmin, Mmax, MajorDiv, DialSpan, MeterMaxEntry
     global IndicatorA, IndicatorB, ValueDisA, ValueDisB, CHANNELS
     global IndicatorC, IndicatorD, ValueDisC, ValueDisD
+    global IndicatorM, IndicatorMX, IndicatorMY
+    global ValueDisM, ValueDisMX, ValueDisMY
+    global MathTrace, Show_MathX, Show_MathY, YsignalMX, YsignalMY
     
     if Mmin >= Mmax:
         Mmax = Mmin + 0.1
@@ -17145,6 +17162,43 @@ def Update_Analog_Meter(ValueA, ValueB, ValueC, ValueD):
     MScale = Mmax - Mmin
     DialStart = 90 + (DialSpan/2)
     Tradius = 1.0 * MRadius
+    try:
+        MAca.delete(IndicatorA) # remove old lines
+        MAca.delete(ValueDisA)# remove old text
+    except:
+        pass
+    try:
+        MAca.delete(IndicatorB)
+        MAca.delete(ValueDisB)
+    except:
+        pass
+    try:
+        MAca.delete(IndicatorC)
+        MAca.delete(ValueDisC)
+    except:
+        pass
+    try:
+        MAca.delete(IndicatorD)
+        MAca.delete(ValueDisD)
+    except:
+        pass
+    try:
+        MAca.delete(IndicatorM)
+        MAca.delete(ValueDisM)
+    except:
+        pass
+    try:
+        MAca.delete(IndicatorMX)
+        MAca.delete(ValueDisMX)
+    except:
+        pass
+    try:
+        MAca.delete(IndicatorMY)
+        MAca.delete(ValueDisMY)
+    except:
+        pass
+    TextX = MXcenter - MRadius
+    TextY = MYcenter + MRadius
     if ShowC1_V.get() > 0 and CHANNELS >= 1:
         Angle = DialStart - ((DialSpan*(ValueA-Mmin))/MScale) # calculate angle of CHA indicator
         if Angle < 0.0:
@@ -17154,12 +17208,11 @@ def Update_Analog_Meter(ValueA, ValueB, ValueC, ValueD):
         xa = Tradius*math.cos(RAngle)
         if Angle > 270:
             ya = 0 - ya
-        MAca.delete(IndicatorA) # remove old lines
-        MAca.delete(ValueDisA)
         IndicatorA = MAca.create_line(MXcenter, MYcenter, MXcenter+xa, MYcenter-ya, fill=COLORtrace1, arrow="last", width=TRACEwidth.get())
         VString = ' {0:.4f} '.format(ValueA) # format with 4 decimal places
-        ValueDisA = MAca.create_text(MXcenter-MRadius,MYcenter+MRadius, text = VString, fill=COLORtrace1, font=("arial", FontSize+4 ))
+        ValueDisA = MAca.create_text(TextX, TextY, text = VString, fill=COLORtrace1, font=("arial", FontSize+4 ))
     if ShowC2_V.get() > 0 and CHANNELS >= 2:
+        TextY = TextY + FontSize + 5
         Angle = DialStart - ((DialSpan*(ValueB-Mmin))/MScale) # calculate angle of CHB indicator
         if Angle < 0.0:
             Angle = 360 - Angle
@@ -17168,12 +17221,11 @@ def Update_Analog_Meter(ValueA, ValueB, ValueC, ValueD):
         xb = Tradius*math.cos(RAngle)
         if Angle > 270:
             yb = 0 - yb
-        MAca.delete(IndicatorB)
-        MAca.delete(ValueDisB)
         IndicatorB = MAca.create_line(MXcenter, MYcenter, MXcenter+xb, MYcenter-yb, fill=COLORtrace2, arrow="last", width=TRACEwidth.get())
         VString = ' {0:.4f} '.format(ValueB) # format with 4 decimal places
-        ValueDisB = MAca.create_text(MXcenter-MRadius,MYcenter+MRadius+15, text = VString, fill=COLORtrace2, font=("arial", FontSize+4 ))
+        ValueDisB = MAca.create_text(TextX, TextY , text = VString, fill=COLORtrace2, font=("arial", FontSize+4 ))
     if ShowC3_V.get() > 0 and CHANNELS >= 3:
+        TextY = TextY + FontSize + 5
         Angle = DialStart - ((DialSpan*(ValueC-Mmin))/MScale) # calculate angle of CHC indicator
         if Angle < 0.0:
             Angle = 360 - Angle
@@ -17182,12 +17234,11 @@ def Update_Analog_Meter(ValueA, ValueB, ValueC, ValueD):
         xc = Tradius*math.cos(RAngle)
         if Angle > 270:
             yc = 0 - yc
-        MAca.delete(IndicatorC)
-        MAca.delete(ValueDisC)
         IndicatorC = MAca.create_line(MXcenter, MYcenter, MXcenter+xc, MYcenter-yc, fill=COLORtrace3, arrow="last", width=TRACEwidth.get())
         VString = ' {0:.4f} '.format(ValueC) # format with 4 decimal places
-        ValueDisC = MAca.create_text(MXcenter-MRadius,MYcenter+MRadius+30, text = VString, fill=COLORtrace3, font=("arial", FontSize+4 ))
+        ValueDisC = MAca.create_text(TextX, TextY , text = VString, fill=COLORtrace3, font=("arial", FontSize+4 ))
     if ShowC4_V.get() > 0 and CHANNELS >= 4:
+        TextY = TextY + FontSize + 5
         Angle = DialStart - ((DialSpan*(ValueD-Mmin))/MScale) # calculate angle of CHD indicator
         if Angle < 0.0:
             Angle = 360 - Angle
@@ -17196,11 +17247,49 @@ def Update_Analog_Meter(ValueA, ValueB, ValueC, ValueD):
         xd = Tradius*math.cos(RAngle)
         if Angle > 270:
             yd = 0 - yd
-        MAca.delete(IndicatorD) # remove old lines
-        MAca.delete(ValueDisD)
         IndicatorD = MAca.create_line(MXcenter, MYcenter, MXcenter+xd, MYcenter-yd, fill=COLORtrace4, arrow="last", width=TRACEwidth.get())
         VString = ' {0:.4f} '.format(ValueD) # format with 4 decimal places
-        ValueDisD = MAca.create_text(MXcenter-MRadius,MYcenter+MRadius+45, text = VString, fill=COLORtrace4, font=("arial", FontSize+4 ))
+        ValueDisD = MAca.create_text(TextX, TextY , text = VString, fill=COLORtrace4, font=("arial", FontSize+4 ))
+    TextX = TextX + 7 * FontSize
+    TextY = MYcenter + MRadius
+    if MathTrace.get() > 0:
+        Angle = DialStart - ((DialSpan*(ValueM-Mmin))/MScale) # calculate angle of Math indicator
+        if Angle < 0.0:
+            Angle = 360 - Angle
+        RAngle = math.radians(Angle)
+        yd = Tradius*math.sin(RAngle) # convert angle to x y position
+        xd = Tradius*math.cos(RAngle)
+        if Angle > 270:
+            yd = 0 - yd
+        IndicatorM = MAca.create_line(MXcenter, MYcenter, MXcenter+xd, MYcenter-yd, fill=COLORtrace5, arrow="last", width=TRACEwidth.get())
+        VString = ' {0:.4f} '.format(ValueM) # format with 4 decimal places
+        ValueDisM = MAca.create_text(TextX, TextY, text = VString, fill=COLORtrace5, font=("arial", FontSize+4 ))
+    if Show_MathX.get() > 0 or YsignalMX.get() == 1:
+        TextY = TextY + FontSize + 5
+        Angle = DialStart - ((DialSpan*(ValueMX-Mmin))/MScale) # calculate angle of Math indicator
+        if Angle < 0.0:
+            Angle = 360 - Angle
+        RAngle = math.radians(Angle)
+        yd = Tradius*math.sin(RAngle) # convert angle to x y position
+        xd = Tradius*math.cos(RAngle)
+        if Angle > 270:
+            yd = 0 - yd
+        IndicatorMX = MAca.create_line(MXcenter, MYcenter, MXcenter+xd, MYcenter-yd, fill=COLORtrace6, arrow="last", width=TRACEwidth.get())
+        VString = ' {0:.4f} '.format(ValueMX) # format with 4 decimal places
+        ValueDisMX = MAca.create_text(TextX, TextY, text = VString, fill=COLORtrace6, font=("arial", FontSize+4 ))
+    if Show_MathY.get() > 0 or YsignalMY.get() == 1:
+        TextY = TextY + FontSize + 5
+        Angle = DialStart - ((DialSpan*(ValueMY-Mmin))/MScale) # calculate angle of Math indicator
+        if Angle < 0.0:
+            Angle = 360 - Angle
+        RAngle = math.radians(Angle)
+        yd = Tradius*math.sin(RAngle) # convert angle to x y position
+        xd = Tradius*math.cos(RAngle)
+        if Angle > 270:
+            yd = 0 - yd
+        IndicatorMY = MAca.create_line(MXcenter, MYcenter, MXcenter+xd, MYcenter-yd, fill=COLORtrace7, arrow="last", width=TRACEwidth.get())
+        VString = ' {0:.4f} '.format(ValueMY) # format with 4 decimal places
+        ValueDisMY = MAca.create_text(TextX, TextY, text = VString, fill=COLORtrace7, font=("arial", FontSize+4 ))
 #
 # Resize Analog Meter window
 def MACaresize(event):
@@ -17334,7 +17423,7 @@ def ReSetDGO():
 def MakeMeterWindow():
     global DMMStatus, DMMDisp, dmmwindow, DMMRunStatus, Mmax, Mmin
     global SWRev, RevDate, InGainA, InOffA, InGainB, InOffB, DmmLabel1
-    global InGainC, InOffC, InGainD, InOffD, DmmLabel2
+    global InGainC, InOffC, InGainD, InOffD, DmmLabel2, DmmLabel3, DmmLabel4
     global MeterMaxEntry, MeterMinEntry, MeterMinlab, MeterMaxlab, CHANNELS
     global MeterAGainEntry, MeterBGainEntry, MeterAOffsetEntry, MeterBOffsetEntry
     global MeterCGainEntry, MeterDGainEntry, MeterCOffsetEntry, MeterDOffsetEntry
@@ -17354,6 +17443,14 @@ def MakeMeterWindow():
             DmmLabel2 = Label(dmmwindow, font = "Arial 16 bold")
             DmmLabel2.grid(row=Grow, columnspan=3, sticky=W)
             DmmLabel2.config(text = "C Volts D Volts")
+        Grow = Grow + 1
+        DmmLabel3 = Label(dmmwindow, font = "Arial 16 bold")
+        DmmLabel3.grid(row=Grow, columnspan=3, sticky=W)
+        DmmLabel3.config(text = "Math")
+        Grow = Grow + 1
+        DmmLabel4 = Label(dmmwindow, font = "Arial 16 bold")
+        DmmLabel4.grid(row=Grow, columnspan=3, sticky=W)
+        DmmLabel4.config(text = "MathX MathY")
         Grow = Grow + 1
         frame0 = Frame( dmmwindow )
         frame0.grid(row=Grow, column=0, sticky=W)
@@ -17388,111 +17485,8 @@ def MakeMeterWindow():
         MeterMaxEntry.insert(0,Mmax)
         MeterMaxlab = Button(frame1, text="Meter Max", style="W9.TButton", command=donothing)# SetVAPoss)
         MeterMaxlab.pack(side=LEFT)
-        # input probe wigets
-        Grow = Grow + 1
-        prlab = Label(dmmwindow, text="Adjust Gain / Offset")
-        prlab.grid(row=Grow, column=0, sticky=W)
-        # Input Probes sub frame
-        if CHANNELS >= 1:
-            Grow = Grow + 1
-            ProbeA = Frame( dmmwindow )
-            ProbeA.grid(row=Grow, column=0, sticky=W)
-            gain1lab = Button(ProbeA, text="CA-V", width=4, style="Ctrace1.TButton", command=ReSetAGO) 
-            gain1lab.pack(side=LEFT,fill=X)
-            MeterAGainEntry = Entry(ProbeA, width=5, cursor='double_arrow')
-            MeterAGainEntry.bind('<Return>', onTextKey)
-            MeterAGainEntry.bind('<MouseWheel>', onTextScroll)
-            MeterAGainEntry.bind("<Button-4>", onTextScroll)# with Linux OS
-            MeterAGainEntry.bind("<Button-5>", onTextScroll)
-            MeterAGainEntry.bind('<Key>', onTextKey)
-            MeterAGainEntry.pack(side=LEFT)
-            MeterAGainEntry.delete(0,"end")
-            MeterAGainEntry.insert(0,InGainA)
-            MeterAOffsetEntry = Entry(ProbeA, width=5, cursor='double_arrow')
-            MeterAOffsetEntry.bind('<Return>', onTextKey)
-            MeterAOffsetEntry.bind('<MouseWheel>', onTextScroll)
-            MeterAOffsetEntry.bind("<Button-4>", onTextScroll)# with Linux OS
-            MeterAOffsetEntry.bind("<Button-5>", onTextScroll)
-            MeterAOffsetEntry.bind('<Key>', onTextKey)
-            MeterAOffsetEntry.pack(side=LEFT)
-            MeterAOffsetEntry.delete(0,"end")
-            MeterAOffsetEntry.insert(0,InOffA)
         #
-        if CHANNELS >= 2:
-            Grow = Grow + 1
-            ProbeB = Frame( dmmwindow )
-            ProbeB.grid(row=Grow, column=0, sticky=W)
-            gain2lab = Button(ProbeB, text="CB-V", width=4, style="Ctrace2.TButton", command=ReSetBGO) 
-            gain2lab.pack(side=LEFT,fill=X)
-            MeterBGainEntry = Entry(ProbeB, width=5, cursor='double_arrow')
-            MeterBGainEntry.bind('<Return>', onTextKey)
-            MeterBGainEntry.bind('<MouseWheel>', onTextScroll)
-            MeterBGainEntry.bind("<Button-4>", onTextScroll)# with Linux OS
-            MeterBGainEntry.bind("<Button-5>", onTextScroll)
-            MeterBGainEntry.bind('<Key>', onTextKey)
-            MeterBGainEntry.pack(side=LEFT)
-            MeterBGainEntry.delete(0,"end")
-            MeterBGainEntry.insert(0,InGainB)
-            MeterBOffsetEntry = Entry(ProbeB, width=5, cursor='double_arrow')
-            MeterBOffsetEntry.bind('<Return>', onTextKey)
-            MeterBOffsetEntry.bind('<MouseWheel>', onTextScroll)
-            MeterBOffsetEntry.bind("<Button-4>", onTextScroll)# with Linux OS
-            MeterBOffsetEntry.bind("<Button-5>", onTextScroll)
-            MeterBOffsetEntry.bind('<Key>', onTextKey)
-            MeterBOffsetEntry.pack(side=LEFT)
-            MeterBOffsetEntry.delete(0,"end")
-            MeterBOffsetEntry.insert(0,InOffB)
-        #
-        if CHANNELS >= 3:
-            Grow = Grow + 1
-            ProbeC = Frame( dmmwindow )
-            ProbeC.grid(row=Grow, column=0, sticky=W)
-            gain3lab = Button(ProbeC, text="CC-V", width=4, style="Ctrace3.TButton", command=ReSetBGO) 
-            gain3lab.pack(side=LEFT,fill=X)
-            MeterCGainEntry = Entry(ProbeC, width=5, cursor='double_arrow')
-            MeterCGainEntry.bind('<Return>', onTextKey)
-            MeterCGainEntry.bind('<MouseWheel>', onTextScroll)
-            MeterCGainEntry.bind("<Button-4>", onTextScroll)# with Linux OS
-            MeterCGainEntry.bind("<Button-5>", onTextScroll)
-            MeterCGainEntry.bind('<Key>', onTextKey)
-            MeterCGainEntry.pack(side=LEFT)
-            MeterCGainEntry.delete(0,"end")
-            MeterCGainEntry.insert(0,InGainC)
-            MeterCOffsetEntry = Entry(ProbeC, width=5, cursor='double_arrow')
-            MeterCOffsetEntry.bind('<Return>', onTextKey)
-            MeterCOffsetEntry.bind('<MouseWheel>', onTextScroll)
-            MeterCOffsetEntry.bind("<Button-4>", onTextScroll)# with Linux OS
-            MeterCOffsetEntry.bind("<Button-5>", onTextScroll)
-            MeterCOffsetEntry.bind('<Key>', onTextKey)
-            MeterCOffsetEntry.pack(side=LEFT)
-            MeterCOffsetEntry.delete(0,"end")
-            MeterCOffsetEntry.insert(0,InOffC)
-        #
-        if CHANNELS >= 4:
-            Grow = Grow + 1
-            ProbeD = Frame( dmmwindow )
-            ProbeD.grid(row=Grow, column=0, sticky=W)
-            gain3lab = Button(ProbeD, text="CD-V", width=4, style="Ctrace4.TButton", command=ReSetBGO) 
-            gain3lab.pack(side=LEFT,fill=X)
-            MeterDGainEntry = Entry(ProbeD, width=5, cursor='double_arrow')
-            MeterDGainEntry.bind('<Return>', onTextKey)
-            MeterDGainEntry.bind('<MouseWheel>', onTextScroll)
-            MeterDGainEntry.bind("<Button-4>", onTextScroll)# with Linux OS
-            MeterDGainEntry.bind("<Button-5>", onTextScroll)
-            MeterDGainEntry.bind('<Key>', onTextKey)
-            MeterDGainEntry.pack(side=LEFT)
-            MeterDGainEntry.delete(0,"end")
-            MeterDGainEntry.insert(0,InGainD)
-            MeterDOffsetEntry = Entry(ProbeD, width=5, cursor='double_arrow')
-            MeterDOffsetEntry.bind('<Return>', onTextKey)
-            MeterDOffsetEntry.bind('<MouseWheel>', onTextScroll)
-            MeterDOffsetEntry.bind("<Button-4>", onTextScroll)# with Linux OS
-            MeterDOffsetEntry.bind("<Button-5>", onTextScroll)
-            MeterDOffsetEntry.bind('<Key>', onTextKey)
-            MeterDOffsetEntry.pack(side=LEFT)
-            MeterDOffsetEntry.delete(0,"end")
-            MeterDOffsetEntry.insert(0,InOffD)
-        # Define Analog Meter display for two indicators
+        # Define Analog Meter display
         Build_meter()
         Grow = Grow + 1
         dmmdismissclbutton = Button(dmmwindow, text="Dismiss", style="W8.TButton", command=DestroyDMMScreen)
@@ -17511,7 +17505,7 @@ def DestroyDMMScreen():
 def MakeOhmWindow():
     global OhmDisp, OhmStatus, ohmwindow, RevDate, RMode, OhmA0, OhmA1, OhmRunStatus
     global CHATestVEntry, CHATestREntry, SWRev, OnBoardRes
-    global FrameRefief, BorderSize, OhmSche
+    global FrameRefief, BorderSize, OhmSche, Rint, CHBIntREntry
     
     if OhmStatus.get() == 0:
         OhmStatus.set(1)
@@ -17539,7 +17533,7 @@ def MakeOhmWindow():
 
         OhmA1 = Label(frame1, style="A12B.TLabel") #, font = "Arial 12 bold")
         OhmA1.grid(row=2, column=0, columnspan=2, sticky=W)
-        OhmA1.config(text = "Meas 0.00 mA 0.00 V")
+        OhmA1.config(text = "Meas 0.000 V")
         #
         TestVA = Frame( frame1 )
         TestVA.grid(row=3, column=0, sticky=W)
@@ -17557,7 +17551,7 @@ def MakeOhmWindow():
         TestRA.grid(row=5, column=0, sticky=W)
         chatestrlab = Label(TestRA, text="Known Res", style="A10B.TLabel") #, font = "Arial 10 bold")
         chatestrlab.pack(side=LEFT)
-        CHATestREntry = Entry(TestRA, width=6, cursor='double_arrow') #
+        CHATestREntry = Entry(TestRA, width=7, cursor='double_arrow') #
         CHATestREntry.pack(side=LEFT)
         CHATestREntry.bind('<MouseWheel>', onTextScroll)
         CHATestREntry.bind("<Button-4>", onTextScroll)# with Linux OS
@@ -17565,8 +17559,21 @@ def MakeOhmWindow():
         CHATestREntry.delete(0,"end")
         CHATestREntry.insert(0,OnBoardRes)
         #
+        #
+        IntRB = Frame( frame1 )
+        IntRB.grid(row=6, column=0, sticky=W)
+        intrblab = Label(IntRB, text="CHB Int Res", style="A10B.TLabel") #, font = "Arial 10 bold")
+        intrblab.pack(side=LEFT)
+        CHBIntREntry = Entry(IntRB, width=8, cursor='double_arrow') #
+        CHBIntREntry.pack(side=LEFT)
+        CHBIntREntry.bind('<MouseWheel>', onTextScroll)
+        CHBIntREntry.bind("<Button-4>", onTextScroll)# with Linux OS
+        CHBIntREntry.bind("<Button-5>", onTextScroll)
+        CHBIntREntry.delete(0,"end")
+        CHBIntREntry.insert(0,Rint)
+        #
         ohmdismissclbutton = Button(frame1, text="Dismiss", style="W8.TButton", command=DestroyOhmScreen)
-        ohmdismissclbutton.grid(row=6, column=0, sticky=W, pady=7)
+        ohmdismissclbutton.grid(row=7, column=0, sticky=W, pady=7)
 ## Draw Schematic
         OhmSche = Canvas(frame1, width=210, height=220, background=COLORwhite)
         OhmSche.grid(row = 0, rowspan = 7, column = 2, sticky=W)
@@ -18749,7 +18756,7 @@ Optionmenu.menu.add_checkbutton(label='Smooth', variable=SmoothCurves, command=U
 Optionmenu.menu.add_checkbutton(label='Z-O-Hold', variable=ZOHold, command=UpdateTimeTrace)
 Optionmenu.menu.add_checkbutton(label='Iterpolate (i)', variable=EnableInterpFilter)
 Optionmenu.menu.add_checkbutton(label='Trace Avg (a)', variable=TRACEmodeTime)
-Optionmenu.menu.add_checkbutton(label='Gated Meas', variable=MeasGateStatus)
+Optionmenu.menu.add_checkbutton(label='Dual Time Cursors', variable=MeasGateStatus)
 Optionmenu.menu.add_checkbutton(label='Persistance', variable=ScreenTrefresh)
 Optionmenu.menu.add_command(label='Set Marker Location', command=BSetMarkerLocation)
 Optionmenu.menu.add_command(label='Change Plot Label', command=BUserCustomPlotText)

@@ -1,7 +1,7 @@
 #
 # Hardware specific interface functions
-# For Multicomp Pre MP720781 Scope Meter (7-27-2023)
-# Written using Python version 3.7, Windows OS 
+# For Multicomp Pre MP720781 Scope Meter (12-3-2023)
+# Written using Python version 3.10, Windows OS 
 #
 try:
     import usb.core
@@ -16,6 +16,7 @@ except:
     root.destroy()
     exit()
 Tdiv.set(12)
+ZeroGrid.set(6)
 TimeDiv = 0.0002
 import yaml
 #
@@ -97,7 +98,7 @@ def get_header():
 #
 #
 def Get_Data():
-    global xscale, VBuffA, VBuffB, TRACESread, Header
+    global xscale, VBuffA, VBuffB, TRACESread, Header, EnableInterpFilter
     global CH1yscale, CH1yoffset, CH2yscale, CH2yoffset
     global Interp4Filter, InOffA, InOffB, InGainA, InGainB
 
@@ -127,21 +128,25 @@ def Get_Data():
     VBuffA = [] # Clear the A array 
     VBuffB = [] # Clear the B array
     index = 0
-    while index < len(VBuff1): # build arrays VBuffMA, VBuffMB, VBuffMC, VBuffMD
+    while index < len(VBuff1): # build arrays
         pointer = 0
         while pointer < 4:
             VBuffA.append(VBuff1[index])
             VBuffB.append(VBuff2[index])
             pointer = pointer + 1
         index = index + 1
-    VBuffA = numpy.pad(VBuffA, (4, 0), "edge")
-    VBuffA = numpy.convolve(VBuffA, Interp4Filter )
-    #VBuffA = numpy.roll(VBuffA, -4)
-    VBuffB = numpy.pad(VBuffB, (4, 0), "edge")
-    VBuffB = numpy.convolve(VBuffB, Interp4Filter )
-    #VBuffB = numpy.roll(VBuffB, -4)
-    VBuffA = (VBuffA[3:1203] - InOffA) * InGainA
-    VBuffB = (VBuffB[3:1203] - InOffB) * InGainB
+    if EnableInterpFilter.get() == 1:
+        VBuffA = numpy.pad(VBuffA, (4, 0), "edge")
+        VBuffA = numpy.convolve(VBuffA, Interp4Filter )
+        VBuffA = numpy.roll(VBuffA, -4)
+        VBuffB = numpy.pad(VBuffB, (4, 0), "edge")
+        VBuffB = numpy.convolve(VBuffB, Interp4Filter )
+        VBuffB = numpy.roll(VBuffB, -4)
+    VBuffA = numpy.array(VBuffA)
+    VBuffB = numpy.array(VBuffB)
+    # do external Gain / Offset calculations?
+    VBuffA = (VBuffA - InOffA) * InGainA
+    VBuffB = (VBuffB - InOffB) * InGainB
     TRACESread = 2
 #
 ## try to connect to MP720781 Scope Meter
