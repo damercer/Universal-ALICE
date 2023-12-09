@@ -10,22 +10,18 @@ The main Universal ALICE GUI is written in Python (3.x) and depends only on the 
 #
 Currently available hardware interfaces (some are works in progress):
 
-Arduino compatible microcontroler boards:
-	Seeed Studio XIAO SAMD21
-	Seeed Studio XIAO RP-2040
-		With external SPI DAC or PWM analog AWG output
-
-	Raspberry Pi Pico RP-2040
-		With external R/2R DAC or SPI DAC or PWM analog AWG output
-
-	Adafruit QT Pi - SAMD21
-	Adafruit Trinket M0
-	Adafruit ItsyBitsy M0 Express
-
-Infineon-Cypress PSoC 5 kits:
-	CY8CKIT-059
-	CY8CKIT-043
-	CY8CKIT-044
-
-Bench Instruments:
-	Multicomp pro MP720781
+* Arduino compatible microcontroler boards:
+  + Seeed Studio XIAO SAMD21
+  + Seeed Studio XIAO RP-2040
+    - With external SPI DAC or PWM analog AWG output
+  + Raspberry Pi Pico RP-2040
+    - With external R/2R DAC or SPI DAC or PWM analog AWG output
+  + Adafruit QT Pi - SAMD21
+  + Adafruit Trinket M0
+  + Adafruit ItsyBitsy M0 Express
+* Infineon-Cypress PSoC 5 kits:
+  + CY8CKIT-059
+  + CY8CKIT-043
+  + CY8CKIT-044
+* Bench Instruments:
+  + Multicomp pro MP720781
