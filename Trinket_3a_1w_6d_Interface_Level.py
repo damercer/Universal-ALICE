@@ -1,6 +1,6 @@
 #
 # Hardware specific interface functions
-# For Arduino XIAO Two analog + 2 AWG + 6 digital channel scope (11-22-2023)
+# For Arduino XIAO Two analog + 2 AWG + 6 digital channel scope (12-17-2023)
 # Written using Python version 3.10, Windows OS 
 #
 try:
@@ -77,7 +77,10 @@ def Bcloseexit():
             donothing()
     else:
         BSaveConfig("alice-last-config.cfg")
-        ser.close() 
+        try:
+            ser.close()
+        except:
+            pass
 #
     root.destroy()
     exit()
@@ -86,7 +89,7 @@ def Bcloseexit():
 #
 def SetSampleRate():
     global TimeSpan, SHOWsamples, InterpRate, Tdiv
-    global MaxSampleRate, SAMPLErate, TimeDiv, ser
+    global MaxSampleRate, SAMPLErate, TimeDiv, ser, TRACESread
 
     try:
         TimeDiv = UnitConvert(TMsb.get())
@@ -94,22 +97,42 @@ def SetSampleRate():
         pass
     #print("TimeDiv = ", TimeDiv)
     if TimeDiv < 0.000099:
-        ser.write(b't20\n') # 90.909 KSPS
+        if TRACESread == 1:
+            ser.write(b't10\n') # 100 KSPS
+        elif TRACESread == 2:
+            ser.write(b't18\n') # 62.5 KSPS
+        else:
+            ser.write(b't25\n') # 40 KSPS
         MaxSampleRate = SAMPLErate = 90909*InterpRate
     elif TimeDiv > 0.000099 and TimeDiv < 0.000199:
-        ser.write(b't20\n') # 90.909 KSPS
+        if TRACESread == 1:
+            ser.write(b't10\n') # 100 KSPS
+        elif TRACESread == 2:
+            ser.write(b't18\n') # 62.5 KSPS
+        else:
+            ser.write(b't25\n') # 40 KSPS
         MaxSampleRate = SAMPLErate = 90909*InterpRate
     elif TimeDiv > 0.000199 and TimeDiv < 0.0005:
-        ser.write(b't20\n') # 90.909KSPS
+        if TRACESread == 1:
+            ser.write(b't10\n') # 100 KSPS
+        elif TRACESread == 2:
+            ser.write(b't18\n') # 62.5 KSPS
+        else:
+            ser.write(b't25\n') # 40 KSPS
         MaxSampleRate = SAMPLErate = 90909*InterpRate
     elif TimeDiv >= 0.0005 and TimeDiv < 0.001:
-        ser.write(b't20\n') # 90.909 KSPS
+        if TRACESread == 1:
+            ser.write(b't10\n') # 100 KSPS
+        elif TRACESread == 2:
+            ser.write(b't18\n') # 62.5 KSPS
+        else:
+            ser.write(b't25\n') # 40 KSPS
         MaxSampleRate = SAMPLErate = 90909*InterpRate
     elif TimeDiv >= 0.001 and TimeDiv < 0.002:
-        ser.write(b't20\n') # 62.5 KSPS
+        ser.write(b't20\n') # 100 KSPS
         MaxSampleRate = SAMPLErate = 62500*InterpRate
     elif TimeDiv >= 0.002 and TimeDiv < 0.005:
-        ser.write(b't30\n') # 31.250 KSPS
+        ser.write(b't32\n') # 40 KSPS
         MaxSampleRate = SAMPLErate = 31250*InterpRate
     elif TimeDiv >= 0.005 and TimeDiv < 0.01:
         ser.write(b't64\n') # 15.625 KSPS
@@ -151,18 +174,32 @@ def Get_Data():
         SaveDig = False
     #
     if ShowC1_V.get() > 0 and ShowC2_V.get() > 0 and ShowC3_V.get() == 0:
+        TRACESread = 2
+        SetSampleRate()
         Get_Data_Two()
     elif ShowC1_V.get() > 0 and ShowC2_V.get() == 0 and ShowC3_V.get() > 0:
+        TRACESread = 2
+        SetSampleRate()
         Get_Data_Two()
     elif ShowC1_V.get() == 0 and ShowC2_V.get() > 0 and ShowC3_V.get() > 0:
+        TRACESread = 2
+        SetSampleRate()
         Get_Data_Two()
     elif ShowC1_V.get() > 0 and ShowC2_V.get() == 0 and ShowC3_V.get() == 0:
+        TRACESread = 1
+        SetSampleRate()
         Get_Data_One()
     elif ShowC1_V.get() == 0 and ShowC2_V.get() > 0 and ShowC3_V.get() == 0:
+        TRACESread = 1
+        SetSampleRate()
         Get_Data_One()
     elif ShowC1_V.get() == 0 and ShowC2_V.get() == 0 and ShowC3_V.get() > 0:
+        TRACESread = 1
+        SetSampleRate()
         Get_Data_One()
     elif ShowC1_V.get() > 0 and ShowC2_V.get() > 0 and ShowC3_V.get() > 0:
+        TRACESread = 3
+        SetSampleRate()
         Get_Data_Three()
     else:
         return
@@ -173,15 +210,12 @@ def Get_Data():
     if ShowC2_V.get() > 0 and CHANNELS >= 2:
         VBuffB = numpy.array(VBuffB)
         VBuffB = (VBuffB - InOffB) * InGainB
-        TRACESread = TRACESread + 1
     if ShowC3_V.get() > 0 and CHANNELS >= 3:
         VBuffC = numpy.array(VBuffC)
         VBuffC = (VBuffC - InOffC) * InGainC
-        TRACESread = TRACESread + 1
     if ShowC4_V.get() > 0 and CHANNELS >= 4:
         VBuffD = numpy.array(VBuffD)
         VBuffD = (VBuffD - InOffD) * InGainD
-        TRACESread = TRACESread + 1
     # Find trigger sample point if necessary
     # print("Array Len ",len(VBuffA), "SHOWsamples ", SHOWsamples)
     LShift = 0
@@ -968,10 +1002,10 @@ def ConnectDevice():
             if ID != "QT Py Scope 3.0":
                 showwarning("WARNING","Board firmware does match this interface. Switch boards or interface software.")
             #
-            ser.write(b't25\n') # send Scope sample time in uSec
+            ser.write(b't20\n') # send Scope sample time in uSec
             time.sleep(0.005)
-            print("set dt: 25 uSec")
-            MaxSampleRate = SAMPLErate = 40000*InterpRate
+            print("set dt: 20 uSec")
+            MaxSampleRate = SAMPLErate = 50000*InterpRate
             #
             ser.write(b'T20\n') # send AWG sample time in uSec
             time.sleep(0.005)

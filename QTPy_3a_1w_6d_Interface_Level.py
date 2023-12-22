@@ -77,7 +77,10 @@ def Bcloseexit():
             donothing()
     else:
         BSaveConfig("alice-last-config.cfg")
-        ser.close() 
+        try:
+            ser.close()
+        except:
+            pass
 #
     root.destroy()
     exit()
@@ -94,16 +97,16 @@ def SetSampleRate():
         pass
     #print("TimeDiv = ", TimeDiv)
     if TimeDiv < 0.000099:
-        ser.write(b't20\n') # 90.909 KSPS
+        ser.write(b't10\n') # 90.909 KSPS
         MaxSampleRate = SAMPLErate = 90909*InterpRate
     elif TimeDiv > 0.000099 and TimeDiv < 0.000199:
-        ser.write(b't20\n') # 90.909 KSPS
+        ser.write(b't10\n') # 90.909 KSPS
         MaxSampleRate = SAMPLErate = 90909*InterpRate
     elif TimeDiv > 0.000199 and TimeDiv < 0.0005:
-        ser.write(b't20\n') # 90.909KSPS
+        ser.write(b't10\n') # 90.909KSPS
         MaxSampleRate = SAMPLErate = 90909*InterpRate
     elif TimeDiv >= 0.0005 and TimeDiv < 0.001:
-        ser.write(b't20\n') # 90.909 KSPS
+        ser.write(b't10\n') # 90.909 KSPS
         MaxSampleRate = SAMPLErate = 90909*InterpRate
     elif TimeDiv >= 0.001 and TimeDiv < 0.002:
         ser.write(b't20\n') # 62.5 KSPS
@@ -968,10 +971,10 @@ def ConnectDevice():
             if ID != "QT Py Scope 3.0":
                 showwarning("WARNING","Board firmware does match this interface. Switch boards or interface software.")
             #
-            ser.write(b't25\n') # send Scope sample time in uSec
+            ser.write(b't20\n') # send Scope sample time in uSec
             time.sleep(0.005)
             print("set dt: 25 uSec")
-            MaxSampleRate = SAMPLErate = 40000*InterpRate
+            MaxSampleRate = SAMPLErate = 50000*InterpRate
             #
             ser.write(b'T25\n') # send AWG sample time in uSec
             time.sleep(0.005)

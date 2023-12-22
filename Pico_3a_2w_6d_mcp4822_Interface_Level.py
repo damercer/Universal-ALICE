@@ -1,6 +1,6 @@
 #
 # Hardware specific interface functions
-# For Arduino pi pico Three analog + 2 AWG + 6 digital channel scope (11-22-2023)
+# For Arduino pi pico Three analog + 2 AWG + 6 digital channel scope (12-13-2023)
 # Written using Python version 3.10, Windows OS 
 #
 try:
@@ -940,10 +940,10 @@ def ConnectDevice():
         print("set dt: 50 uSec")
         MaxSampleRate = SAMPLErate = 20000*InterpRate
         #
-        ser.write(b'T10\n') # send AWG sample time in uSec
+        ser.write(b'T20\n') # send AWG sample time in uSec
         time.sleep(0.005)
-        print("set at: 15 uSec")
-        AWGSampleRate = 1.0 / 0.00001
+        print("set at: 20 uSec")
+        AWGSampleRate = 1.0 / 0.00002
         ser.write(b'Gx\n') # default with both AWG off
         ser.write(b'gx\n')
         MinSamples = 1024 # 

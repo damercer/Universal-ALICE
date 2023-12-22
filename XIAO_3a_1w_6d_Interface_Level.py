@@ -1,6 +1,6 @@
 #
 # Hardware specific interface functions
-# For Arduino XIAO Two analog + 2 AWG + 6 digital channel scope (12-2-2023)
+# For Arduino XIAO Two analog + 2 AWG + 6 digital channel scope (12-13-2023)
 # Written using Python version 3.10, Windows OS 
 #
 try:
@@ -77,7 +77,10 @@ def Bcloseexit():
             donothing()
     else:
         BSaveConfig("alice-last-config.cfg")
-        ser.close() 
+        try:
+            ser.close()
+        except:
+            pass
 #
     root.destroy()
     exit()
@@ -86,7 +89,7 @@ def Bcloseexit():
 #
 def SetSampleRate():
     global TimeSpan, SHOWsamples, InterpRate, Tdiv
-    global MaxSampleRate, SAMPLErate, TimeDiv, ser
+    global MaxSampleRate, SAMPLErate, TimeDiv, ser, TRACESread
 
     try:
         TimeDiv = UnitConvert(TMsb.get())
@@ -94,22 +97,42 @@ def SetSampleRate():
         pass
     #print("TimeDiv = ", TimeDiv)
     if TimeDiv < 0.000099:
-        ser.write(b't20\n') # 90.909 KSPS
+        if TRACESread == 1:
+            ser.write(b't10\n') # 100 KSPS
+        elif TRACESread == 2:
+            ser.write(b't18\n') # 62.5 KSPS
+        else:
+            ser.write(b't25\n') # 40 KSPS
         MaxSampleRate = SAMPLErate = 90909*InterpRate
     elif TimeDiv > 0.000099 and TimeDiv < 0.000199:
-        ser.write(b't20\n') # 90.909 KSPS
+        if TRACESread == 1:
+            ser.write(b't10\n') # 100 KSPS
+        elif TRACESread == 2:
+            ser.write(b't18\n') # 62.5 KSPS
+        else:
+            ser.write(b't25\n') # 40 KSPS
         MaxSampleRate = SAMPLErate = 90909*InterpRate
     elif TimeDiv > 0.000199 and TimeDiv < 0.0005:
-        ser.write(b't20\n') # 90.909KSPS
+        if TRACESread == 1:
+            ser.write(b't10\n') # 100 KSPS
+        elif TRACESread == 2:
+            ser.write(b't18\n') # 62.5 KSPS
+        else:
+            ser.write(b't25\n') # 40 KSPS
         MaxSampleRate = SAMPLErate = 90909*InterpRate
     elif TimeDiv >= 0.0005 and TimeDiv < 0.001:
-        ser.write(b't20\n') # 90.909 KSPS
+        if TRACESread == 1:
+            ser.write(b't10\n') # 100 KSPS
+        elif TRACESread == 2:
+            ser.write(b't18\n') # 62.5 KSPS
+        else:
+            ser.write(b't25\n') # 40 KSPS
         MaxSampleRate = SAMPLErate = 90909*InterpRate
     elif TimeDiv >= 0.001 and TimeDiv < 0.002:
-        ser.write(b't20\n') # 62.5 KSPS
+        ser.write(b't20\n') # 100 KSPS
         MaxSampleRate = SAMPLErate = 62500*InterpRate
     elif TimeDiv >= 0.002 and TimeDiv < 0.005:
-        ser.write(b't30\n') # 31.250 KSPS
+        ser.write(b't32\n') # 40 KSPS
         MaxSampleRate = SAMPLErate = 31250*InterpRate
     elif TimeDiv >= 0.005 and TimeDiv < 0.01:
         ser.write(b't64\n') # 15.625 KSPS
@@ -151,18 +174,32 @@ def Get_Data():
         SaveDig = False
     #
     if ShowC1_V.get() > 0 and ShowC2_V.get() > 0 and ShowC3_V.get() == 0:
+        TRACESread = 2
+        SetSampleRate()
         Get_Data_Two()
     elif ShowC1_V.get() > 0 and ShowC2_V.get() == 0 and ShowC3_V.get() > 0:
+        TRACESread = 2
+        SetSampleRate()
         Get_Data_Two()
     elif ShowC1_V.get() == 0 and ShowC2_V.get() > 0 and ShowC3_V.get() > 0:
+        TRACESread = 2
+        SetSampleRate()
         Get_Data_Two()
     elif ShowC1_V.get() > 0 and ShowC2_V.get() == 0 and ShowC3_V.get() == 0:
+        TRACESread = 1
+        SetSampleRate()
         Get_Data_One()
     elif ShowC1_V.get() == 0 and ShowC2_V.get() > 0 and ShowC3_V.get() == 0:
+        TRACESread = 1
+        SetSampleRate()
         Get_Data_One()
     elif ShowC1_V.get() == 0 and ShowC2_V.get() == 0 and ShowC3_V.get() > 0:
+        TRACESread = 1
+        SetSampleRate()
         Get_Data_One()
     elif ShowC1_V.get() > 0 and ShowC2_V.get() > 0 and ShowC3_V.get() > 0:
+        TRACESread = 3
+        SetSampleRate()
         Get_Data_Three()
     else:
         return
@@ -236,9 +273,9 @@ def Get_Data():
                 DBuff7 = numpy.roll(DBuff7, LShift)
     else:
         # VBuffA = numpy.roll(VBuffA, -2)
-        VBuffA = numpy.roll(VBuffA, -8)
-        VBuffB = numpy.roll(VBuffB, -7)
-        VBuffC = numpy.roll(VBuffC, -6)
+        VBuffA = numpy.roll(VBuffA, -4)
+        VBuffB = numpy.roll(VBuffB, -2)
+        VBuffC = numpy.roll(VBuffC, -1)
 #
 def Get_Data_One():
     global VBuffA, VBuffB, VBuffC, VBuffG

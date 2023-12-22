@@ -1,7 +1,7 @@
 #!/usr/bin/python
 # -*- coding: cp1252 -*-
 #
-# Alice-universal-alpha.py(w) (11-28-2023)
+# Alice-universal-alpha.py(w) (12-14-2023)
 # Written using Python version 3.10, Windows OS 
 # Requires a hardware interface level functions add-on file
 # Created by D Mercer ()
@@ -67,7 +67,7 @@ import webbrowser
 # check which operating system
 import platform
 #
-RevDate = "28 Nov 2023"
+RevDate = "14 Dec 2023"
 SWRev = "1.0 "
 #
 # small bit map of triangle logo for window icon
@@ -4403,13 +4403,23 @@ def BHozPoss(event):
     SetHorzPoss()
     if RUNstatus.get() == 0:      # if not running
         UpdateTimeTrace()           # Update#
-
+#
 ## Start aquaring scope time data
 def BStart():
     global RUNstatus, devx, PwrBt, DevID, FWRevOne, session, AWGSync
     global contloop, discontloop, TimeDiv, First_Slow_sweep, OhmDisp, DMMDisp
     global TimeDisp, XYDisp, PhADisp, FreqDisp, BodeDisp, IADisp
-    
+    global Dlog_open, dlog, Ztime
+
+    # Check if User wants data loging on or off
+    if Dlog_open.get() == 1 and dlog.get() > 0:
+        Ztime = time.time()
+    elif Dlog_open.get() == 0 and dlog.get() > 0:
+        DlogerOpen_out()
+        Ztime = time.time()
+    else:
+        Dlog_open.set(0)
+    #
     if DevID == "No Device":
         showwarning("WARNING","No Device Plugged In!")
     elif TimeDisp.get() == 0 and XYDisp.get() == 0 and PhADisp.get() == 0 and FreqDisp.get() == 0 and BodeDisp.get() == 0 and IADisp.get() == 0 and OhmDisp.get() == 0 and DMMDisp.get() == 0:
@@ -4787,6 +4797,7 @@ def DMM_Analog_In():
     global DmmLabel1, DmmLabel2, DmmLabel3, DmmLabel4
     global ShowC1_V, ShowC2_V, ShowC3_V, ShowC4_V, CHANNELS
     global MathTrace, Show_MathX, Show_MathY, YsignalMX, YsignalMY
+    global Ztime, dlog
     #
     DCVA0 = DCVB0 = DCVC0 = DCVD0 = DCMath = DCMathX = DCMathY = 0.0 # initalize measurment variable
     RIN = 1000000 # nominal
@@ -4830,6 +4841,83 @@ def DMM_Analog_In():
         DmmLabel4.config(text = VString4) # change displayed values
     # print VString
     Update_Analog_Meter(DCVA0, DCVB0, DCVC0, DCVD0, DCMath, DCMathX, DCMathY)
+    if dlog.get() > 0: # Check to see if Data Logging is On
+        tstr1 = time.time()-Ztime
+        DlogString = '{0:.3f}, '.format(tstr1)
+        if ShowC1_V.get() > 0 and CHANNELS >= 1:
+            DlogString = DlogString + ' {0:.4f} '.format(DCVA0) # format with 4 decimal
+        if ShowC2_V.get() > 0 and CHANNELS >= 2:
+            DlogString = DlogString + ' {0:.4f} '.format(DCVB0) # format with 4
+        if ShowC3_V.get() > 0 and CHANNELS >= 3:
+            DlogString = DlogString + ' {0:.4f} '.format(DCVC0) # format with 4 decimal
+        if ShowC4_V.get() > 0 and CHANNELS >= 4:
+            DlogString = DlogString + ' {0:.4f} '.format(DCVD0) # format with 4
+        if MathTrace.get() > 0:
+            DlogString = DlogString + ' {0:.4f} '.format(DCMath) # format with 4
+        if Show_MathX.get() > 0 or YsignalMX.get() == 1:
+            DlogString = DlogString + ' {0:.4f} '.format(DCMathX) # format with 4
+        if Show_MathY.get() > 0 or YsignalMY.get() == 1:
+            DlogString = DlogString + ' {0:.4f} '.format(DCMathY) # format with 4
+        DlogString = DlogString + " \n"
+        DlogFile.write( DlogString )
+#
+# Toggle Dlogger flag
+def Dloger_on_off(): 
+    global DlogFile, Dlog_open, dlog
+
+    if dlog.get() == 1:
+        DlogerOpen_out()
+        #print("Opening Dlog file")
+    else:
+        DlogerClose_out()
+        #print("Closing Dlog file")
+#
+# Close file for data logging
+def DlogerClose_out():
+    global DlogFile, Dlog_open, dlog
+
+    if Dlog_open.get() == 1:
+        try:
+            DlogFile.close()
+            #print("Closing Dlog file")
+        except:
+            Dlog_open.set(0)
+    else:
+        Dlog_open.set(0)
+#
+# Open file for data logging
+def DlogerOpen_out():
+    global DlogFile, Dlog_open, dlog
+    global ShowC1_V, ShowC2_V, ShowC3_V, ShowC4_V, CHANNELS
+    global MathTrace, Show_MathX, Show_MathY, YsignalMX, YsignalMY
+    
+    tme =  strftime("%Y%b%d-%H%M%S", gmtime())      # The time
+    filename = "DataLogger-" + tme
+    filename = filename + ".csv"
+    try:
+        DlogFile = open(filename, 'a')
+    except:
+        filename = asksaveasfilename(defaultextension = ".csv", filetypes=[("Comma Separated Values", "*.csv")])
+        DlogFile = open(filename, 'a')
+    #
+    DlogString = 'Time, '
+    if ShowC1_V.get() > 0 and CHANNELS >= 1:
+        DlogString = DlogString + 'CH-A V, ' 
+    if ShowC2_V.get() > 0 and CHANNELS >= 2:
+        DlogString = DlogString + 'CH-B V, ' 
+    if ShowC3_V.get() > 0 and CHANNELS >= 3:
+        DlogString = DlogString + 'CH-C V, '
+    if ShowC4_V.get() > 0 and CHANNELS >= 4:
+        DlogString = DlogString + 'CH-D V, '
+    if MathTrace.get() > 0:
+        DlogString = DlogString + 'Math, '
+    if Show_MathX.get() > 0 or YsignalMX.get() == 1:
+        DlogString = DlogString + 'MathX, '
+    if Show_MathY.get() > 0 or YsignalMY.get() == 1:
+        DlogString = DlogString + 'MathY '
+    DlogString = DlogString + " \n"
+    DlogFile.write( DlogString )
+    Dlog_open.set(1)
 #    
 ## Ohmmeter loop
 def Ohm_Analog_In():
@@ -5543,7 +5631,8 @@ def FindRisingEdge(Trace1, Trace2):
     global SHOWsamples, SAMPLErate, CHAperiod, CHAfreq, CHBperiod, CHBfreq
     global CHAHW, CHALW, CHADCy, CHBHW, CHBLW, CHBDCy, ShowC1_V, ShowC2_V
     global CHABphase, CHBADelayR1, CHBADelayR2, CHBADelayF
-    
+
+    CHAHW = CHALW = CHADCy = CHBHW = CHBLW = CHBDCy = 0
     anr1 = bnr1 = 0
     anf1 = bnf1 = 1
     anr2 = bnr2 = 2
@@ -5573,7 +5662,8 @@ def FindRisingEdge(Trace1, Trace2):
     try:
         Dummy_read = Arising[0]
     except:
-        return
+        pass
+    # print(len(Arising), len(Afalling))
     if len(Arising) > 0 or len(Afalling) > 0:
         if Arising[0] > 0:
             try:
@@ -5607,6 +5697,9 @@ def FindRisingEdge(Trace1, Trace2):
                     anf1 = AIfalling[1]
             except:
                 anf1 = 1
+    CHAHW = float(((anf1 - anr1) * 1000.0) / SAMPLErate)
+    CHALW = float(((anr2 - anf1) * 1000.0) / SAMPLErate)
+    CHADCy = float(anf1 - anr1) / float(anr2 - anr1) * 100.0 # in percent
 # search Trace 2
     Brising = [i for (i, val) in enumerate(Trace2) if val >= MidV2 and Trace2[i-1] < MidV2]
     Bfalling = [i for (i, val) in enumerate(Trace2) if val <= MidV2 and Trace2[i-1] > MidV2]
@@ -5619,7 +5712,8 @@ def FindRisingEdge(Trace1, Trace2):
     try:
         Dummy_read = Brising[0]
     except:
-        return
+        pass
+    # print(len(Brising), len(Bfalling))
     if len(Brising) > 0 or len(Bfalling) > 0:
         if Brising[0] > 0:
             try:
@@ -5654,9 +5748,6 @@ def FindRisingEdge(Trace1, Trace2):
             except:
                 bnf1 = 1
     #
-    CHAHW = float(((anf1 - anr1) * 1000.0) / SAMPLErate)
-    CHALW = float(((anr2 - anf1) * 1000.0) / SAMPLErate)
-    CHADCy = float(anf1 - anr1) / float(anr2 - anr1) * 100.0 # in percent
     CHBHW = float(((bnf1 - bnr1) * 1000.0) / SAMPLErate)
     CHBLW = float(((bnr2 - bnf1) * 1000.0) / SAMPLErate)
     CHBDCy = float(bnf1 - bnr1) / float(bnr2 - bnr1) * 100.0 # in percent
@@ -6990,6 +7081,15 @@ def MakeXYTrace():
     if CH4pdvRange < 0.001:
         CH4pdvRange = 0.001
     # Math
+    CHMpdvRange = UnitConvert(CHMsb.get())
+    try:
+        CHMOffset = float(eval(CHMVPosEntry.get()))
+    except:
+        CHMVPosEntry.delete(0,END)
+        CHNVPosEntry.insert(0, CHMOffset)
+    if CHMpdvRange < 0.001:
+        CHMpdvRange = 0.001
+    #
     try:
         CHMXpdvRange = float(eval(CHMXsb.get()))
     except:
@@ -7834,8 +7934,9 @@ def MakeXYScreen():
     global AWGAShape
     global CHAVGainEntry, CHBVGainEntry, CHAVOffsetEntry, CHBVOffsetEntry
     global CHAVPosEntry, CHAVPosEntry
-    global CHMXsb, CHMYsb, CHMXPosEntry, CHMYPosEntry
+    global CHMsb, CHMXsb, CHMYsb, CHMVPosEntry, CHMXPosEntry, CHMYPosEntry
     global XY1pdvRange, XYAOffset, XY2pdvRange, XYBOffset
+    global CHMpdvRange, CHMOffset
     global DevID, MarkerNum, MarkerScale
     global HozPoss, HozPossentry
     global HistAsPercent, VBuffA, VBuffB, HBuffA, HBuffB, NoiseCH1, NoiseCH2
@@ -7870,7 +7971,16 @@ def MakeXYScreen():
     except:
         CHBVPosEntry.delete(0,END)
         CHBVPosEntry.insert(0, XYBOffset)
-# global CHMXsb, CHMYsb, CHMXVPosEntry, CHMYVPosEntry
+# Math
+    CHMpdvRange = UnitConvert(CHMsb.get())
+    try:
+        CHMOffset = float(eval(CHMVPosEntry.get()))
+    except:
+        CHMVPosEntry.delete(0,END)
+        CHNVPosEntry.insert(0, CHMOffset)
+    if CHMpdvRange < 0.001:
+        CHMpdvRange = 0.001
+    #
     try:
         MXpdvRange = float(eval(CHMXsb.get()))
     except:
@@ -7938,9 +8048,9 @@ def MakeXYScreen():
             if YsignalM.get() == 1:
                 TempCOLOR = COLORtrace5
                 if MathTrace.get() == 2:
-                    Vaxis_value = (((5-i) * XY1pdvRange ) + XYAOffset)
+                    Vaxis_value = (((5-i) * CHMpdvRange ) + CHMOffset)
                 else:
-                    Vaxis_value = (((5-i) * XY2pdvRange ) + XYBOffset)
+                    Vaxis_value = (((5-i) * CHMpdvRange ) + CHMOffset)
                 Vaxis_label = str(round(Vaxis_value, 3))
                 XYca.create_text(x1-LeftOffset, y, text=Vaxis_label, fill=TempCOLOR, anchor="e", font=("arial", FontSize ))
             if YsignalMX.get() == 1:
@@ -17421,7 +17531,7 @@ def ReSetDGO():
     CHDVOffsetEntry.insert(0,0.0)
 #
 def MakeMeterWindow():
-    global DMMStatus, DMMDisp, dmmwindow, DMMRunStatus, Mmax, Mmin
+    global DMMStatus, DMMDisp, dmmwindow, DMMRunStatus, Mmax, Mmin, dlog
     global SWRev, RevDate, InGainA, InOffA, InGainB, InOffB, DmmLabel1
     global InGainC, InOffC, InGainD, InOffD, DmmLabel2, DmmLabel3, DmmLabel4
     global MeterMaxEntry, MeterMinEntry, MeterMinlab, MeterMaxlab, CHANNELS
@@ -17488,6 +17598,9 @@ def MakeMeterWindow():
         #
         # Define Analog Meter display
         Build_meter()
+        Grow = Grow + 1
+        dlcheck = Checkbutton(dmmwindow, text="DLog to file", variable=dlog, command=Dloger_on_off)
+        dlcheck.grid(row=Grow, column=0, sticky=W, pady=7)
         Grow = Grow + 1
         dmmdismissclbutton = Button(dmmwindow, text="Dismiss", style="W8.TButton", command=DestroyDMMScreen)
         dmmdismissclbutton.grid(row=Grow, column=0, sticky=W, pady=7)
@@ -18400,6 +18513,10 @@ SAVScale = IntVar()
 SAVPSD = IntVar()
 SAvertmax = 1.0
 SAvertmin = 1.0E-6
+dlog = IntVar()
+dlog.set(0)
+Dlog_open = IntVar()
+Dlog_open.set(0)
 #
 # CH1Probe
 # CH2Probe
@@ -18744,6 +18861,7 @@ Filemenu.menu.add_command(label="Save Screen", command=BSaveScreen)
 Filemenu.menu.add_command(label="Save To CSV", command=BSaveData)
 Filemenu.menu.add_command(label="Load From CSV", command=BReadData)
 Filemenu.menu.add_command(label="Save PWL Data", command=BSaveChannelData)
+Filemenu.menu.add_checkbutton(label="DLog to file", variable=dlog, command=Dloger_on_off)
 Filemenu.menu.add_command(label="Help", command=BHelp)
 Filemenu.menu.add_command(label="About", command=BAbout)
 Filemenu.pack(side=LEFT, anchor=W)

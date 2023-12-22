@@ -1,6 +1,6 @@
 #
 # Hardware specific interface functions
-# For Arduino pi pico Three analog + 2 AWG + 6 digital channel scope (11-22-2023)
+# For Arduino pi pico Three analog + 2 AWG + 6 digital channel scope (12-14-2023)
 # Written using Python version 3.10, Windows OS 
 #
 try:
@@ -136,7 +136,7 @@ def Get_Data():
     global D4_is_on, D5_is_on, D6_is_on, D7_is_on
     global DBuff0, DBuff1, DBuff2, DBuff3, DBuff4, DBuff5, DBuff6, DBuff7
     global D0line, D1line, D2line, D3line, D4line, D5line, D6line, D7line
-    global TRIGGERentry, TRIGGERsample, SaveDig, CHANNELS, TRACESread
+    global TRIGGERentry, TRIGGERsample, SaveDig, CHANNELS, TRACESread, SAMPLErate
 
     # Get data from pi pico
     #
@@ -164,14 +164,18 @@ def Get_Data():
         return
     # do external Gain / Offset calculations before software triggering
     if ShowC1_V.get() > 0:
+        VBuffA = numpy.array(VBuffA)
         VBuffA = (VBuffA - InOffA) * InGainA
     if ShowC2_V.get() > 0 and CHANNELS >= 2:
+        VBuffB = numpy.array(VBuffB)
         VBuffB = (VBuffB - InOffB) * InGainB
         TRACESread = TRACESread + 1
     if ShowC3_V.get() > 0 and CHANNELS >= 3:
+        VBuffC = numpy.array(VBuffC)
         VBuffC = (VBuffC - InOffC) * InGainC
         TRACESread = TRACESread + 1
     if ShowC4_V.get() > 0 and CHANNELS >= 4:
+        VBuffD = numpy.array(VBuffD)
         VBuffD = (VBuffD - InOffD) * InGainD
         TRACESread = TRACESread + 1
     # Find trigger sample point if necessary
@@ -227,10 +231,18 @@ def Get_Data():
             if D7_is_on:
                 DBuff7 = numpy.roll(DBuff7, LShift)
     else:
-        VBuffA = numpy.roll(VBuffA, -2)
-        # VBuffA = numpy.roll(VBuffA, -8)
-        VBuffB = numpy.roll(VBuffB, -1)
-        # VBuffC = numpy.roll(VBuffC, -6)
+        if SAMPLErate >= 125000:
+            VBuffA = numpy.roll(VBuffA, -2)
+            VBuffB = numpy.roll(VBuffB, -1)
+            VBuffC = numpy.roll(VBuffC, 0)
+        elif SAMPLErate < 125000 and SAMPLErate > 31250:
+            VBuffA = numpy.roll(VBuffA, 0)
+            VBuffB = numpy.roll(VBuffB, 0)
+            VBuffC = numpy.roll(VBuffC, 0)
+        else:
+            VBuffA = numpy.roll(VBuffA, 0)
+            VBuffB = numpy.roll(VBuffB, 0)
+            VBuffC = numpy.roll(VBuffC, 0)
 #
 #
 def Get_Data_One():
@@ -941,10 +953,10 @@ def ConnectDevice():
         print("set dt: 50 uSec")
         MaxSampleRate = SAMPLErate = 20000*InterpRate
         #
-        ser.write(b'T10\n') # send AWG sample time in uSec
+        ser.write(b'T19\n') # send AWG sample time in uSec
         time.sleep(0.005)
-        print("set at: 15 uSec")
-        AWGSampleRate = 1.0 / 0.00001
+        print("set at: 18 uSec")
+        AWGSampleRate = 1.0 / 0.000019
         ser.write(b'Gx\n') # default with both AWG off
         ser.write(b'gx\n')
         MinSamples = 1024 # 
