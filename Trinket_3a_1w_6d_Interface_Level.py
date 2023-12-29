@@ -1,6 +1,6 @@
 #
 # Hardware specific interface functions
-# For Arduino XIAO Two analog + 2 AWG + 6 digital channel scope (12-17-2023)
+# For Arduino XIAO Two analog + 2 AWG + 6 digital channel scope (12-22-2023)
 # Written using Python version 3.10, Windows OS 
 #
 try:

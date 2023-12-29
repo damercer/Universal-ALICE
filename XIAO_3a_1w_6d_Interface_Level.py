@@ -1,6 +1,6 @@
 #
 # Hardware specific interface functions
-# For Arduino XIAO Two analog + 2 AWG + 6 digital channel scope (12-13-2023)
+# For Arduino XIAO Two analog + 2 AWG + 6 digital channel scope (12-22-2023)
 # Written using Python version 3.10, Windows OS 
 #
 try:
@@ -210,15 +210,12 @@ def Get_Data():
     if ShowC2_V.get() > 0 and CHANNELS >= 2:
         VBuffB = numpy.array(VBuffB)
         VBuffB = (VBuffB - InOffB) * InGainB
-        TRACESread = TRACESread + 1
     if ShowC3_V.get() > 0 and CHANNELS >= 3:
         VBuffC = numpy.array(VBuffC)
         VBuffC = (VBuffC - InOffC) * InGainC
-        TRACESread = TRACESread + 1
     if ShowC4_V.get() > 0 and CHANNELS >= 4:
         VBuffD = numpy.array(VBuffD)
         VBuffD = (VBuffD - InOffD) * InGainD
-        TRACESread = TRACESread + 1
     # Find trigger sample point if necessary
     # print("Array Len ",len(VBuffA), "SHOWsamples ", SHOWsamples)
     LShift = 0

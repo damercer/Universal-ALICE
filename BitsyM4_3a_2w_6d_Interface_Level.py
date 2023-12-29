@@ -1,6 +1,6 @@
 #
 # Hardware specific interface functions
-# For Arduino XIAO Two analog + 2 AWG + 6 digital channel scope (11-22-2023)
+# For Arduino ItsyBitsy M4 3 Scope + 2 AWG + 1 digital channel scope (12-22-2023)
 # Written using Python version 3.10, Windows OS 
 #
 try:
@@ -17,7 +17,7 @@ CHANNELS = 3 # Number of supported Analog input channels
 AWGChannels = 2 # Number of supported Analog output channels
 PWMChannels = 1 # Number of supported PWM output channels
 DigChannels = 6 # Number of supported Dig channels
-LogicChannels = 6 # Number of supported Logic Analyzer channels
+LogicChannels = 1 # Number of supported Logic Analyzer channels
 EnablePGAGain = 0 #
 EnableAWGNoise = 0 #
 AllowFlashFirmware = 1
@@ -28,15 +28,15 @@ ADC_Cal = 3.28
 ScopeRes = 4096.0
 LSBsizeA =  LSBsizeB = LSBsizeC = LSBsize = ADC_Cal/ScopeRes
 Rint = 2.0E7 # ~2 Meg Ohm internal resistor to ground
-AWGARes = 1023 # For 10 bits, 4095 for 12 bits, 255 for 8 bits
-AWGBRes = 1000
-DevID = "Bitsy 3"
+AWGARes = 4095 # 1023 For 10 bits, 4095 for 12 bits, 255 for 8 bits
+AWGBRes = 4095
+DevID = "BitsyM4 3"
 SerComPort = 'Auto'
 TimeSpan = 0.01
 InterpRate = 4
 EnableInterpFilter.set(1)
 MaxSampleRate = SAMPLErate = 25000*InterpRate
-AWGSampleRate = 50000
+AWGSampleRate = 100000
 PhaseOffset = 12.5
 MinSamples = 1024
 AWGBuffLen = 2048
@@ -77,7 +77,10 @@ def Bcloseexit():
             donothing()
     else:
         BSaveConfig("alice-last-config.cfg")
-        ser.close() 
+        try:
+            ser.close()
+        except:
+            pass
 #
     root.destroy()
     exit()
@@ -97,33 +100,33 @@ def SetSampleRate():
         if TRACESread == 1:
             ser.write(b't10\n') # 100 KSPS
         elif TRACESread == 2:
-            ser.write(b't18\n') # 62.5 KSPS
+            ser.write(b't15\n') # 62.5 KSPS
         else:
-            ser.write(b't25\n') # 40 KSPS
+            ser.write(b't20\n') # 40 KSPS
         MaxSampleRate = SAMPLErate = 90909*InterpRate
     elif TimeDiv > 0.000099 and TimeDiv < 0.000199:
         if TRACESread == 1:
             ser.write(b't10\n') # 100 KSPS
         elif TRACESread == 2:
-            ser.write(b't18\n') # 62.5 KSPS
+            ser.write(b't15\n') # 62.5 KSPS
         else:
-            ser.write(b't25\n') # 40 KSPS
+            ser.write(b't20\n') # 40 KSPS
         MaxSampleRate = SAMPLErate = 90909*InterpRate
     elif TimeDiv > 0.000199 and TimeDiv < 0.0005:
         if TRACESread == 1:
             ser.write(b't10\n') # 100 KSPS
         elif TRACESread == 2:
-            ser.write(b't18\n') # 62.5 KSPS
+            ser.write(b't15\n') # 62.5 KSPS
         else:
-            ser.write(b't25\n') # 40 KSPS
+            ser.write(b't20\n') # 40 KSPS
         MaxSampleRate = SAMPLErate = 90909*InterpRate
     elif TimeDiv >= 0.0005 and TimeDiv < 0.001:
         if TRACESread == 1:
             ser.write(b't10\n') # 100 KSPS
         elif TRACESread == 2:
-            ser.write(b't18\n') # 62.5 KSPS
+            ser.write(b't15\n') # 62.5 KSPS
         else:
-            ser.write(b't25\n') # 40 KSPS
+            ser.write(b't20\n') # 40 KSPS
         MaxSampleRate = SAMPLErate = 90909*InterpRate
     elif TimeDiv >= 0.001 and TimeDiv < 0.002:
         ser.write(b't20\n') # 100 KSPS
@@ -162,7 +165,7 @@ def Get_Data():
     global D0line, D1line, D2line, D3line, D4line, D5line, D6line, D7line
     global TRIGGERentry, TRIGGERsample, SaveDig, CHANNELS, TRACESread
 
-    # Get data from ItsyBitsy M0
+    # Get data from QT Py
     #
     SaveDig = False
     if D0_is_on or D1_is_on or D2_is_on or D3_is_on or D4_is_on or D5_is_on or D6_is_on:
@@ -960,13 +963,13 @@ def ConnectDevice():
     global d0btn, d1btn, d2btn, d3btn, d4btn, d5btn, d6btn, d7btn
 
     # print("SerComPort: ", SerComPort)
-    if DevID == "No Device" or DevID == "Bitsy 3":
+    if DevID == "No Device" or DevID == "BitsyM4 3":
         #
         if SerComPort == 'Auto':
             ports = serial.tools.list_ports.comports()
             for port in ports: # ports:
-                # looking for this ID: USB\VID:PID=239A:800F
-                if "VID:PID=239A:800F" in port[2]:
+                # looking for this ID: USB\VID:PID=239A:802B
+                if "VID:PID=239A:802B" in port[2]:
                     print("Found: ", port[0])
                     SerComPort = port[0]
         # Setup instrument connection
@@ -996,18 +999,18 @@ def ConnectDevice():
             ID = ID.replace("\\","")
             ID = ID.replace("'","")
             print("ID string ", ID)
-            if ID != "QT Py Scope 3.0":
-                showwarning("WARNING","Board firmware does match this interface. Switch boards or interface software.")
+            if ID != "Bitsy M4 Scope 3.0":
+                showwarning("WARNING","Board firmware does not match this interface. Switch boards or interface software.")
             #
             ser.write(b't25\n') # send Scope sample time in uSec
             time.sleep(0.005)
             print("set dt: 25 uSec")
             MaxSampleRate = SAMPLErate = 40000*InterpRate
             #
-            ser.write(b'T20\n') # send AWG sample time in uSec
+            ser.write(b'T10\n') # send AWG sample time in uSec
             time.sleep(0.005)
-            print("set at: 20 uSec")
-            AWGSampleRate = 50000
+            print("set at: 10 uSec")
+            AWGSampleRate = 100000
             MinSamples = 1024 # 
             #
             ser.write(b'b1024\n') # send Scope Buffer Length 
@@ -1026,7 +1029,7 @@ def ConnectDevice():
             #
             ser.write(b'sx\n') # turn off PWM output by default
             ser.write(b'Gx\n') # turn off AWG A by default
-            ser.write(b'Sx\n') # turn off PWM AWG by default
+            ser.write(b'gx\n') # turn off AWG B by default
     #
             print("Get a sample: ")
             Get_Data() # grap a check set of samples
@@ -1267,10 +1270,9 @@ def SetAwgB_Ampl(Ampl): # used to toggle on / off AWG output
     AwgbOnOffLb.config(text="PWM AWG Output ")
     # AwgbOnOffLb.config(text=" ")
     if Ampl == 0:
-        ser.write(b'Sx\n')
+        ser.write(b'gx\n')
     else:
-        ser.write(b'p64000\n') # send PWM (AWG) frequency
-        ser.write(b'So\n')
+        ser.write(b'go\n')
 #
 def SetAWG_Ampla():
     global AWGAAmplEntry, ADC_Cal, ser, AWGRes

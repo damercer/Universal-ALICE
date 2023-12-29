@@ -16,14 +16,15 @@ Solder Breadboard with Pi-Pico and dual SPI DAC
 Currently available hardware interfaces (some are works in progress):
 
 * Arduino compatible microcontroler boards:
+  + Adafruit QT Pi - SAMD21
+  + Adafruit Trinket M0 (ATSAMD21)
+  + Adafruit ItsyBitsy M0 Express (ATSAMD21)
+  + Adafruit ItsyBitsy M4 Express (ATSAMD51)
+  + Raspberry Pi Pico RP-2040
+    - With external R/2R DAC or SPI DAC or PWM analog AWG output
   + Seeed Studio XIAO SAMD21
   + Seeed Studio XIAO RP-2040
     - With external SPI DAC or PWM analog AWG output
-  + Raspberry Pi Pico RP-2040
-    - With external R/2R DAC or SPI DAC or PWM analog AWG output
-  + Adafruit QT Pi - SAMD21
-  + Adafruit Trinket M0
-  + Adafruit ItsyBitsy M0 Express
 * Infineon-Cypress PSoC 5 kits:
   + CY8CKIT-059
   + CY8CKIT-043

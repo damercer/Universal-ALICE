@@ -1,7 +1,7 @@
 #!/usr/bin/python
 # -*- coding: cp1252 -*-
 #
-# Alice-universal-alpha.py(w) (12-14-2023)
+# Alice-universal-alpha.py(w) (12-28-2023)
 # Written using Python version 3.10, Windows OS 
 # Requires a hardware interface level functions add-on file
 # Created by D Mercer ()
@@ -67,7 +67,7 @@ import webbrowser
 # check which operating system
 import platform
 #
-RevDate = "14 Dec 2023"
+RevDate = "28 Dec 2023"
 SWRev = "1.0 "
 #
 # small bit map of triangle logo for window icon
@@ -6543,9 +6543,10 @@ def MakeTimeTrace():
     DvY1 = DvY2 = DvY3 = DvY4 = 0 
 #
     if (DISsamples <= GRW):
+        # print("DX = ", DX)
         Xstep = GRW / DISsamples
-        xa = 0 - int(Xstep*DX)       # adjust start pixel for interpolated trigger point
-        x = 0 - int(Xstep*DX)
+        xa = 0 # - int(Xstep*DX) # adjust start pixel for interpolated trigger point
+        x = 0 # - int(Xstep*DX)
         Tstep = 1
         x1 = 0                      # x position of trace line
         xa1 = 0
