@@ -1,6 +1,6 @@
 #
 # Hardware specific interface functions
-# For Arduino ItsyBitsy M4 3 Scope + 2 AWG + 1 digital channel scope (12-22-2023)
+# For Arduino ItsyBitsy M4 3 Scope + 2 AWG + 1 digital channel scope (12-30-2023)
 # Written using Python version 3.10, Windows OS 
 #
 try:
@@ -313,7 +313,8 @@ def Get_Data_One():
         DTime = DTime.replace("\\","")
         DTime = DTime.replace("'","")
         # print(DTime)
-        SampleTime = UnitConvert(DTime) * 1.0e-6 # convert to uSec
+        SampleTime = (UnitConvert(DTime)/MinSamples) * 1.0e-6 # convert to uSec
+        # SampleTime = UnitConvert(DTime) * 1.0e-6 # convert to uSec
         # set actual samplerate from returned time per sample
         MaxSampleRate = SAMPLErate = (1.0/SampleTime)*InterpRate
         # print("Sample Time: ", SampleTime)
@@ -534,7 +535,8 @@ def Get_Data_Two():
         DTime = DTime.replace("\\","")
         DTime = DTime.replace("'","")
         # print(DTime)
-        SampleTime = UnitConvert(DTime) * 1.0e-6 # convert to uSec
+        SampleTime = (UnitConvert(DTime)/MinSamples) * 1.0e-6 # convert to uSec
+        # SampleTime = UnitConvert(DTime) * 1.0e-6 # convert to uSec
         # set actual samplerate from returned time per sample
         MaxSampleRate = SAMPLErate = (1.0/SampleTime)*InterpRate
         # print("Sample Time: ", SampleTime)
@@ -779,7 +781,8 @@ def Get_Data_Three():
         DTime = DTime.replace("\\","")
         DTime = DTime.replace("'","")
         # print(DTime)
-        SampleTime = UnitConvert(DTime) * 1.0e-6 # convert to uSec
+        SampleTime = (UnitConvert(DTime)/MinSamples) * 1.0e-6 # convert to uSec
+        # SampleTime = UnitConvert(DTime) * 1.0e-6 # convert to uSec
         # set actual samplerate from returned time per sample
         MaxSampleRate = SAMPLErate = (1.0/SampleTime)*InterpRate
         # print("Sample Time: ", SampleTime)

@@ -1,6 +1,6 @@
 #
 # Hardware specific interface functions
-# For Arduino XIAO Two analog + 2 AWG + 6 digital channel scope (11-22-2023)
+# For Arduino XIAO Two analog + 2 AWG + 6 digital channel scope (12-29-2023)
 # Written using Python version 3.10, Windows OS 
 #
 try:
@@ -316,7 +316,8 @@ def Get_Data_One():
         DTime = DTime.replace("\\","")
         DTime = DTime.replace("'","")
         # print(DTime)
-        SampleTime = UnitConvert(DTime) * 1.0e-6 # convert to uSec
+        SampleTime = (UnitConvert(DTime)/MinSamples) * 1.0e-6 # convert to uSec
+        # SampleTime = UnitConvert(DTime) * 1.0e-6 # convert to uSec
         # set actual samplerate from returned time per sample
         MaxSampleRate = SAMPLErate = (1.0/SampleTime)*InterpRate
         # print("Sample Time: ", SampleTime)
@@ -537,7 +538,8 @@ def Get_Data_Two():
         DTime = DTime.replace("\\","")
         DTime = DTime.replace("'","")
         # print(DTime)
-        SampleTime = UnitConvert(DTime) * 1.0e-6 # convert to uSec
+        SampleTime = (UnitConvert(DTime)/MinSamples) * 1.0e-6 # convert to uSec
+        # SampleTime = UnitConvert(DTime) * 1.0e-6 # convert to uSec
         # set actual samplerate from returned time per sample
         MaxSampleRate = SAMPLErate = (1.0/SampleTime)*InterpRate
         # print("Sample Time: ", SampleTime)
@@ -782,7 +784,8 @@ def Get_Data_Three():
         DTime = DTime.replace("\\","")
         DTime = DTime.replace("'","")
         # print(DTime)
-        SampleTime = UnitConvert(DTime) * 1.0e-6 # convert to uSec
+        SampleTime = (UnitConvert(DTime)/MinSamples) * 1.0e-6 # convert to uSec
+        # SampleTime = UnitConvert(DTime) * 1.0e-6 # convert to uSec
         # set actual samplerate from returned time per sample
         MaxSampleRate = SAMPLErate = (1.0/SampleTime)*InterpRate
         # print("Sample Time: ", SampleTime)
@@ -1010,10 +1013,10 @@ def ConnectDevice():
             print("set dt: 25 uSec")
             MaxSampleRate = SAMPLErate = 50000*InterpRate
             #
-            ser.write(b'T25\n') # send AWG sample time in uSec
+            ser.write(b'T14\n') # send AWG sample time in uSec
             time.sleep(0.005)
-            print("set at: 25 uSec")
-            AWGSampleRate = 40000
+            print("set at: 14 uSec")
+            AWGSampleRate = int(1.0/0.000014)
             MinSamples = 1024 # 
             #
             ser.write(b'b1024\n') # send Scope Buffer Length 

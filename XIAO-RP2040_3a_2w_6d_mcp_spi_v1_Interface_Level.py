@@ -1,6 +1,6 @@
 #
 # Hardware specific interface functions
-# For XIAO RP2040 Three analog + 2 AWG + 6 digital channel scope (12-13-2023)
+# For XIAO RP2040 Three analog + 2 AWG + 6 digital channel scope (12-29-2023)
 # Written using Python version 3.10, Windows OS 
 #
 try:
@@ -164,16 +164,17 @@ def Get_Data():
         return
     # do external Gain / Offset calculations before software triggering
     if ShowC1_V.get() > 0:
+        VBuffA = numpy.array(VBuffA)
         VBuffA = (VBuffA - InOffA) * InGainA
     if ShowC2_V.get() > 0 and CHANNELS >= 2:
+        VBuffB = numpy.array(VBuffB)
         VBuffB = (VBuffB - InOffB) * InGainB
-        TRACESread = TRACESread + 1
     if ShowC3_V.get() > 0 and CHANNELS >= 3:
+        VBuffC = numpy.array(VBuffC)
         VBuffC = (VBuffC - InOffC) * InGainC
-        TRACESread = TRACESread + 1
     if ShowC4_V.get() > 0 and CHANNELS >= 4:
+        VBuffD = numpy.array(VBuffD)
         VBuffD = (VBuffD - InOffD) * InGainD
-        TRACESread = TRACESread + 1
     # Find trigger sample point if necessary
     # print("Array Len ",len(VBuffA), "SHOWsamples ", SHOWsamples)
     LShift = 0
@@ -279,7 +280,8 @@ def Get_Data_One():
         DTime = DTime.replace("\\","")
         DTime = DTime.replace("'","")
         # print(DTime)
-        SampleTime = UnitConvert(DTime) * 1.0e-6 # convert to uSec
+        SampleTime = (UnitConvert(DTime)/MinSamples) * 1.0e-6 # convert to uSec
+        # SampleTime = UnitConvert(DTime) * 1.0e-6 # convert to uSec
         # set actual samplerate from returned time per sample
         MaxSampleRate = SAMPLErate = (1.0/SampleTime)*InterpRate
         #print("Sample Time: ", SampleTime)
@@ -485,7 +487,8 @@ def Get_Data_Two():
         DTime = DTime.replace("\\","")
         DTime = DTime.replace("'","")
         # print(DTime)
-        SampleTime = UnitConvert(DTime) * 1.0e-6 # convert to uSec
+        SampleTime = (UnitConvert(DTime)/MinSamples) * 1.0e-6 # convert to uSec
+        # SampleTime = UnitConvert(DTime) * 1.0e-6 # convert to uSec
         # set actual samplerate from returned time per sample
         MaxSampleRate = SAMPLErate = (1.0/SampleTime)*InterpRate
         # print("Sample Time: ", SampleTime)
@@ -720,7 +723,8 @@ def Get_Data_Three():
         DTime = DTime.replace("\\","")
         DTime = DTime.replace("'","")
         # print(DTime)
-        SampleTime = UnitConvert(DTime) * 1.0e-6 # convert to uSec
+        SampleTime = (UnitConvert(DTime)/MinSamples) * 1.0e-6 # convert to uSec
+        # SampleTime = UnitConvert(DTime) * 1.0e-6 # convert to uSec
         MaxSampleRate = SAMPLErate = (1.0/SampleTime)*InterpRate
         # print("Sample Time: ", SampleTime)
         # print("Sample Rate = ", SAMPLErate )
@@ -950,10 +954,10 @@ def ConnectDevice():
         print("set dt: 50 uSec")
         MaxSampleRate = SAMPLErate = 20000*InterpRate
         #
-        ser.write(b'T19\n') # send AWG sample time in uSec
+        ser.write(b'T15\n') # send AWG sample time in uSec
         time.sleep(0.005)
-        print("set at: 19 uSec")
-        AWGSampleRate = 1.0 / 0.000019
+        print("set at: 15 uSec")
+        AWGSampleRate = 1.0 / 0.000015
         ser.write(b'Gx\n') # default with both AWG off
         ser.write(b'gx\n')
         MinSamples = 1024 # 
