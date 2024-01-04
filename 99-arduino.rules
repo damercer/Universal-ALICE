@@ -1,0 +1,13 @@
+# allow access to Adafruit Itsybitsy M0 Express USB\VID:PID=239A:800F
+SUBSYSTEMS=="usb", ATTRS{idVendor}=="800F", ATTRS{idProduct}=="239A", GROUP="dialout", MODE="0666"
+# allow access to Adafruit Itsybitsy M4 Express USB\VID:PID=239A:802B
+SUBSYSTEMS=="usb", ATTRS{idVendor}=="802B", ATTRS{idProduct}=="239A", GROUP="dialout", MODE="0666"
+# allow access to Adafruit Qt Py SAMD21 USB\VID:PID=239A:80CB
+SUBSYSTEMS=="usb", ATTRS{idVendor}=="80CB", ATTRS{idProduct}=="239A", GROUP="dialout", MODE="0666"
+# allow access to Adafruit Trinket M0 USB\VID:PID=239A:801E
+SUBSYSTEMS=="usb", ATTRS{idVendor}=="801E", ATTRS{idProduct}=="239A", GROUP="dialout", MODE="0666"
+# allow access to Raspberry Pi Pico USB\VID_2E8A PID_000A
+# allow access to Seeed Studio XIAO RP-2040 USB\VID_2E8A PID_000A
+SUBSYSTEMS=="usb", ATTRS{idVendor}=="000A", ATTRS{idProduct}=="2E8A", GROUP="dialout", MODE="0666"
+# allow access to Seeed Studio XIAO SAMD21 USB\VID:PID=2886:802F
+SUBSYSTEMS=="usb", ATTRS{idVendor}=="802F", ATTRS{idProduct}=="2886", GROUP="dialout", MODE="0666"
