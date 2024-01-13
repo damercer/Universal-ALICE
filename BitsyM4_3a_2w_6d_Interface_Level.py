@@ -98,35 +98,35 @@ def SetSampleRate():
     #print("TimeDiv = ", TimeDiv)
     if TimeDiv < 0.000099:
         if TRACESread == 1:
-            ser.write(b't10\n') # 100 KSPS
+            ser.write(b't8\n') # 100 KSPS
         elif TRACESread == 2:
-            ser.write(b't15\n') # 62.5 KSPS
+            ser.write(b't12\n') # 62.5 KSPS
         else:
-            ser.write(b't20\n') # 40 KSPS
+            ser.write(b't18\n') # 40 KSPS
         MaxSampleRate = SAMPLErate = 90909*InterpRate
     elif TimeDiv > 0.000099 and TimeDiv < 0.000199:
         if TRACESread == 1:
-            ser.write(b't10\n') # 100 KSPS
+            ser.write(b't8\n') # 100 KSPS
         elif TRACESread == 2:
-            ser.write(b't15\n') # 62.5 KSPS
+            ser.write(b't12\n') # 62.5 KSPS
         else:
-            ser.write(b't20\n') # 40 KSPS
+            ser.write(b't18\n') # 40 KSPS
         MaxSampleRate = SAMPLErate = 90909*InterpRate
     elif TimeDiv > 0.000199 and TimeDiv < 0.0005:
         if TRACESread == 1:
-            ser.write(b't10\n') # 100 KSPS
+            ser.write(b't8\n') # 100 KSPS
         elif TRACESread == 2:
-            ser.write(b't15\n') # 62.5 KSPS
+            ser.write(b't12\n') # 62.5 KSPS
         else:
-            ser.write(b't20\n') # 40 KSPS
+            ser.write(b't18\n') # 40 KSPS
         MaxSampleRate = SAMPLErate = 90909*InterpRate
     elif TimeDiv >= 0.0005 and TimeDiv < 0.001:
         if TRACESread == 1:
-            ser.write(b't10\n') # 100 KSPS
+            ser.write(b't8\n') # 100 KSPS
         elif TRACESread == 2:
-            ser.write(b't15\n') # 62.5 KSPS
+            ser.write(b't12\n') # 62.5 KSPS
         else:
-            ser.write(b't20\n') # 40 KSPS
+            ser.write(b't18\n') # 40 KSPS
         MaxSampleRate = SAMPLErate = 90909*InterpRate
     elif TimeDiv >= 0.001 and TimeDiv < 0.002:
         ser.write(b't20\n') # 100 KSPS

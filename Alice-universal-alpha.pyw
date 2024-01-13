@@ -16937,7 +16937,7 @@ def MakeDigScreen():
             #PWMDivEntry.bind('<Key>', onTextKeyPWMF)
             PWMDivEntry.grid(row=RowNum, column=5, columnspan=2, sticky=W)
             PWMDivEntry.delete(0,"end")
-            PWMDivEntry.insert(0,128)
+            PWMDivEntry.insert(0,500)
             #
             RowNum = RowNum + 1
             pwmwlab = Label(win2, text="PWM Width")
@@ -16950,7 +16950,7 @@ def MakeDigScreen():
             #PWMWidthEntry.bind('<Key>', onTextKeyPWMW)
             PWMWidthEntry.grid(row=RowNum, column=5, columnspan=2, sticky=W)
             PWMWidthEntry.delete(0,"end")
-            PWMWidthEntry.insert(0,0)
+            PWMWidthEntry.insert(0,50)
             RowNum = RowNum + 1
         #
         digdismissbutton = Button(win2, text="Dismiss", command=DestroyDigScreen)

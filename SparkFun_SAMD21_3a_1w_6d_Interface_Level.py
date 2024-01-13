@@ -1,6 +1,6 @@
 #
 # Hardware specific interface functions
-# For Arduino XIAO Two analog + 2 AWG + 6 digital channel scope (1-12-2024)
+# For SparkFun SAMD21 Mini Two analog + 2 AWG + 6 digital channel scope (1-11-2024)
 # Written using Python version 3.10, Windows OS 
 #
 try:
@@ -29,14 +29,14 @@ ScopeRes = 4096.0
 LSBsizeA =  LSBsizeB = LSBsizeC = LSBsize = ADC_Cal/ScopeRes
 Rint = 2.0E7 # ~2 Meg Ohm internal resistor to ground
 AWGARes = 1023 # For 10 bits, 4095 for 12 bits, 255 for 8 bits
-AWGBRes = 511
-DevID = "QT Pi 3"
+AWGBRes = 511 # PWM AWG 9 bits at 94 KHz
+DevID = "SparkFun D21 3"
 SerComPort = 'Auto'
 TimeSpan = 0.01
 InterpRate = 4
 EnableInterpFilter.set(1)
 MaxSampleRate = SAMPLErate = 25000*InterpRate
-AWGSampleRate = 50000
+AWGSampleRate = 40000
 PhaseOffset = 12.5
 MinSamples = 1024
 AWGBuffLen = 2048
@@ -210,12 +210,15 @@ def Get_Data():
     if ShowC2_V.get() > 0 and CHANNELS >= 2:
         VBuffB = numpy.array(VBuffB)
         VBuffB = (VBuffB - InOffB) * InGainB
+        TRACESread = TRACESread + 1
     if ShowC3_V.get() > 0 and CHANNELS >= 3:
         VBuffC = numpy.array(VBuffC)
         VBuffC = (VBuffC - InOffC) * InGainC
+        TRACESread = TRACESread + 1
     if ShowC4_V.get() > 0 and CHANNELS >= 4:
         VBuffD = numpy.array(VBuffD)
         VBuffD = (VBuffD - InOffD) * InGainD
+        TRACESread = TRACESread + 1
     # Find trigger sample point if necessary
     # print("Array Len ",len(VBuffA), "SHOWsamples ", SHOWsamples)
     LShift = 0
@@ -249,7 +252,7 @@ def Get_Data():
         if ShowC2_V.get() > 0:
             VBuffB = numpy.roll(VBuffB, LShift+2)
         if ShowC3_V.get() > 0:
-            VBuffC = numpy.roll(VBuffC, LShift+2)
+            VBuffC = numpy.roll(VBuffC, LShift+3)
         if SaveDig:
             VBuffG = numpy.roll(VBuffG, LShift)
             if D0_is_on:
@@ -966,13 +969,13 @@ def ConnectDevice():
     global d0btn, d1btn, d2btn, d3btn, d4btn, d5btn, d6btn, d7btn
 
     # print("SerComPort: ", SerComPort)
-    if DevID == "No Device" or DevID == "QT Pi 3":
+    if DevID == "No Device" or DevID == "SparkFun D21 3":
         #
         if SerComPort == 'Auto':
             ports = serial.tools.list_ports.comports()
             for port in ports: # ports:
-                # looking for this ID: USB\VID:PID=239A:801E
-                if "VID:PID=239A:801E" in port[2]:
+                # looking for this ID: VID:PID=1B4F:8D21
+                if "VID:PID=1B4F:8D21" in port[2]:
                     print("Found: ", port[0])
                     SerComPort = port[0]
         # Setup instrument connection
@@ -1002,12 +1005,12 @@ def ConnectDevice():
             ID = ID.replace("\\","")
             ID = ID.replace("'","")
             print("ID string ", ID)
-            if ID != "QT Py Scope 3.0":
+            if ID != "SpakFu D21 Scope 3.0":
                 showwarning("WARNING","Board firmware does match this interface. Switch boards or interface software.")
             #
             ser.write(b't20\n') # send Scope sample time in uSec
             time.sleep(0.005)
-            print("set dt: 20 uSec")
+            print("set dt: 25 uSec")
             MaxSampleRate = SAMPLErate = 50000*InterpRate
             #
             ser.write(b'T14\n') # send AWG sample time in uSec
@@ -1275,7 +1278,7 @@ def SetAwgB_Ampl(Ampl): # used to toggle on / off AWG output
     if Ampl == 0:
         ser.write(b'Sx\n')
     else:
-        # ser.write(b'p64000\n') # send PWM (AWG) frequency
+        ser.write(b'p64000\n') # send PWM (AWG) frequency
         ser.write(b'So\n')
 #
 def SetAWG_Ampla():

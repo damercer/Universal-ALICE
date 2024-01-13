@@ -29,7 +29,7 @@ ScopeRes = 4096.0
 LSBsizeA =  LSBsizeB = LSBsizeC = LSBsize = ADC_Cal/ScopeRes
 Rint = 2.0E7 # ~2 Meg Ohm internal resistor to ground
 AWGARes = 1023 # For 10 bits, 4095 for 12 bits, 255 for 8 bits
-AWGBRes = 1000
+AWGBRes = 511 # PWM AWG 9 bits at 94 KHz
 DevID = "XIAO 3"
 SerComPort = 'Auto'
 TimeSpan = 0.01
@@ -1273,7 +1273,7 @@ def SetAwgB_Ampl(Ampl): # used to toggle on / off AWG output
     if Ampl == 0:
         ser.write(b'Sx\n')
     else:
-        ser.write(b'p64000\n') # send PWM (AWG) frequency
+        # ser.write(b'p64000\n') # send PWM (AWG) frequency
         ser.write(b'So\n')
 #
 def SetAWG_Ampla():
@@ -1531,13 +1531,19 @@ def UpdatePWM():
 
     FreqValue = int(UnitConvert(PWMDivEntry.get()))
     # print("FreqValue = ", FreqValue)
-    ByteStr = 'p' + str(FreqValue) + "\n"
+    # ByteStr = 'p' + str(FreqValue) + "\n"
+    # SendByt = ByteStr.encode('utf-8')
+    # PWM frequency = 48MHz / (1 * (95999 + 1)) = 500Hz
+    Divider = int(48000000 / FreqValue) - 1
+    # print("Divider = ", Divider)
+    ByteStr = 'p' + str(Divider) + "\n"
     SendByt = ByteStr.encode('utf-8')
     ser.write(SendByt)
     time.sleep(0.1)
     
     DutyCycle = int(PWMWidthEntry.get())
-    DutyCycle = DutyCycle * 10 # value can be 0 to 1000
+    DutyCycle = int((DutyCycle * Divider)/100) # value can be 0 to 1000
+    #DutyCycle = DutyCycle * 10 # value can be 0 to 1000
     #
     ByteStr = 'm' + str(DutyCycle) + "\n"
     SendByt = ByteStr.encode('utf-8')
