@@ -1,7 +1,7 @@
 #!/usr/bin/python
 # -*- coding: cp1252 -*-
 #
-# Alice-universal-alpha.py(w) (12-28-2023)
+# Alice-universal-alpha.py(w) (1-9-2024)
 # Written using Python version 3.10, Windows OS 
 # Requires a hardware interface level functions add-on file
 # Created by D Mercer ()
@@ -67,7 +67,7 @@ import webbrowser
 # check which operating system
 import platform
 #
-RevDate = "28 Dec 2023"
+RevDate = "9 Jan 2024"
 SWRev = "1.0 "
 #
 # small bit map of triangle logo for window icon
@@ -8329,10 +8329,11 @@ def MakeXYScreen():
         de = XYca.find_enclosed( X0LXY-1, -1, CANVASwidthXY, 20)
         for n in de: 
             XYca.delete(n)
+    SR_label = ' {0:.1f} '.format(SAMPLErate)
     if LabelPlotText.get() > 0:
-        txt = PlotLabelText + " Sample rate: " + str(SAMPLErate) + " " + sttxt
+        txt = PlotLabelText + " Sample rate: " + SR_label + " " + sttxt
     else:
-        txt = "Device ID " + DevID + " Sample rate: " + str(SAMPLErate) + " " + sttxt
+        txt = "Device ID " + DevID + " Sample rate: " + SR_label + " " + sttxt
     x = X0LXY
     y = 12
     XYca.create_text(x, y, text=txt, anchor=W, fill=COLORtext, font=("arial", FontSize ))
@@ -15962,7 +15963,7 @@ def MakeXYWindow():
         MarkerXYScale.set(1)
         # Voltage channel A
         if CHANNELS >= 1:
-            CHAsbxy = Spinbox(frame3xy, width=4, cursor='double_arrow', values=XYvpdiv)
+            CHAsbxy = Spinbox(frame3xy, width=5, cursor='double_arrow', values=XYvpdiv)
             CHAsbxy.bind('<MouseWheel>', onSpinBoxScroll)
             CHAsbxy.bind("<Button-4>", onSpinBoxScroll)# with Linux OS
             CHAsbxy.bind("<Button-5>", onSpinBoxScroll)
@@ -15985,7 +15986,7 @@ def MakeXYWindow():
             CHAofflabxy.pack(side=LEFT)
         # Voltage channel B
         if CHANNELS >= 2:
-            CHBsbxy = Spinbox(frame3xy, width=4, cursor='double_arrow', values=XYvpdiv)
+            CHBsbxy = Spinbox(frame3xy, width=5, cursor='double_arrow', values=XYvpdiv)
             CHBsbxy.bind('<MouseWheel>', onSpinBoxScroll)
             CHBsbxy.bind("<Button-4>", onSpinBoxScroll)# with Linux OS
             CHBsbxy.bind("<Button-5>", onSpinBoxScroll)
@@ -16009,7 +16010,7 @@ def MakeXYWindow():
             CHBofflabxy.pack(side=LEFT)
 # Voltage channel C
         if CHANNELS >= 3:
-            CHCsbxy = Spinbox(frame4xy, width=4, cursor='double_arrow', values=XYvpdiv)
+            CHCsbxy = Spinbox(frame4xy, width=5, cursor='double_arrow', values=XYvpdiv)
             CHCsbxy.bind('<MouseWheel>', onSpinBoxScroll)
             CHCsbxy.bind("<Button-4>", onSpinBoxScroll)# with Linux OS
             CHCsbxy.bind("<Button-5>", onSpinBoxScroll)
@@ -16032,7 +16033,7 @@ def MakeXYWindow():
             CHCofflabxy.pack(side=LEFT)
         # Voltage channel D
         if CHANNELS >= 4:
-            CHDsbxy = Spinbox(frame4xy, width=4, cursor='double_arrow', values=XYvpdiv)
+            CHDsbxy = Spinbox(frame4xy, width=5, cursor='double_arrow', values=XYvpdiv)
             CHDsbxy.bind('<MouseWheel>', onSpinBoxScroll)
             CHDsbxy.bind("<Button-4>", onSpinBoxScroll)# with Linux OS
             CHDsbxy.bind("<Button-5>", onSpinBoxScroll)
@@ -16056,7 +16057,7 @@ def MakeXYWindow():
             CHDofflabxy.pack(side=LEFT)
         
         # Math X controls
-        CHMXsb = Spinbox(frame5xy, width=4, cursor='double_arrow', values=XYvpdiv) #
+        CHMXsb = Spinbox(frame5xy, width=5, cursor='double_arrow', values=XYvpdiv) #
         CHMXsb.bind('<MouseWheel>', onSpinBoxScroll)
         CHMXsb.bind('<Button-4>', onSpinBoxScroll)
         CHMXsb.bind('<Button-4>', onSpinBoxScroll)
@@ -16079,7 +16080,7 @@ def MakeXYWindow():
         CHMXofflab.pack(side=LEFT)
 
         # Math Y controls
-        CHMYsb = Spinbox(frame5xy, width=4, cursor='double_arrow', values=XYvpdiv) #, command=BCHBlevel)
+        CHMYsb = Spinbox(frame5xy, width=5, cursor='double_arrow', values=XYvpdiv) #, command=BCHBlevel)
         CHMYsb.bind('<MouseWheel>', onSpinBoxScroll)
         CHMYsb.bind('<Button-4>', onSpinBoxScroll)
         CHMYsb.bind('<Button-4>', onSpinBoxScroll)
