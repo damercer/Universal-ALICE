@@ -1,6 +1,6 @@
 #
 # Hardware specific interface functions
-# For XIAO RP2040 Three analog + 2 AWG + 6 digital channel scope (12-29-2023)
+# For XIAO RP2040 Three analog + 2 AWG + 6 digital channel scope (1-19-2024)
 # Written using Python version 3.10, Windows OS 
 #
 try:
@@ -35,8 +35,9 @@ MaxSampleRate = SAMPLErate = 12500*InterpRate
 AWGSampleRate = 50000 # 20 uSec
 LSBsizeA =  LSBsizeB = LSBsizeC = LSBsize = ADC_Cal/4096.0
 PhaseOffset = 12.5
-MinSamples = 1024
-AWGBuffLen = 2048
+HardwareBuffer = 4096 # Max hardware waveform buffer size
+MinSamples = 2048 # capture sample buffer size
+AWGBuffLen = 2048 # Max DAC hardware waveform buffer size
 Cycles = 1
 SMPfft = MinSamples*InterpRate # Set FFT size based on fixed acquisition record length
 #
@@ -62,7 +63,8 @@ def Bcloseexit():
     Closed = 1
     # 
     try:
-        ser.write(b'Gx\n') # Turn off AWG
+        ser.write(b'Gx\n') # Turn off A AWG
+        ser.write(b'gx\n') # Turn off B AWG
         ser.write(b'sx\n') # turn off PWM
         # try to write last config file, Don't crash if running in Write protected space
         BSaveConfig("alice-last-config.cfg")
@@ -94,31 +96,22 @@ def SetSampleRate():
     #print("TimeDiv = ", TimeDiv)
     if TimeDiv < 0.000099:
         ser.write(b't5\n') # 90.909 KSPS
-        MaxSampleRate = SAMPLErate = 90909*InterpRate
     elif TimeDiv > 0.000099 and TimeDiv < 0.000199:
         ser.write(b't6\n') # 90.909 KSPS
-        MaxSampleRate = SAMPLErate = 90909*InterpRate
     elif TimeDiv > 0.000199 and TimeDiv < 0.0005:
         ser.write(b't8\n') # 90.909KSPS
-        MaxSampleRate = SAMPLErate = 90909*InterpRate
     elif TimeDiv >= 0.0005 and TimeDiv < 0.001:
         ser.write(b't12\n') # 90.909 KSPS
-        MaxSampleRate = SAMPLErate = 90909*InterpRate
     elif TimeDiv >= 0.001 and TimeDiv < 0.002:
         ser.write(b't16\n') # 62.5 KSPS
-        MaxSampleRate = SAMPLErate = 62500*InterpRate
     elif TimeDiv >= 0.002 and TimeDiv < 0.005:
         ser.write(b't32\n') # 31.250 KSPS
-        MaxSampleRate = SAMPLErate = 31250*InterpRate
     elif TimeDiv >= 0.005 and TimeDiv < 0.01:
         ser.write(b't64\n') # 15.625 KSPS
-        MaxSampleRate = SAMPLErate = 15625*InterpRate
     elif TimeDiv >= 0.01 and TimeDiv < 0.02:
         ser.write(b't100\n') # 10 KSPS
-        MaxSampleRate = SAMPLErate = 10000*InterpRate
     else:
         ser.write(b't200\n') # 5 KSPS
-        MaxSampleRate = SAMPLErate = 5000*InterpRate
     #
     time.sleep(0.005)
     #
@@ -279,13 +272,12 @@ def Get_Data_One():
         DTime = DTime.replace("n","")
         DTime = DTime.replace("\\","")
         DTime = DTime.replace("'","")
-        # print(DTime)
+        # print(DTime, UnitConvert(DTime)/MinSamples)
         SampleTime = (UnitConvert(DTime)/MinSamples) * 1.0e-6 # convert to uSec
-        # SampleTime = UnitConvert(DTime) * 1.0e-6 # convert to uSec
         # set actual samplerate from returned time per sample
-        MaxSampleRate = SAMPLErate = (1.0/SampleTime)*InterpRate
-        #print("Sample Time: ", SampleTime)
-        #print("Sample Rate = ", SAMPLErate )
+        MaxSampleRate = SAMPLErate = int((1.0/SampleTime)*InterpRate)
+        # print("Sample Time: ", SampleTime)
+        # print("Sample Rate = ", SAMPLErate )
     # 
     iterCount = (MinSamples * 3) # 3 bytes for one channel plus digital byte
     #
@@ -303,27 +295,33 @@ def Get_Data_One():
     waiting0 = ser.in_waiting
     #print("Serial Length:", waiting0)
     while waiting0 >= 1:
-        #print("Number Bytes waiting = ", waiting0)
+        # print("Number Bytes waiting = ", waiting0)
         # read in chunks divisible by 3
         # Read an integer as two bytes, big-endian
-        time.sleep(0.01)
+        time.sleep(0.040)
         waiting0 = ser.in_waiting
-        if waiting0 > 2049:
-            VBuffRaw = ser.read(2048)
-            Count = Count + 2048
-        elif waiting0 > 1025:
-            VBuffRaw = ser.read(1024)
-            Count = Count + 1024
+        if waiting0 > MinSamples:
+            VBuffRaw = ser.read(MinSamples)
+            Count = Count + MinSamples
+        elif waiting0 > 324:
+            VBuffRaw = ser.read(324)
+            Count = Count + 324
+        elif waiting0 > 108:
+            VBuffRaw = ser.read(108)
+            Count = Count + 108
+        elif waiting0 > 36:
+            VBuffRaw = ser.read(36)
+            Count = Count + 36
         else:
             VBuffRaw = ser.read(waiting0)
             Count = Count + waiting0
-        #print("Count = ", Count)
+        # print("Count = ", Count)
+        # print("Length AB: Raw: ", len(ABuff), len(VBuffRaw))
         index = 0
         while index < len(VBuffRaw):
             ABuff.append(VBuffRaw[index])
             index = index + 1
         # Count = Count + waiting0
-        #print("Length AB: Raw: ", len(ABuff), len(VBuffRaw))
         waiting0 = ser.in_waiting
         #print("Serial Length:", waiting0)
         # time.sleep(Wait)
@@ -334,12 +332,12 @@ def Get_Data_One():
     #EndTime = time.time()
     #Elapsed = EndTime - StartTime
     #print("Elapsed Time = ", Elapsed)
-    #print("received Bytes = ", Count)
-    #print("Length: ", len(ABuff))
+    # print("received Bytes = ", Count)
+    # print("Length: ", len(ABuff))
     #
     waiting0 = ser.in_waiting
     if waiting0 > 0:
-        print("Serial Length:", waiting0)
+        # print("Serial Length:", waiting0)
         dump = ser.read(waiting0)
     #Frams = 0
     index = 0
@@ -352,6 +350,10 @@ def Get_Data_One():
         index = index + 1
         BuffD.append(ABuff[index])
         index = index + 1
+    #
+    #print("Frames = ", Frams)
+    #
+    VBuffG=[]
     #
     # Interpolate data samples by 4X
     #
@@ -503,7 +505,6 @@ def Get_Data_Two():
     VBuff2=[]
     VBuff3=[]
     BuffD=[]
-    VBuffG=[]
     time.sleep(Wait*2)
     ### Wait to buffer enough samples to satisfy the entire frame
     # print("iterCount = ", iterCount)
@@ -513,14 +514,15 @@ def Get_Data_Two():
         # print("Number Bytes waiting = ", waiting0)
         # read in chunks divisible by 5
         # Read an integer as two bytes, big-endian
-        time.sleep(0.01)
+        time.sleep(0.040)
         waiting0 = ser.in_waiting
-        if waiting0 > 2560:
-            VBuffRaw = ser.read(2560)
-            Count = Count + 2560
-        elif waiting0 > 1280:
-            VBuffRaw = ser.read(1280)
-            Count = Count + 1280
+        Chunk = 3 * MinSamples
+        if waiting0 > Chunk:
+            VBuffRaw = ser.read(Chunk)
+            Count = Count + Chunk
+        elif waiting0 > MinSamples:
+            VBuffRaw = ser.read(MinSamples)
+            Count = Count + MinSamples
         elif waiting0 > 640:
             VBuffRaw = ser.read(640)
             Count = Count + 640
@@ -531,8 +533,8 @@ def Get_Data_Two():
             VBuffRaw = ser.read(160)
             Count = Count + 160
         else:
-            VBuffRaw = ser.read(80)
-            Count = Count + 80
+            VBuffRaw = ser.read(waiting0)
+            Count = Count + waiting0
         #print("Count = ", Count)
         #print("Length AB: Raw: ", len(ABuff), len(VBuffRaw))
         index = 0
@@ -574,6 +576,10 @@ def Get_Data_Two():
         index = index + 1
         BuffD.append(ABuff[index])
         index = index + 1
+    #
+    #print("Frames = ", Frams)
+    #
+    VBuffG=[]
     #
     # Interpolate data samples by 4X
     #
@@ -706,9 +712,9 @@ def Get_Data_Three():
     if SAMPLErate <= 4000:
         Wait = 0.08
     # 
-    ## send command to pico to readout data
+    ## send command to readout data
     if ShowC1_V.get() > 0 and ShowC2_V.get() > 0 and ShowC3_V.get() > 0:
-        ser.write(b'4') # capture on A, B and C and Digtial
+        ser.write(b'4') # capture on A, B and C and D4
     else:
         return
     #
@@ -723,47 +729,49 @@ def Get_Data_Three():
         DTime = DTime.replace("\\","")
         DTime = DTime.replace("'","")
         # print(DTime)
-        SampleTime = (UnitConvert(DTime)/MinSamples) * 1.0e-6 # convert to uSec
         # SampleTime = UnitConvert(DTime) * 1.0e-6 # convert to uSec
+        SampleTime = (UnitConvert(DTime)/MinSamples) * 1.0e-6 # convert to uSec
+        # set actual samplerate from returned time per sample
         MaxSampleRate = SAMPLErate = (1.0/SampleTime)*InterpRate
         # print("Sample Time: ", SampleTime)
         # print("Sample Rate = ", SAMPLErate )
     # 
-    iterCount = (MinSamples * 7) # 7 bytes for three channels plus digital byte
+    iterCount = (MinSamples * 7) # 7 bytes for two channels plus digital byte
     #
+    #StartTime = time.time()
     VBuffRaw = []
     ABuff = []
     VBuff1=[]
     VBuff2=[]
     VBuff3=[]
     BuffD=[]
-    time.sleep(Wait)
-    ### Wait to buffer enough samples to satisfy the entire frame, and then
-    ## toss anything left over
+    time.sleep(Wait*3)
+    ### Wait to buffer enough samples to satisfy the entire frame
     # print("iterCount = ", iterCount)
     Count = 0
     waiting0 = ser.in_waiting
     while waiting0 >= 1:
         # print("Number Bytes waiting = ", waiting0)
-        # read in chunks divisible by 8
+        # read in chunks divisible by 7
         # Read an integer as two bytes, big-endian
-        time.sleep(0.01)
+        time.sleep(0.040)
         waiting0 = ser.in_waiting
-        if waiting0 > 3584:
-            VBuffRaw = ser.read(3584)
-            Count = Count + 3584
-        elif waiting0 > 896:
-            VBuffRaw = ser.read(896)
-            Count = Count + 896
-        elif waiting0 > 448:
-            VBuffRaw = ser.read(448)
-            Count = Count + 448
-        elif waiting0 > 224:
-            VBuffRaw = ser.read(224)
-            Count = Count + 224
+        Chunk = 4 * MinSamples
+        if waiting0 > Chunk:
+            VBuffRaw = ser.read(Chunk)
+            Count = Count + Chunk
+        elif waiting0 > MinSamples:
+            VBuffRaw = ser.read(MinSamples)
+            Count = Count + MinSamples
+        elif waiting0 > 500:
+            VBuffRaw = ser.read(500)
+            Count = Count + 500
+        elif waiting0 > 250:
+            VBuffRaw = ser.read(250)
+            Count = Count + 250
         else:
-            VBuffRaw = ser.read(112)
-            Count = Count + 112
+            VBuffRaw = ser.read(waiting0)
+            Count = Count + waiting0
         #print("Count = ", Count)
         #print("Length AB: Raw: ", len(ABuff), len(VBuffRaw))
         index = 0
@@ -783,25 +791,12 @@ def Get_Data_Three():
     #print("Elapsed Time = ", Elapsed)
     #print("received Bytes = ", Count)
     #print("Length: ", len(ABuff))
-    # 
+    #
     waiting0 = ser.in_waiting
-    # print("Serial Length:", waiting0)
-    # time.sleep(Wait)
     if waiting0 > 0:
         # print("Serial Length:", waiting0)
         dump = ser.read(waiting0)
     #Frams = 0
-    
-    # 
-    # print("received Samples = ", Count)
-    # print("Length: ", len(ABuff))
-    # print("Frams = ", Frams)
-    #
-    VBuffA=[]
-    VBuffB=[]
-    VBuffC=[]
-    VBuffG=[]
-    #
     index = 0
     while index < len(ABuff):
         inputHigh = ABuff[index]
@@ -824,6 +819,13 @@ def Get_Data_Three():
         index = index + 1
         BuffD.append(ABuff[index])
         index = index + 1
+    #
+    #print("Frames = ", Frams)
+    #
+    VBuffA=[]
+    VBuffB=[]
+    VBuffC=[]
+    VBuffG=[]
     #
     # Interpolate data samples by 4X
     #
@@ -892,6 +894,21 @@ def Get_Data_Three():
         DBuff6 = []
         DBuff7 = []
 #
+def SetBufferLength(NewLength):
+    global ser, MinSamples, MaxSamples, InterpRate, HardwareBuffer
+
+    if NewLength > HardwareBuffer:
+        NewLength = HardwareBuffer
+    MinSamples = NewLength
+    MaxSamples = MinSamples * InterpRate
+    ## send Scope Buffer Length
+    SendStr = 'b' + str(MinSamples) + '\n'
+    # print(SendStr)
+    SendByt = SendStr.encode('utf-8')
+    ser.write(SendByt)
+    # ser.write(b'b1024\n')  
+    time.sleep(0.005)
+    #print("set Scope Samples: ", MinSamples)
 #
 # Hardware Help
 #
@@ -959,12 +976,15 @@ def ConnectDevice():
         print("set at: 15 uSec")
         AWGSampleRate = 1.0 / 0.000015
         ser.write(b'Gx\n') # default with both AWG off
-        ser.write(b'gx\n')
-        MinSamples = 1024 # 
-        #
-        ser.write(b'b1024\n') # send Scope Buffer Length 
+        ser.write(b'gx\n') 
+        ## send Scope Buffer Length
+        SendStr = 'b' + str(MinSamples) + '\n'
+        # print(SendStr)
+        SendByt = SendStr.encode('utf-8')
+        ser.write(SendByt)
+        # ser.write(b'b1024\n')  
         time.sleep(0.005)
-        print("set Scope Samples: 1024")
+        print("set Scope Samples: ", MinSamples)
         #
         ser.write(b'N1024\n') # send AWG A Buffer Length
         ser.write(b'M1024\n') # send AWG B Buffer Length 

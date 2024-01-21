@@ -1,6 +1,6 @@
 #
 # Hardware specific interface functions
-# For Arduino pi pico Three analog + 2 AWG + 6 digital channel scope (12-14-2023)
+# For Arduino pi pico Three analog + 2 AWG + 6 digital channel scope (12-29-2023)
 # Written using Python version 3.10, Windows OS 
 #
 try:
@@ -16,7 +16,7 @@ except:
 CHANNELS = 3 # Number of supported Analog input channels
 AWGChannels = 2 # Number of supported Analog output channels
 PWMChannels = 1 # Number of supported PWM output channels
-DigChannels = 8 # Number of supported Dig channels
+DigChannels = 6 # Number of supported Dig channels
 LogicChannels = 6 # Number of supported Logic Analyzer channels
 EnablePGAGain = 0 #
 EnableAWGNoise = 0 #
@@ -28,14 +28,15 @@ DevID = "Pico MCP 3"
 SerComPort = 'Auto'
 TimeSpan = 0.01
 ADC_Cal = 3.29
-AWGRes = 4095 # For 8 bits, 4095 for 12 bits, 1023 for 10 bits
+AWGRes = 255 # For 8 bits, 4095 for 12 bits, 1023 for 10 bits
 InterpRate = 4
 EnableInterpFilter.set(1)
 MaxSampleRate = SAMPLErate = 12500*InterpRate
-AWGSampleRate = 50000 # 20 uSec
+AWGSampleRate = 100000 # 10 uSec
 LSBsizeA =  LSBsizeB = LSBsizeC = LSBsize = ADC_Cal/4096.0
 PhaseOffset = 12.5
-MinSamples = 1024
+HardwareBuffer = 4096 # Max hardware waveform buffer size
+MinSamples = 2048 # capture sample buffer size
 AWGBuffLen = 2048
 Cycles = 1
 SMPfft = MinSamples*InterpRate # Set FFT size based on fixed acquisition record length
@@ -94,31 +95,22 @@ def SetSampleRate():
     #print("TimeDiv = ", TimeDiv)
     if TimeDiv < 0.000099:
         ser.write(b't5\n') # 90.909 KSPS
-        MaxSampleRate = SAMPLErate = 90909*InterpRate
     elif TimeDiv > 0.000099 and TimeDiv < 0.000199:
         ser.write(b't6\n') # 90.909 KSPS
-        MaxSampleRate = SAMPLErate = 90909*InterpRate
     elif TimeDiv > 0.000199 and TimeDiv < 0.0005:
         ser.write(b't8\n') # 90.909KSPS
-        MaxSampleRate = SAMPLErate = 90909*InterpRate
     elif TimeDiv >= 0.0005 and TimeDiv < 0.001:
         ser.write(b't12\n') # 90.909 KSPS
-        MaxSampleRate = SAMPLErate = 90909*InterpRate
     elif TimeDiv >= 0.001 and TimeDiv < 0.002:
         ser.write(b't16\n') # 62.5 KSPS
-        MaxSampleRate = SAMPLErate = 62500*InterpRate
     elif TimeDiv >= 0.002 and TimeDiv < 0.005:
         ser.write(b't32\n') # 31.250 KSPS
-        MaxSampleRate = SAMPLErate = 31250*InterpRate
     elif TimeDiv >= 0.005 and TimeDiv < 0.01:
         ser.write(b't64\n') # 15.625 KSPS
-        MaxSampleRate = SAMPLErate = 15625*InterpRate
     elif TimeDiv >= 0.01 and TimeDiv < 0.02:
         ser.write(b't100\n') # 10 KSPS
-        MaxSampleRate = SAMPLErate = 10000*InterpRate
     else:
         ser.write(b't200\n') # 5 KSPS
-        MaxSampleRate = SAMPLErate = 5000*InterpRate
     #
     time.sleep(0.005)
     #
@@ -136,7 +128,7 @@ def Get_Data():
     global D4_is_on, D5_is_on, D6_is_on, D7_is_on
     global DBuff0, DBuff1, DBuff2, DBuff3, DBuff4, DBuff5, DBuff6, DBuff7
     global D0line, D1line, D2line, D3line, D4line, D5line, D6line, D7line
-    global TRIGGERentry, TRIGGERsample, SaveDig, CHANNELS, TRACESread, SAMPLErate
+    global TRIGGERentry, TRIGGERsample, SaveDig, CHANNELS, TRACESread
 
     # Get data from pi pico
     #
@@ -231,20 +223,11 @@ def Get_Data():
             if D7_is_on:
                 DBuff7 = numpy.roll(DBuff7, LShift)
     else:
-        if SAMPLErate >= 125000:
-            VBuffA = numpy.roll(VBuffA, -2)
-            VBuffB = numpy.roll(VBuffB, -1)
-            VBuffC = numpy.roll(VBuffC, 0)
-        elif SAMPLErate < 125000 and SAMPLErate > 31250:
-            VBuffA = numpy.roll(VBuffA, 0)
-            VBuffB = numpy.roll(VBuffB, 0)
-            VBuffC = numpy.roll(VBuffC, 0)
-        else:
-            VBuffA = numpy.roll(VBuffA, 0)
-            VBuffB = numpy.roll(VBuffB, 0)
-            VBuffC = numpy.roll(VBuffC, 0)
-#
-#
+        VBuffA = numpy.roll(VBuffA, -2)
+        # VBuffA = numpy.roll(VBuffA, -8)
+        VBuffB = numpy.roll(VBuffB, -1)
+        # VBuffC = numpy.roll(VBuffC, -6)
+##
 def Get_Data_One():
     global VBuffA, VBuffB, VBuffC, VBuffG
     global ShowC1_V, ShowC2_V, ShowC3_V, ShowC4_V
@@ -257,7 +240,7 @@ def Get_Data_One():
     global D4_is_on, D5_is_on, D6_is_on, D7_is_on
     global DBuff0, DBuff1, DBuff2, DBuff3, DBuff4, DBuff5, DBuff6, DBuff7
     global D0line, D1line, D2line, D3line, D4line, D5line, D6line, D7line
-    
+
     #
     Wait = 0.02
     if SAMPLErate <= 4000:
@@ -284,7 +267,8 @@ def Get_Data_One():
         DTime = DTime.replace("\\","")
         DTime = DTime.replace("'","")
         # print(DTime)
-        SampleTime = UnitConvert(DTime) * 1.0e-6 # convert to uSec
+        SampleTime = (UnitConvert(DTime)/MinSamples) * 1.0e-6 # convert to uSec
+        #SampleTime = UnitConvert(DTime) * 1.0e-6 # convert to uSec
         # set actual samplerate from returned time per sample
         MaxSampleRate = SAMPLErate = (1.0/SampleTime)*InterpRate
         #print("Sample Time: ", SampleTime)
@@ -309,14 +293,20 @@ def Get_Data_One():
         #print("Number Bytes waiting = ", waiting0)
         # read in chunks divisible by 3
         # Read an integer as two bytes, big-endian
-        time.sleep(0.01)
+        time.sleep(0.04)
         waiting0 = ser.in_waiting
-        if waiting0 > 2049:
-            VBuffRaw = ser.read(2048)
-            Count = Count + 2048
-        elif waiting0 > 1025:
-            VBuffRaw = ser.read(1024)
-            Count = Count + 1024
+        if waiting0 > MinSamples:
+            VBuffRaw = ser.read(MinSamples)
+            Count = Count + MinSamples
+        elif waiting0 > 324:
+            VBuffRaw = ser.read(324)
+            Count = Count + 324
+        elif waiting0 > 108:
+            VBuffRaw = ser.read(108)
+            Count = Count + 108
+        elif waiting0 > 36:
+            VBuffRaw = ser.read(36)
+            Count = Count + 36
         else:
             VBuffRaw = ser.read(waiting0)
             Count = Count + waiting0
@@ -450,7 +440,7 @@ def Get_Data_One():
         DBuff5 = []
         DBuff6 = []
         DBuff7 = []
-#
+#    
 def Get_Data_Two():
     global VBuffA, VBuffB, VBuffC, VBuffG
     global ShowC1_V, ShowC2_V, ShowC3_V, ShowC4_V
@@ -468,7 +458,7 @@ def Get_Data_Two():
     Wait = 0.02
     if SAMPLErate <= 4000:
         Wait = 0.08
-    # 
+    #
     ## send command to readout data
     if ShowC1_V.get() > 0 and ShowC2_V.get() > 0:
         ser.write(b'1') # capture on A and B and D4
@@ -490,7 +480,8 @@ def Get_Data_Two():
         DTime = DTime.replace("\\","")
         DTime = DTime.replace("'","")
         # print(DTime)
-        SampleTime = UnitConvert(DTime) * 1.0e-6 # convert to uSec
+        SampleTime = (UnitConvert(DTime)/MinSamples) * 1.0e-6 # convert to uSec
+        # SampleTime = UnitConvert(DTime) * 1.0e-6 # convert to uSec
         # set actual samplerate from returned time per sample
         MaxSampleRate = SAMPLErate = (1.0/SampleTime)*InterpRate
         # print("Sample Time: ", SampleTime)
@@ -515,14 +506,15 @@ def Get_Data_Two():
         # print("Number Bytes waiting = ", waiting0)
         # read in chunks divisible by 5
         # Read an integer as two bytes, big-endian
-        time.sleep(0.01)
+        time.sleep(0.040)
         waiting0 = ser.in_waiting
-        if waiting0 > 2560:
-            VBuffRaw = ser.read(2560)
-            Count = Count + 2560
-        elif waiting0 > 1280:
-            VBuffRaw = ser.read(1280)
-            Count = Count + 1280
+        Chunk = 3 * MinSamples
+        if waiting0 > Chunk:
+            VBuffRaw = ser.read(Chunk)
+            Count = Count + Chunk
+        elif waiting0 > MinSamples:
+            VBuffRaw = ser.read(MinSamples)
+            Count = Count + MinSamples
         elif waiting0 > 640:
             VBuffRaw = ser.read(640)
             Count = Count + 640
@@ -533,8 +525,8 @@ def Get_Data_Two():
             VBuffRaw = ser.read(160)
             Count = Count + 160
         else:
-            VBuffRaw = ser.read(80)
-            Count = Count + 80
+            VBuffRaw = ser.read(waiting0)
+            Count = Count + waiting0
         #print("Count = ", Count)
         #print("Length AB: Raw: ", len(ABuff), len(VBuffRaw))
         index = 0
@@ -706,7 +698,7 @@ def Get_Data_Three():
     Wait = 0.02
     if SAMPLErate <= 4000:
         Wait = 0.08
-    # 
+    #
     ## send command to pico to readout data
     if ShowC1_V.get() > 0 and ShowC2_V.get() > 0 and ShowC3_V.get() > 0:
         ser.write(b'4') # capture on A, B and C and Digtial
@@ -724,7 +716,8 @@ def Get_Data_Three():
         DTime = DTime.replace("\\","")
         DTime = DTime.replace("'","")
         # print(DTime)
-        SampleTime = UnitConvert(DTime) * 1.0e-6 # convert to uSec
+        SampleTime = (UnitConvert(DTime)/MinSamples) * 1.0e-6 # convert to uSec
+        # SampleTime = UnitConvert(DTime) * 1.0e-6 # convert to uSec
         MaxSampleRate = SAMPLErate = (1.0/SampleTime)*InterpRate
         # print("Sample Time: ", SampleTime)
         # print("Sample Rate = ", SAMPLErate )
@@ -747,23 +740,24 @@ def Get_Data_Three():
         # print("Number Bytes waiting = ", waiting0)
         # read in chunks divisible by 8
         # Read an integer as two bytes, big-endian
-        time.sleep(0.01)
+        time.sleep(0.040)
         waiting0 = ser.in_waiting
-        if waiting0 > 3584:
-            VBuffRaw = ser.read(3584)
-            Count = Count + 3584
-        elif waiting0 > 896:
-            VBuffRaw = ser.read(896)
-            Count = Count + 896
-        elif waiting0 > 448:
-            VBuffRaw = ser.read(448)
-            Count = Count + 448
-        elif waiting0 > 224:
-            VBuffRaw = ser.read(224)
-            Count = Count + 224
+        Chunk = 4 * MinSamples
+        if waiting0 > Chunk:
+            VBuffRaw = ser.read(Chunk)
+            Count = Count + Chunk
+        elif waiting0 > MinSamples:
+            VBuffRaw = ser.read(MinSamples)
+            Count = Count + MinSamples
+        elif waiting0 > 500:
+            VBuffRaw = ser.read(500)
+            Count = Count + 500
+        elif waiting0 > 250:
+            VBuffRaw = ser.read(250)
+            Count = Count + 250
         else:
-            VBuffRaw = ser.read(112)
-            Count = Count + 112
+            VBuffRaw = ser.read(waiting0)
+            Count = Count + waiting0
         #print("Count = ", Count)
         #print("Length AB: Raw: ", len(ABuff), len(VBuffRaw))
         index = 0
@@ -892,6 +886,22 @@ def Get_Data_Three():
         DBuff6 = []
         DBuff7 = []
 #
+def SetBufferLength(NewLength):
+    global ser, MinSamples, MaxSamples, InterpRate, HardwareBuffer
+
+    if NewLength > HardwareBuffer:
+        NewLength = HardwareBuffer
+    MinSamples = NewLength
+    MaxSamples = MinSamples * InterpRate
+    ## send Scope Buffer Length
+    SendStr = 'b' + str(MinSamples) + '\n'
+    # print(SendStr)
+    SendByt = SendStr.encode('utf-8')
+    ser.write(SendByt)
+    # ser.write(b'b1024\n')  
+    time.sleep(0.005)
+    #print("set Scope Samples: ", MinSamples)
+#
 # Hardware Help
 #
 ## try to connect to Arduino Pi Pico board
@@ -953,17 +963,20 @@ def ConnectDevice():
         print("set dt: 50 uSec")
         MaxSampleRate = SAMPLErate = 20000*InterpRate
         #
-        ser.write(b'T19\n') # send AWG sample time in uSec
+        ser.write(b'T10\n') # send AWG sample time in uSec
         time.sleep(0.005)
-        print("set at: 18 uSec")
-        AWGSampleRate = 1.0 / 0.000019
+        print("set at: 10 uSec")
+        AWGSampleRate = 1.0 / 0.00001
         ser.write(b'Gx\n') # default with both AWG off
-        ser.write(b'gx\n')
-        MinSamples = 1024 # 
-        #
-        ser.write(b'b1024\n') # send Scope Buffer Length 
+        # ser.write(b'gx\n')
+        ## send Scope Buffer Length
+        SendStr = 'b' + str(MinSamples) + '\n'
+        # print(SendStr)
+        SendByt = SendStr.encode('utf-8')
+        ser.write(SendByt)
+        # ser.write(b'b1024\n')  
         time.sleep(0.005)
-        print("set Scope Samples: 1024")
+        print("set Scope Samples: ", MinSamples)
         #
         ser.write(b'N1024\n') # send AWG A Buffer Length
         ser.write(b'M1024\n') # send AWG B Buffer Length 
@@ -1067,7 +1080,7 @@ def AWGBSendWave(AWG3):
     global AWGBFreqvalue, AWGBFreqEntry, AWGBPhaseEntry
     global AWGBdelayvalue, AWGBPhaseDelay, AWGBperiodvalue, AWGBPhasevalue
     # Expect array values normalized from -1 to 1
-    # 
+    #
     AWGBLastWave = numpy.array(AWG3)
     AWG3 = numpy.array(AWG3) * 0.5 # scale by 1/2
     # shift waveform array left or right based on phase / delay entry

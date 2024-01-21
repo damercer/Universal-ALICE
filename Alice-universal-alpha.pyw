@@ -1,7 +1,7 @@
 #!/usr/bin/python
 # -*- coding: cp1252 -*-
 #
-# Alice-universal-alpha.py(w) (1-9-2024)
+# Alice-universal-alpha.py(w) (1-19-2024)
 # Written using Python version 3.10, Windows OS 
 # Requires a hardware interface level functions add-on file
 # Created by D Mercer ()
@@ -67,7 +67,7 @@ import webbrowser
 # check which operating system
 import platform
 #
-RevDate = "9 Jan 2024"
+RevDate = "19 Jan 2024"
 SWRev = "1.0 "
 #
 # small bit map of triangle logo for window icon
@@ -235,6 +235,7 @@ AWGARecLength = 2048
 AWGBRecLength = 2048
 MaxSamples = 2048
 SMPfft = 4096
+HardwareBuffer = 0
 DISsamples = GRW
 First_Slow_sweep = 0
 Slow_Sweep_Limit = 200
@@ -326,7 +327,6 @@ HarmonicMarkers.set(3)
 AWGShowAdvanced = IntVar()
 AWGShowAdvanced.set(0)
 AWG_Amp_Mode = IntVar()
-AWGPeakToPeak = 5.0
 AWG_Amp_Mode.set(0) # 0 = Min/Max mode, 1 = Amp/Offset
 #
 Roll_Mode = IntVar() # select roll sweep (slow) mode
@@ -2483,19 +2483,29 @@ def AWGAMakeStair():
         AWGAFreqEntry.insert(0,AWGAFreqvalue)
     AWGAperiodvalue = AWGSampleRate/AWGAFreqvalue
     AWGADutyCyclevalue = float(eval(AWGADutyCycleEntry.get()))
-    # Get Low and High voltage levels
-    PeakValue = AWGPeakToPeak / 2.0
-    MinStep = (AWGAAmplvalue / PeakValue) - 1.0
-    MaxStep = (AWGAOffsetvalue / PeakValue) - 1.0
+    MaxV = 1.0 # AWGAOffsetvalue
+    MinV = -1.0 # AWGAAmplvalue
+    AWG0 = []
+    AWG3 = []
+    Treads = int(AWGADutyCyclevalue) # *100.0)
+    if Treads < 2:
+        Treads = 2
+    TreadWidth = int(AWGAperiodvalue / Treads)
+    TreadHight = (MaxV-MinV)/(Treads-1)
+    Cycles = numpy.floor(AWGAFreqvalue/MaxRepRate)
+    if Cycles < 1:
+        Cycles = 1
+    RecLength = int(Cycles * AWGAperiodvalue)
+    CycleLen = int(RecLength / Cycles)
+    # print("Treads = ", Treads, "TreadHight = ", TreadHight)
+    # make one cycle
+    for i in range(Treads):
+        for j in range(TreadWidth):
+            AWG0.append(MinV)
+        MinV = MinV + TreadHight
     #
-    Cycles = AWGADutyCyclevalue
-    CycleLen = int(AWGBuffLen / Cycles)
-    StepSize = (MaxStep-MinStep)/(Cycles-1)
-    AWG3 = numpy.full(CycleLen, MinStep)
-    Step = MinStep
-    while len(AWG3) < MaxSamples-CycleLen:
-        Step = Step + StepSize
-        AWG0 = numpy.full(CycleLen, Step)
+    # print( index , len(AWG3) )
+    while len(AWG3) < AWGBuffLen-CycleLen:
         AWG3 = numpy.concatenate((AWG3, AWG0))
     #
     AWGALength.config(text = "L = " + str(int(len(AWG3)))) # change displayed value
@@ -2926,21 +2936,31 @@ def AWGBMakeStair():
     AWGBperiodvalue = AWGSampleRate/AWGBFreqvalue
     AWGBDutyCyclevalue = float(eval(AWGBDutyCycleEntry.get()))
 
-    # Get Low and High voltage levels
-    PeakValue = AWGPeakToPeak / 2.0
-    MinStep = (AWGBAmplvalue / PeakValue) - 1.0
-    MaxStep = (AWGBOffsetvalue / PeakValue) - 1.0
+    MaxV = 1.0 # AWGBOffsetvalue
+    MinV = -1.0 # AWGBAmplvalue
+    AWG0 = []
+    AWG3 = []
+    Treads = int(AWGBDutyCyclevalue) # *100.0)
+    if Treads < 2:
+        Treads = 2
+    TreadWidth = int(AWGBperiodvalue / Treads)
+    TreadHight = (MaxV-MinV)/(Treads-1)
+    Cycles = numpy.floor(AWGBFreqvalue/MaxRepRate)
+    if Cycles < 1:
+        Cycles = 1
+    RecLength = int(Cycles * AWGBperiodvalue)
+    CycleLen = int(RecLength / Cycles)
+    # print("Treads = ", Treads, "TreadHight = ", TreadHight)
+    # make one cycle
+    for i in range(Treads):
+        for j in range(TreadWidth):
+            AWG0.append(MinV)
+        MinV = MinV + TreadHight
     #
-    Cycles = AWGBDutyCyclevalue
-    CycleLen = int(AWGBuffLen / Cycles)
-    StepSize = (MaxStep-MinStep)/(Cycles-1)
-    AWG3 = numpy.full(CycleLen, MinStep)
-    Step = MinStep
-    # print( Cycles , CycleLen, Step, StepSize )
-    while len(AWG3) < MaxSamples-CycleLen:
-        Step = Step + StepSize
-        AWG0 = numpy.full(CycleLen, Step)
+    # print( index , len(AWG3) )
+    while len(AWG3) < AWGBuffLen-CycleLen:
         AWG3 = numpy.concatenate((AWG3, AWG0))
+    #
     #
     AWGBLength.config(text = "L = " + str(int(len(AWG3)))) # change displayed value
     duty2lab.config(text="Steps")
@@ -5377,7 +5397,7 @@ def Cal_trace_scalars(SampleStart, SampleEnd):
         MinV4 = numpy.amin(VBuffD[SampleStart:SampleEnd])
         MaxV4 = numpy.amax(VBuffD[SampleStart:SampleEnd])
         SV4 = numpy.sqrt(numpy.mean(numpy.square(VBuffD[SampleStart:SampleEnd])))
-    if len(VBuffA) > 0 and len(VBuffB) > 0:
+    if (len(VBuffA) == len(VBuffB)) and len(VBuffA) > 0:
         SVA_B = numpy.sqrt(numpy.mean(numpy.square(VBuffA[SampleStart:SampleEnd]-VBuffB[SampleStart:SampleEnd])))
     if MathTrace.get() > 0 and len(MBuff) > 0:
         DCM = numpy.mean(MBuff[SampleStart:SampleEnd])
@@ -5535,8 +5555,8 @@ def Analog_Freq_In():
             BTime()
             MakeAWGwaves()
     # 
-    if BodeDisp.get() > 0: # check if doing Bode Plot
-        donothing()
+    #if BodeDisp.get() > 0: # check if doing Bode Plot
+        #Analog_Time_In() # donothing()
         # get samples
     OverRangeFlagA = OverRangeFlagB = 0 # Clear over range flags
     index = hldn # skip first hldn samples
@@ -17760,10 +17780,35 @@ def SettingsTextKey(event):
     onTextKey(event)
     SettingsUpdate()
 #
+def BuffSZscroll(event):
+    onTextScroll(event)
+    BuffSZUpdate()
+#
+def BuffSZTextKey(event):
+    onTextKey(event)
+    BuffSZUpdate()
+#
+def BuffSZUpdate():
+    global BuffSZ
+    
+    try:
+        NewLength = int(eval(BuffSZ.get()))
+        if NewLength > HardwareBuffer:
+            NewLength = HardwareBuffer
+            BuffSZ.delete(0,END)
+            BuffSZ.insert(0, int(NewLength))
+        if NewLength <= 1:
+            NewLength = HardwareBuffer
+            BuffSZ.delete(0,END)
+            BuffSZ.insert(0, int(NewLength))
+        SetBufferLength(NewLength)
+    except:
+        pass
+##
 def MakeSettingsMenu():
     global GridWidth, TRACEwidth, TRACEaverage, Vdiv, HarmonicMarkers, ZEROstuffing, RevDate
     global Settingswindow, SettingsStatus, ZSTuff, TAvg, VDivE, TwdthE, GwdthE, HarMon
-    global AWG_Amp_Mode, SWRev
+    global AWG_Amp_Mode, SWRev, HardwareBuffer, BuffSZ
     global TrgLPFEntry, Trigger_LPF_length
     global CHA_RC_HP, CHB_RC_HP, CHA_TC1, CHA_TC2, CHB_TC1, CHB_TC2
     global CHA_A1, CHA_A2, CHB_A1, CHB_A2
@@ -17780,10 +17825,27 @@ def MakeSettingsMenu():
         frame1 = Frame(Settingswindow, borderwidth=BorderSize, relief=FrameRefief)
         frame1.grid(row=0, column=0, sticky=W)
         #
+        Row = 0
+        if HardwareBuffer > 0:
+            bfszlab = Label(frame1, text="Capture Buffer Size", style= "A10B.TLabel")
+            bfszlab.grid(row=Row, column=0, sticky=W)
+            bfszMode = Frame( frame1 )
+            bfszMode.grid(row=Row, column=1, sticky=W)
+            BuffSZ = Entry(bfszMode, width=6, cursor='double_arrow')
+            BuffSZ.bind("<Return>", BuffSZTextKey)
+            BuffSZ.bind('<MouseWheel>', BuffSZscroll)
+            BuffSZ.bind("<Button-4>", BuffSZscroll)# with Linux OS
+            BuffSZ.bind("<Button-5>", BuffSZscroll)
+            BuffSZ.bind('<Key>', BuffSZTextKey)
+            BuffSZ.pack(side=RIGHT)
+            BuffSZ.delete(0,"end")
+            BuffSZ.insert(0,HardwareBuffer)
+            #
+            Row = Row + 1
         zstlab = Label(frame1, text="FFT Zero Stuffing", style= "A10B.TLabel")
-        zstlab.grid(row=0, column=0, sticky=W)
+        zstlab.grid(row=Row, column=0, sticky=W)
         zstMode = Frame( frame1 )
-        zstMode.grid(row=0, column=1, sticky=W)
+        zstMode.grid(row=Row, column=1, sticky=W)
         ZSTuff = Entry(zstMode, width=4, cursor='double_arrow')
         ZSTuff.bind("<Return>", SettingsTextKey)
         ZSTuff.bind('<MouseWheel>', Settingsscroll)
@@ -17794,10 +17856,11 @@ def MakeSettingsMenu():
         ZSTuff.delete(0,"end")
         ZSTuff.insert(0,ZEROstuffing.get())
         #
+        Row = Row + 1
         Avglab = Label(frame1, text="Number Traces to Average", style= "A10B.TLabel")
-        Avglab.grid(row=1, column=0, sticky=W)
+        Avglab.grid(row=Row, column=0, sticky=W)
         AvgMode = Frame( frame1 )
-        AvgMode.grid(row=1, column=1, sticky=W)
+        AvgMode.grid(row=Row, column=1, sticky=W)
         TAvg = Entry(AvgMode, width=4, cursor='double_arrow')
         TAvg.bind("<Return>", SettingsTextKey)
         TAvg.bind('<MouseWheel>', Settingsscroll)
@@ -17808,10 +17871,11 @@ def MakeSettingsMenu():
         TAvg.delete(0,"end")
         TAvg.insert(0,TRACEaverage.get())
         #
+        Row = Row + 1
         HarMlab = Label(frame1, text="Number of Harmonic Markers", style= "A10B.TLabel")
-        HarMlab.grid(row=2, column=0, sticky=W)
+        HarMlab.grid(row=Row, column=0, sticky=W)
         HarMMode = Frame( frame1 )
-        HarMMode.grid(row=2, column=1, sticky=W)
+        HarMMode.grid(row=Row, column=1, sticky=W)
         HarMon = Entry(HarMMode, width=4, cursor='double_arrow')
         HarMon.bind("<Return>", SettingsTextKey)
         HarMon.bind('<MouseWheel>', Settingsscroll)
@@ -17822,10 +17886,11 @@ def MakeSettingsMenu():
         HarMon.delete(0,"end")
         HarMon.insert(0,HarmonicMarkers.get())
         #
+        Row = Row + 1
         Vdivlab = Label(frame1, text="Number Vertical Div (SA, Bode)", style= "A10B.TLabel")
-        Vdivlab.grid(row=3, column=0, sticky=W)
+        Vdivlab.grid(row=Row, column=0, sticky=W)
         VdivMode = Frame( frame1 )
-        VdivMode.grid(row=3, column=1, sticky=W)
+        VdivMode.grid(row=Row, column=1, sticky=W)
         VDivE = Entry(VdivMode, width=4, cursor='double_arrow')
         VDivE.bind("<Return>", SettingsTextKey)
         VDivE.bind('<MouseWheel>', Settingsscroll)
@@ -17836,10 +17901,11 @@ def MakeSettingsMenu():
         VDivE.delete(0,"end")
         VDivE.insert(0,Vdiv.get())
         #
+        Row = Row + 1
         Twdthlab = Label(frame1, text="Trace Width in Pixels", style= "A10B.TLabel")
-        Twdthlab.grid(row=4, column=0, sticky=W)
+        Twdthlab.grid(row=Row, column=0, sticky=W)
         TwdthMode = Frame( frame1 )
-        TwdthMode.grid(row=4, column=1, sticky=W)
+        TwdthMode.grid(row=Row, column=1, sticky=W)
         TwdthE = Entry(TwdthMode, width=4, cursor='double_arrow')
         TwdthE.bind("<Return>", SettingsTextKey)
         TwdthE.bind('<MouseWheel>', Settingsscroll)
@@ -17850,10 +17916,11 @@ def MakeSettingsMenu():
         TwdthE.delete(0,"end")
         TwdthE.insert(0,TRACEwidth.get())
         #
+        Row = Row + 1
         Gwdthlab = Label(frame1, text="Grid Width in Pixels", style= "A10B.TLabel")
-        Gwdthlab.grid(row=5, column=0, sticky=W)
+        Gwdthlab.grid(row=Row, column=0, sticky=W)
         GwdthMode = Frame( frame1 )
-        GwdthMode.grid(row=5, column=1, sticky=W)
+        GwdthMode.grid(row=Row, column=1, sticky=W)
         GwdthE = Entry(GwdthMode, width=4, cursor='double_arrow')
         GwdthE.bind("<Return>", SettingsTextKey)
         GwdthE.bind('<MouseWheel>', Settingsscroll)
@@ -17864,15 +17931,17 @@ def MakeSettingsMenu():
         GwdthE.delete(0,"end")
         GwdthE.insert(0,GridWidth.get())
         #
+        Row = Row + 1
         AwgAmplrb1 = Radiobutton(frame1, text="AWG Min/Max", variable=AWG_Amp_Mode, value=0, command=UpdateAWGWin)
-        AwgAmplrb1.grid(row=7, column=0, sticky=W)
+        AwgAmplrb1.grid(row=Row, column=0, sticky=W)
         AwgAmplrb2 = Radiobutton(frame1, text="AWG Amp/Off ", variable=AWG_Amp_Mode, value=1, command=UpdateAWGWin)
-        AwgAmplrb2.grid(row=7, column=1, sticky=W)
+        AwgAmplrb2.grid(row=Row, column=1, sticky=W)
         #
+        Row = Row + 1
         cha_Rcomplab = Label(frame1, text="CHA Comp, TC1 (uSec), A1", style= "A10B.TLabel") # in micro seconds
-        cha_Rcomplab.grid(row=8, column=0, sticky=W)
+        cha_Rcomplab.grid(row=Row, column=0, sticky=W)
         cha_RcomplabMode = Frame( frame1 )
-        cha_RcomplabMode.grid(row=8, column=1, sticky=W)
+        cha_RcomplabMode.grid(row=Row, column=1, sticky=W)
         cha_TC1Entry = Entry(cha_RcomplabMode, width=5, cursor='double_arrow')
         cha_TC1Entry.bind("<Return>", SettingsTextKey)
         cha_TC1Entry.bind('<MouseWheel>', Settingsscroll)
@@ -17892,10 +17961,11 @@ def MakeSettingsMenu():
         cha_A1Entry.delete(0,"end")
         cha_A1Entry.insert(0,CHA_A1.get())
         #
+        Row = Row + 1
         cha_Ccomplab = Label(frame1, text="CHA Comp, TC2 (uSec), A2", style= "A10B.TLabel") # in micro seconds
-        cha_Ccomplab.grid(row=9, column=0, sticky=W)
+        cha_Ccomplab.grid(row=Row, column=0, sticky=W)
         cha_CcomplabMode = Frame( frame1 )
-        cha_CcomplabMode.grid(row=9, column=1, sticky=W)
+        cha_CcomplabMode.grid(row=Row, column=1, sticky=W)
         cha_TC2Entry = Entry(cha_CcomplabMode, width=5, cursor='double_arrow')
         cha_TC2Entry.bind("<Return>", SettingsTextKey)
         cha_TC2Entry.bind('<MouseWheel>', Settingsscroll)
@@ -17915,10 +17985,11 @@ def MakeSettingsMenu():
         cha_A2Entry.delete(0,"end")
         cha_A2Entry.insert(0,CHA_A2.get())
         #
+        Row = Row + 1
         chb_Rcomplab = Label(frame1, text="CHB Comp, TC1 (uSec), A1", style= "A10B.TLabel") # in micro seconds
-        chb_Rcomplab.grid(row=10, column=0, sticky=W)
+        chb_Rcomplab.grid(row=Row, column=0, sticky=W)
         chb_RcomplabMode = Frame( frame1 )
-        chb_RcomplabMode.grid(row=10, column=1, sticky=W)
+        chb_RcomplabMode.grid(row=Row, column=1, sticky=W)
         chb_TC1Entry = Entry(chb_RcomplabMode, width=5, cursor='double_arrow')
         chb_TC1Entry.bind("<Return>", SettingsTextKey)
         chb_TC1Entry.bind('<MouseWheel>', Settingsscroll)
@@ -17938,10 +18009,11 @@ def MakeSettingsMenu():
         chb_A1Entry.delete(0,"end")
         chb_A1Entry.insert(0,CHB_A1.get())
         #
+        Row = Row + 1
         chb_Ccomplab = Label(frame1, text="CHB Comp, TC2 (uSec), A2", style= "A10B.TLabel") # in micro seconds
-        chb_Ccomplab.grid(row=11, column=0, sticky=W)
+        chb_Ccomplab.grid(row=Row, column=0, sticky=W)
         chb_CcomplabMode = Frame( frame1 )
-        chb_CcomplabMode.grid(row=11, column=1, sticky=W)
+        chb_CcomplabMode.grid(row=Row, column=1, sticky=W)
         chb_TC2Entry = Entry(chb_CcomplabMode, width=5, cursor='double_arrow')
         chb_TC2Entry.bind("<Return>", SettingsTextKey)
         chb_TC2Entry.bind('<MouseWheel>', Settingsscroll)
