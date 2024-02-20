@@ -1,7 +1,7 @@
 #!/usr/bin/python
 # -*- coding: cp1252 -*-
 #
-# Alice-universal-alpha.py(w) (1-19-2024)
+# Alice-universal-alpha.py(w) (2-18-2024)
 # Written using Python version 3.10, Windows OS 
 # Requires a hardware interface level functions add-on file
 # Created by D Mercer ()
@@ -67,7 +67,7 @@ import webbrowser
 # check which operating system
 import platform
 #
-RevDate = "19 Jan 2024"
+RevDate = "18 Feb 2024"
 SWRev = "1.0 "
 #
 # small bit map of triangle logo for window icon
@@ -221,7 +221,7 @@ ButtonText = "#000000" # Button Text color
 # Widget relief can be RAISED, GROOVE, RIDGE, and FLAT
 ButRelief = RAISED
 LabRelief = FLAT
-FrameRefief = RIDGE
+FrameRelief = RIDGE
 LocalLanguage = "English"
 #
 Power2 = [ 1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384]
@@ -322,6 +322,10 @@ AwgString14 = "Other"
 AwgString15 = "Other"
 AwgString16 = "Other"
 #
+IACMString = "+2.5"
+IA_Mode = IntVar()
+IA_Mode.set(0)
+#
 HarmonicMarkers = IntVar()
 HarmonicMarkers.set(3)
 AWGShowAdvanced = IntVar()
@@ -393,8 +397,7 @@ CHB_A1.set(1)
 CHB_A2 = DoubleVar()
 CHB_A2.set(1)
 
-PhaseOffset = 19.5
-# PhaseOffset2x = 0
+# 
 #('winnative', 'clam', 'alt', 'default', 'classic', 'vista', 'xpnative')
 # 'aqua' built-in native Mac OS X only; Native Mac OS X
 windowingsystem = root.tk.call('tk', 'windowingsystem')
@@ -471,8 +474,8 @@ except:
 #
 ## Vertical Sensitivity list in v/div
 CHvpdiv = ("1.0mV", "2.0mV", "5.0mV", "10.0mV", "20.0mV", "50.0mV", "100mV", "200mV", "330mV",
-           "500mV", "1.0", "2.0","5.0", "10.0")
-XYvpdiv = (0.001, 0.002, 0.005, 0.01, 0.02, 0.05, 0.1, 0.2, 0.33, 0.5, 1.0, 2.0, 5.0, 10.0)
+           "500mV", "1.0", "2.0","5.0", "10.0", "20.0", "50.0")
+XYvpdiv = (0.001, 0.002, 0.005, 0.01, 0.02, 0.05, 0.1, 0.2, 0.33, 0.5, 1.0, 2.0, 5.0, 10.0, 20.0, 50.0)
 divfactor = {
     "m" : 1000, # milli 
     "u" : 1000000, # micro 
@@ -735,6 +738,7 @@ IAGridType = IntVar()
 ## In IA display series or parallel values
 DisplaySeries = IntVar() 
 IA_Ext_Conf = IntVar()
+IA_Ext_Conf.set(0)
 IASweepSaved = IntVar()
 OverRangeFlagA = 0
 OverRangeFlagB = 0
@@ -1209,16 +1213,16 @@ def BSaveConfig(filename):
         ConfgFile.write('BCALenEntry.insert(0, ' + BCALenEntry.get() + ')\n')
         ConfgFile.write('BCBLenEntry.delete(0,"end")\n')
         ConfgFile.write('BCBLenEntry.insert(0, ' + BCBLenEntry.get() + ')\n')
-        ConfgFile.write('AWGALenEntry.delete(0,"end")\n')
-        ConfgFile.write('AWGALenEntry.insert(0, ' + AWGALenEntry.get() + ')\n')
-        ConfgFile.write('AWGFiltABoxCar.set(' + str(AWGFiltABoxCar.get()) + ')\n')
-        ConfgFile.write('AWGBLenEntry.delete(0,"end")\n')
-        ConfgFile.write('AWGBLenEntry.insert(0, ' + AWGBLenEntry.get() + ')\n')
-        ConfgFile.write('AWGFiltBBoxCar.set(' + str(AWGFiltBBoxCar.get()) + ')\n')
+##        ConfgFile.write('AWGALenEntry.delete(0,"end")\n')
+##        ConfgFile.write('AWGALenEntry.insert(0, ' + AWGALenEntry.get() + ')\n')
+##        ConfgFile.write('AWGFiltABoxCar.set(' + str(AWGFiltABoxCar.get()) + ')\n')
+##        ConfgFile.write('AWGBLenEntry.delete(0,"end")\n')
+##        ConfgFile.write('AWGBLenEntry.insert(0, ' + AWGBLenEntry.get() + ')\n')
+##        ConfgFile.write('AWGFiltBBoxCar.set(' + str(AWGFiltBBoxCar.get()) + ')\n')
         ConfgFile.write('BuildBoxCarA()\n')
         ConfgFile.write('BuildBoxCarB()\n')
-        ConfgFile.write('BuildAWGBoxCarA()\n')
-        ConfgFile.write('BuildAWGBoxCarB()\n')
+##        ConfgFile.write('BuildAWGBoxCarA()\n')
+##        ConfgFile.write('BuildAWGBoxCarB()\n')
     else:
         ConfgFile.write('DestroyDigFiltScreen()\n')
     # Save Phase Anayzer stuff after Analog Mux in case they are both open
@@ -4061,6 +4065,18 @@ def NewEnterMathControls():
         mrb3.grid(row=2, column=0, sticky=W)
         mrb4 = Radiobutton(Mframe1, text='CBV-CAV', variable=MathTrace, value=3, command=UpdateTimeTrace)
         mrb4.grid(row=3, column=0, sticky=W)
+        mrb5 = Radiobutton(Mframe1, text='CAV+CCV', variable=MathTrace, value=4, command=UpdateTimeTrace)
+        mrb5.grid(row=4, column=0, sticky=W)
+        mrb6 = Radiobutton(Mframe1, text='CAV-CCV', variable=MathTrace, value=5, command=UpdateTimeTrace)
+        mrb6.grid(row=5, column=0, sticky=W)
+        mrb7 = Radiobutton(Mframe1, text='CCV-CAV', variable=MathTrace, value=6, command=UpdateTimeTrace)
+        mrb7.grid(row=6, column=0, sticky=W)
+        mrb8 = Radiobutton(Mframe1, text='CBV+CCV', variable=MathTrace, value=7, command=UpdateTimeTrace)
+        mrb8.grid(row=7, column=0, sticky=W)
+        mrb9 = Radiobutton(Mframe1, text='CBV-CCV', variable=MathTrace, value=8, command=UpdateTimeTrace)
+        mrb9.grid(row=8, column=0, sticky=W)
+        mrb10 = Radiobutton(Mframe1, text='CCV-CBV', variable=MathTrace, value=9, command=UpdateTimeTrace)
+        mrb10.grid(row=9, column=0, sticky=W)
         mrb11 = Radiobutton(Mframe1, text='CBV/CAV', variable=MathTrace, value=10, command=UpdateTimeTrace)
         mrb11.grid(row=10, column=0, sticky=W)
         mrb13 = Radiobutton(Mframe1, text='Formula', variable=MathTrace, value=12, command=UpdateTimeTrace)
@@ -4736,7 +4752,7 @@ def Analog_In():
     global CHAVGainEntry, CHAVOffsetEntry, CHBVGainEntry, CHBVOffsetEntry
     global CHCVGainEntry, CHCVOffsetEntry, CHDVGainEntry, CHDVOffsetEntry
     global DCV1, DCV2, MinV1, MaxV1, MinV2, MaxV2
-    global SV1, SV2, SVA_B, Closed
+    global SV1, SV2, SVA_B, Closed, SingleShot, ManualTrigger
     global FregPoint, FStep, TRACEaverage
     # Analog Mux channel measurement variables
     global TRACEresetTime, TRACEmodeTime, TgInput, SettingsStatus, TRIGGERsample
@@ -4795,8 +4811,18 @@ def Analog_In():
             Analog_Time_In()
             if TimeDisp.get() > 0: #
                 UpdateTimeAll() # Update Data, trace and time screen
+                if SingleShot.get() > 0 and Is_Triggered == 1: # Singel Shot trigger is on
+                    BStop() # 
+                    SingleShot.set(0)
+                if ManualTrigger.get() == 1: # Manual trigger is on
+                    BStop() # 
             if XYDisp.get() > 0 and XYScreenStatus.get() > 0:
                 UpdateXYAll() # Update Data, trace and XY screen
+                if SingleShot.get() > 0 and Is_Triggered == 1: # Singel Shot trigger is on
+                    BStop() # 
+                    SingleShot.set(0)
+                if ManualTrigger.get() == 1: # Manual trigger is on
+                    BStop() # 
             if MeasureStatus.get() > 0:
                 UpdateMeasureScreen()
             if (FreqDisp.get() > 0 and SpectrumScreenStatus.get() == 1) or (IADisp.get() > 0 and IAScreenStatus.get() == 1) or (BodeDisp.get() > 0 and BodeScreenStatus.get() == 1):
@@ -6004,22 +6030,32 @@ def MakeMathWaves(): # calculate Math waveform arrays
     global VBuffA, VBuffB, VBuffC, VBuffD, MBuff, MBuffX, MBuffY
     global DBuff0, DBuff1, DBuff2, DBuff3, DBuff4, DBuff5, DBuff6, DBuff7
     global MathTrace, Show_MathX, Show_MathY, RUNstatus
-    global MathString, MathXString, MathYString, YsignalMX, YsignalMY
+    global MathString, MathXString, MathYString, YsignalMX, YsignalMY, Xsignal
     
     if MathTrace.get() > 0:
         if MathTrace.get() == 1: # plot sum of CA-V and CB-V
             MBuff = VBuffA + VBuffB
-
         elif MathTrace.get() == 2: # plot difference of CA-V and CB-V 
             MBuff = VBuffA - VBuffB
-
         elif MathTrace.get() == 3: # plot difference of CB-V and CA-V 
             MBuff = VBuffB - VBuffA
-            
+        elif MathTrace.get() == 4: # plot Sum of CA-V and CC-V 
+            MBuff = VBuffA + VBuffC
+        elif MathTrace.get() == 5: # plot difference of CA-V and CC-V 
+            MBuff = VBuffA - VBuffC
+        elif MathTrace.get() == 6: # plot difference of CC-V and CA-V 
+            MBuff = VBuffC - VBuffA
+        elif MathTrace.get() == 7: # plot Sum of CB-V and CC-V 
+            MBuff = VBuffB + VBuffC
+        elif MathTrace.get() == 8: # plot difference of CB-V and CC-V 
+            MBuff = VBuffB - VBuffC
+        elif MathTrace.get() == 9: # plot difference of CC-V and CB-V 
+            MBuff = VBuffC - VBuffB
         elif MathTrace.get() == 10: # plot ratio of CB-V and CA-V
             try:
                 VBuffB / VBuffA #  voltage gain A to B
             except:
+                print("Math Error! 1")
                 VBuffB / 0.000001
                 RUNstatus.set(0)
 
@@ -6028,18 +6064,21 @@ def MakeMathWaves(): # calculate Math waveform arrays
             try:
                 MBuff = eval(MathString) 
             except:
+                print("Math Error! 2")
                 RUNstatus.set(0)
                 
-    if Show_MathX.get() > 0 or YsignalMX.get() == 1:
+    if Show_MathX.get() > 0 or ((Xsignal.get() == 6 or YsignalMX.get() == 1) and XYDisp.get() == 1):
         try:
             MBuffX = eval(MathXString)
         except:
+            print("Math Error! 3")
             RUNstatus.set(0)
 
-    if Show_MathY.get() > 0 or YsignalMY.get() == 1:
+    if Show_MathY.get() > 0 or (YsignalMY.get() == 1 and XYDisp.get() == 1):
         try:
             MBuffY = eval(MathYString)
         except:
+            print("Math Error! 4")
             RUNstatus.set(0)
 #
 ## Make the Digital scope time traces
@@ -7148,6 +7187,7 @@ def MakeXYTrace():
         Yconv4 = float(GRHXY/10.0) / CH4pdvRange
     YconvM = float(GRHXY/10.0) / CHMpdvRange
     XconvM = float(GRWXY/10.0) / CHMpdvRange
+    XconvMx = float(GRWXY/10.0) / CHMXpdvRange
     YconvMy = float(GRHXY/10.0) / CHMYpdvRange
     YconvMx = float(GRHXY/10.0) / CHMXpdvRange
     XconvMxy = XconvM
@@ -7176,9 +7216,9 @@ def MakeXYTrace():
         elif Xsignal.get() == 4: # CVD
             xlo = VBuffD[t] - CHCOffset
             xlo = int(c2 + Xconv4 * xlo)
-        elif Xsignal.get() == 5: # Math
-            xlo = MBuff[t] - CHMOffset
-            xlo = int(c2 + XconvM * xlo)
+        elif Xsignal.get() == 6: # X-Math
+            xlo = MBuffX[t] - CHMXOffset
+            xlo = int(c2 + XconvMx * xlo)
         if xlo < XminXY: # clip waveform if going off grid
             xlo  = XminXY
         if xlo > XmaxXY:
@@ -7222,7 +7262,10 @@ def MakeXYTrace():
             XYlineVD.append(int(yloVD))
         if YsignalM.get() == 1: # Math
             yloM = MBuff[t] - CHMOffset
-            yloM = int(c1 - YconvM * yloM)
+            try:
+                yloM = int(c1 - YconvM * yloM)
+            except:
+                yloM = int(c1)
             if yloM < YminXY: # clip waveform if going off grid
                 yloM = YminXY
             if yloM > YmaxXY:
@@ -7231,7 +7274,10 @@ def MakeXYTrace():
             XYlineM.append(int(yloM))
         if YsignalMX.get() == 1: # Math-X
             yloMX = MBuffX[t] - CHMXOffset
-            yloMX = int(c1 - YconvMx * yloMX)
+            try:
+                yloMX = int(c1 - YconvMx * yloMX)
+            except:
+                yloMX = int(c1)
             if yloMX < YminXY: # clip waveform if going off grid
                 yloMX  = YminXY
             if yloMX > YmaxXY:
@@ -7240,7 +7286,10 @@ def MakeXYTrace():
             XYlineMX.append(int(yloMX))
         if YsignalMY.get() == 1: # Math-Y
             yloMY = MBuffY[t] - CHMYOffset
-            yloMY = int(c1 - YconvMy * yloMY)
+            try:
+                yloMY = int(c1 - YconvMy * yloMY)
+            except:
+                yloMY = int(c1)
             if yloMY < YminXY: # clip waveform if going off grid
                 yloMY  = YminXY
             if yloMY > YmaxXY:
@@ -7924,7 +7973,7 @@ def MakeXYScreen():
     global GRHXY          # Screenheight
     global FontSize, LabelPlotText, PlotLabelText
     global XYca, MouseX, MouseY, MouseWidget
-    global ShowXCur, ShowYCur, XCursor, YCursor
+    global ShowXCur, ShowYCur, XCursor, YCursor, CHANNELS
     global SHOWsamples  # Number of samples in data record
     global ShowMath, MathUnits, MathXUnits, MathYUnits
     global Xsignal, MathAxis, MathXAxis, MathYAxis
@@ -7971,27 +8020,51 @@ def MakeXYScreen():
 #
     MXOffset = MYOffset = 0
     MXpdvRange = MYpdvRange = 0.5
-    try:
-        XY1pdvRange = float(eval(CHAsbxy.get()))
-    except:
-        CHAsbxy.delete(0,END)
-        CHAsbxy.insert(0, XY1pdvRange)
-    try:
-        XY2pdvRange = float(eval(CHBsbxy.get()))
-    except:
-        CHBsbxy.delete(0,END)
-        CHBsbxy.insert(0, XY2pdvRange)
-    # get the vertical offsets
-    try:
-        XYAOffset = float(eval(CHAVPosEntryxy.get()))
-    except:
-        CHAVPosEntryxy.delete(0,END)
-        CHAVPosEntryxy.insert(0, XYAOffset)
-    try:
-        XYBOffset = float(eval(CHBVPosEntryxy.get()))
-    except:
-        CHBVPosEntry.delete(0,END)
-        CHBVPosEntry.insert(0, XYBOffset)
+    if CHANNELS >= 1:
+        try:
+            XY1pdvRange = float(eval(CHAsbxy.get()))
+        except:
+            CHAsbxy.delete(0,END)
+            CHAsbxy.insert(0, XY1pdvRange)
+        # get the vertical offsets
+        try:
+            XYAOffset = float(eval(CHAVPosEntryxy.get()))
+        except:
+            CHAVPosEntryxy.delete(0,END)
+            CHAVPosEntryxy.insert(0, XYAOffset)
+    if CHANNELS >= 2:
+        try:
+            XY2pdvRange = float(eval(CHBsbxy.get()))
+        except:
+            CHBsbxy.delete(0,END)
+            CHBsbxy.insert(0, XY2pdvRange)
+        try:
+            XYBOffset = float(eval(CHBVPosEntryxy.get()))
+        except:
+            CHBVPosEntry.delete(0,END)
+            CHBVPosEntry.insert(0, XYBOffset)
+    if CHANNELS >= 3:
+        try:
+            XY3pdvRange = float(eval(CHCsbxy.get()))
+        except:
+            CHCsbxy.delete(0,END)
+            CHCsbxy.insert(0, XY3pdvRange)
+        try:
+            XYCOffset = float(eval(CHCVPosEntryxy.get()))
+        except:
+            CHCVPosEntry.delete(0,END)
+            CHCVPosEntry.insert(0, XYCOffset)
+    if CHANNELS >= 4:
+        try:
+            XY4pdvRange = float(eval(CHDsbxy.get()))
+        except:
+            CHDsbxy.delete(0,END)
+            CHDsbxy.insert(0, XY4pdvRange)
+        try:
+            XYDOffset = float(eval(CHDVPosEntryxy.get()))
+        except:
+            CHDVPosEntry.delete(0,END)
+            CHDVPosEntry.insert(0, XYDOffset)
 # Math
     CHMpdvRange = UnitConvert(CHMsb.get())
     try:
@@ -8066,6 +8139,10 @@ def MakeXYScreen():
                 Vaxis_value = (((5-i) * XY2pdvRange ) + XYBOffset)
                 Vaxis_label = str(round(Vaxis_value, 3))
                 XYca.create_text(x1-RightOffset, y, text=Vaxis_label, fill=COLORtrace2, anchor="e", font=("arial", FontSize ))
+            if YsignalVC.get() == 1:
+                Vaxis_value = (((5-i) * XY3pdvRange ) + XYCOffset)
+                Vaxis_label = str(round(Vaxis_value, 3))
+                XYca.create_text(x2+LeftOffset, y, text=Vaxis_label, fill=COLORtrace3, anchor="w", font=("arial", FontSize ))
             if YsignalM.get() == 1:
                 TempCOLOR = COLORtrace5
                 if MathTrace.get() == 2:
@@ -8105,16 +8182,16 @@ def MakeXYScreen():
                         XYca.create_line(Dline, fill=COLORgrid, width=GridWidth.get())
                         l = l + 1
                     k = k + 1
-                if Xsignal.get() == 1 or Xsignal.get() == 6: # 
+                if Xsignal.get() == 1: # 
                     Vaxis_value = (((i-5) * XY1pdvRange ) + XYAOffset)
                     Vaxis_label = str(round(Vaxis_value, 3))
                     XYca.create_text(x, y2+3, text=Vaxis_label, fill=COLORtrace1, anchor="n", font=("arial", FontSize ))
-                elif Xsignal.get() == 3 or Xsignal.get() == 7:
+                elif Xsignal.get() == 3:
                     Vaxis_value = (((i-5) * XY2pdvRange ) + XYBOffset)
                     Vaxis_label = str(round(Vaxis_value, 3))
                     XYca.create_text(x, y2+3, text=Vaxis_label, fill=COLORtrace2, anchor="n", font=("arial", FontSize ))
-                elif Xsignal.get() == 5:
-                    TempCOLOR = COLORtrace5
+                elif Xsignal.get() == 6:
+                    TempCOLOR = COLORtrace6
                     if MathTrace.get() == 2:
                         Vaxis_value = (((i-5) * XY1pdvRange ) + XYAOffset)
                     elif MathTrace.get() == 3:
@@ -8127,22 +8204,22 @@ def MakeXYScreen():
                             Vaxis_value = (((i-5) * XY2pdvRange ) + XYBOffset)
                             TempCOLOR = COLORtrace2
                         else:
-                            Vaxis_value = (((i-5) * XY1pdvRange ) + XYAOffset)
-                            TempCOLOR = COLORtrace5
+                            Vaxis_value = (((i-5) * MXpdvRange ) + MXOffset) # XY1pdvRange XYAOffset)
+                            TempCOLOR = COLORtrace6
                     Vaxis_label = str(round(Vaxis_value, 3))
                     XYca.create_text(x, y2+3, text=Vaxis_label, fill=TempCOLOR, anchor="n", font=("arial", FontSize ))
             else:
                 XYca.create_line(Dline, fill=COLORgrid, width=GridWidth.get())
-                if Xsignal.get() == 1 or Xsignal.get() == 6:
+                if Xsignal.get() == 1:
                     Vaxis_value = (((i-5) * XY1pdvRange ) + XYAOffset)
                     Vaxis_label = str(round(Vaxis_value, 3))
                     XYca.create_text(x, y2+3, text=Vaxis_label, fill=COLORtrace1, anchor="n", font=("arial", FontSize ))
-                elif Xsignal.get() == 3 or Xsignal.get() == 7:
+                elif Xsignal.get() == 3:
                     Vaxis_value = (((i-5) * XY2pdvRange ) + XYBOffset)
                     Vaxis_label = str(round(Vaxis_value, 3))
                     XYca.create_text(x, y2+3, text=Vaxis_label, fill=COLORtrace2, anchor="n", font=("arial", FontSize ))
-                elif Xsignal.get() == 5:
-                    TempCOLOR = COLORtrace5
+                elif Xsignal.get() == 6:
+                    TempCOLOR = COLORtrace6
                     if MathTrace.get() == 2:
                         Vaxis_value = (((i-5) * XY1pdvRange ) + XYAOffset)
                     elif MathTrace.get() == 3:
@@ -8155,7 +8232,7 @@ def MakeXYScreen():
                             Vaxis_value = (((i-5) * XY2pdvRange ) + XYBOffset)
                             TempCOLOR = COLORtrace2
                         else:
-                            Vaxis_value = (((i-5) * CH1pdvRange ) + CHAOffset)
+                            Vaxis_value = (((i-5) * MXpdvRange ) + MXOffset) # CH1pdvRange ) + CHAOffset)
                     Vaxis_label = str(round(Vaxis_value, 3))
                     XYca.create_text(x, y2+3, text=Vaxis_label, fill=TempCOLOR, anchor="n", font=("arial", FontSize ))
             i = i + 1
@@ -8193,7 +8270,7 @@ def MakeXYScreen():
     if len(XYRlineMY) > 4 and XYRefMY.get() == 1:
         XYca.create_line(XYRlineMY, fill=COLORtraceR7, width=TRACEwidth.get())
 # Draw Histogram Traces
-    if  Xsignal.get() == 6:
+    if  Xsignal.get() == 8:
         MakeHistogram()
         b = 0
         Yconv1 = float(GRHXY/10.0) / XY2pdvRange
@@ -8216,7 +8293,7 @@ def MakeXYScreen():
             Dline = [xlo,y1,xlo,ylo]
             XYca.create_line(Dline, fill=COLORtrace1, width=TRACEwidth.get())
             b = b + 1
-    if  Xsignal.get() == 7:
+    if  Xsignal.get() == 9:
         MakeHistogram()
         b = 0
         Yconv1 = float(GRHXY/10.0) / XY1pdvRange
@@ -10897,7 +10974,7 @@ def MakeBodeTrace():        # Update the grid and trace
     global ShowCA_VdB, ShowCA_P, ShowCB_VdB, ShowCB_P, ShowMathBP
     global PeakxA, PeakyA, PeakxB, PeakyB, PeakdbA, PeakdbB
     global PeakxM, PeakyM, PeakMdb, PeakfreqM
-    global PeakfreqA, PeakfreqB, PhaseOffset, PhaseOffset2x
+    global PeakfreqA, PeakfreqB
     global DBdivindexBP   # Index value
     global DBdivlist    # dB per division list
     global DBlevelBP      # Reference level
@@ -11044,7 +11121,6 @@ def MakeBodeTrace():        # Update the grid and trace
                         RelPhase = RelPhase - 360
                     elif RelPhase < -180:
                         RelPhase = RelPhase + 360
-                    RelPhase = RelPhase - PhaseOffset
                     ya = Yp - Yphconv * RelPhase
                     TAPline.append(int(ya + 0.5))
                 if ShowCB_P.get() == 1:
@@ -11055,7 +11131,6 @@ def MakeBodeTrace():        # Update the grid and trace
                         RelPhase = RelPhase - 360
                     elif RelPhase < -180:
                         RelPhase = RelPhase + 360
-                    RelPhase = RelPhase - PhaseOffset
                     ya = Yp - Yphconv * RelPhase
                     TBPline.append(int(ya + 0.5))
                 if ShowMathBP.get() > 0:
@@ -11486,7 +11561,7 @@ def DoImpedance():
     global ImpedanceMagnitude # in ohms 
     global ImpedanceAngle # in degrees 
     global ImpedanceRseries, ImpedanceXseries # in ohms 
-    global IA_Ext_Conf
+    global IA_Ext_Conf, IA_Mode
     
     DEG2RAD = (math.pi / 180.0)
     SMALL = 1E-20
@@ -11498,20 +11573,30 @@ def DoImpedance():
     VA = math.pow(10,(PeakdbA/20))
     VB = math.pow(10,(PeakdbB/20))
     VVangleCosine = math.cos(math.radians(PeakRelPhase))
-    if IA_Ext_Conf.get() == 1:
-        VAB = math.pow(10,(PeakdbAB/20))
-        VZ = VAB # VZ=VA-VB
-        # VI = VB
+    if IA_Mode.get() == 0:
+        if IA_Ext_Conf.get() == 1:
+            VAB = math.pow(10,(PeakdbAB/20))
+            VZ = VAB # VZ=VA-VB
+            # VI = VB
+        else:
+            VZ = VB # VZ=VB
+        VI = math.sqrt(VA**2 + VZ**2 - 2*VA*VZ*VVangleCosine)
+        costheta = (VA**2 + VI**2 - VZ**2)/(2 * VA * VI) 
+        Za = ResValue * VA / VI
+        ImpedanceRseries = Za * costheta - ResValue
+        ImpedanceMagnitude = ResValue * VZ / VI
     else:
-        VZ = VB # VZ=VB
-    VI = math.sqrt(VA**2 + VZ**2 - 2*VA*VZ*VVangleCosine)
-    costheta = (VA**2 + VI**2 - VZ**2)/(2 * VA * VI) 
-    Za = ResValue * VA / VI
-    ImpedanceRseries = Za * costheta - ResValue
-    ImpedanceMagnitude = ResValue * VZ / VI
+        # VI=VB
+        VZ = math.sqrt(VA**2 + VB**2 - 2*VA*VB*VVangleCosine)
+        costheta = (VA**2 + VB**2 - VZ**2)/(2 * VA * VB) 
+        Za = ResValue * VA / VB
+        ImpedanceRseries = Za * costheta - ResValue
+        ImpedanceMagnitude = ResValue * VZ / VB
+        # invert relative phase
+        PeakRelPhase = 0.0 - PeakRelPhase
+        
     # don't try to take square root of a negative number)
     ImpedanceXseries = math.sqrt(abs(ImpedanceMagnitude**2 - ImpedanceRseries**2))
-    
     if(PeakRelPhase < 0.0):
         ImpedanceXseries = -ImpedanceXseries
         if IA_Ext_Conf.get() == 1:
@@ -11837,8 +11922,8 @@ def MakeIAScreen():       # Update the screen with traces and text
         IAca.create_rectangle(x-6, y-6, x+6, y+6, fill="#ff0000")
         IAca.create_text (x+12, y, text="CH2 Over Range", anchor=W, fill="#ff0000", font=("arial", FontSize+4 ))
     # General information on top of the grid
-
-    txt = " Sample rate: " + str(SAMPLErate)
+    SR_label = ' {0:.1f} '.format(SAMPLErate)
+    txt = " Sample rate: " + SR_label
     txt = txt + " FFT samples: " + str(SAnum_bins)
 
     txt = txt + " " + FFTwindowname
@@ -12059,7 +12144,7 @@ def MakeIAWindow():
     global FFTwindow, CutDC, ColorMode, ResScale, GainCorEntry, PhaseCorEntry, DisplaySeries
     global GRWIA, X0LIA, GRHIA, Y0TIA, IA_Ext_Conf, DeBugMode, SWRev, CapZeroEntry
     global NetworkScreenStatus, IASweepSaved, IAGridType
-    global FrameRefief, BorderSize
+    global FrameRelief, BorderSize, IAconschem
 
     if IAScreenStatus.get() == 0:
         IAScreenStatus.set(1)
@@ -12072,10 +12157,10 @@ def MakeIAWindow():
         iawindow = Toplevel()
         iawindow.title("Impedance Analyzer " + SWRev + RevDate)
         iawindow.protocol("WM_DELETE_WINDOW", DestroyIAScreen)
-        frame2iar = Frame(iawindow, borderwidth=BorderSize, relief=FrameRefief)
+        frame2iar = Frame(iawindow, borderwidth=BorderSize, relief=FrameRelief)
         frame2iar.pack(side=RIGHT, expand=NO, fill=BOTH)
 
-        frame2ia = Frame(iawindow, borderwidth=BorderSize, relief=FrameRefief)
+        frame2ia = Frame(iawindow, borderwidth=BorderSize, relief=FrameRelief)
         frame2ia.pack(side=TOP, expand=YES, fill=BOTH)
 
         IAca = Canvas(frame2ia, width=CANVASwidthIA, height=CANVASheightIA, background=COLORcanvas, cursor='cross')
@@ -12229,9 +12314,72 @@ def MakeIAWindow():
         #
         dismiss1button = Button(frame2iar, text="Dismiss", style="W8.TButton", command=DestroyIAScreen)
         dismiss1button.pack(side=TOP)
+        # Draw Connection schematic
+        IAconschem = Canvas(frame2iar, width=130, height=75, background=COLORwhite) # , cursor='cross')
+        IAconschem.pack(side=TOP)
+        IAconschem.bind('<1>', onIAShemeClickLeft) # left mouse button toggles mode flag
+        DrawIASchem()
+        
         # add Alice logo 
         ADI1 = Label(frame2iar, image=logo, anchor= "sw", compound="top") #  height=49, width=116,
         ADI1.pack(side=TOP)
+#
+def onIAShemeClickLeft(event):
+    global ID_Mode, IAconschem
+
+    if event.widget == IAconschem: # left mouse button toggles mode flag
+        if IA_Mode.get() == 0:
+            IA_Mode.set(1)
+            DrawIASchem()
+        else:
+            IA_Mode.set(0)
+            DrawIASchem()
+#
+def DrawIASchem():
+    global ID_Mode, IAconschem, IACMString
+    
+    IAconschem.delete(ALL) # remove all drawing items
+    ResW = 6
+    X = 32
+    Y = 14
+    if IA_Mode.get() == 0:
+        IAconschem.create_line(X, Y, X+17, Y, fill=COLORblack, width=3)
+        IAconschem.create_line(X+17, Y, X+20, Y+ResW, fill=COLORblack, width=3)
+        IAconschem.create_line(X+20, Y+ResW, X+26, Y-ResW, fill=COLORblack, width=3)
+        IAconschem.create_line(X+26, Y-ResW, X+31, Y+ResW, fill=COLORblack, width=3)
+        IAconschem.create_line(X+31, Y+ResW, X+37, Y-ResW, fill=COLORblack, width=3)
+        IAconschem.create_line(X+37, Y-ResW, X+40, Y, fill=COLORblack, width=3)
+        IAconschem.create_line(X+40, Y, X+65, Y, fill=COLORblack, width=3)
+        IAconschem.create_line(X+55, Y, X+55, Y+20, fill=COLORblack, width=3)
+        IAconschem.create_rectangle(X+50, Y+20, X+60, Y+40, fill=COLORwhite, width=3)
+        IAconschem.create_line(X+55, Y+40, X+55, Y+50, fill=COLORblack, width=3)
+        IAconschem.create_line(X, Y+50, X+57, Y+50, fill=COLORblack, width=3)
+        IAconschem.create_text(X+6, Y-6, text="AWG A", fill=COLORblack, anchor="e", font=("arial", FontSize ))
+        IAconschem.create_text(X-2, Y+9, text="CH A", fill=COLORblack, anchor="e", font=("arial", FontSize+1 ))
+        IAconschem.create_text(X-1, Y+50, text=IACMString, fill=COLORblack, anchor="e", font=("arial", FontSize+1 ))
+        IAconschem.create_text(X+67, Y, text="CH B", fill=COLORblack, anchor="w", font=("arial", FontSize+1 ))
+        IAconschem.create_text(X+19, Y+12, text="Rext", fill=COLORblack, anchor="w", font=("arial", FontSize+1 ))
+        IAconschem.create_text(X+45, Y+30, text="Zut", fill=COLORblack, anchor="e", font=("arial", FontSize+1 ))
+    else:
+        IAconschem.create_line(X, Y, X+17, Y, fill=COLORblack, width=3)
+        IAconschem.create_rectangle(X+17, Y+ResW, X+40, Y-ResW, fill=COLORwhite, width=3)
+        IAconschem.create_line(X+40, Y, X+65, Y, fill=COLORblack, width=3)
+        #
+        IAconschem.create_line(X+55, Y, X+55, Y+20, fill=COLORblack, width=3)
+        IAconschem.create_line(X+55, Y+19, X+49, Y+23, fill=COLORblack, width=3)
+        IAconschem.create_line(X+49, Y+23, X+61, Y+26, fill=COLORblack, width=3)
+        IAconschem.create_line(X+61, Y+26, X+49, Y+32, fill=COLORblack, width=3)
+        IAconschem.create_line(X+49, Y+32, X+61, Y+38, fill=COLORblack, width=3)
+        IAconschem.create_line(X+61, Y+38, X+55, Y+41, fill=COLORblack, width=3)
+        #
+        IAconschem.create_line(X+55, Y+40, X+55, Y+50, fill=COLORblack, width=3)
+        IAconschem.create_line(X, Y+50, X+57, Y+50, fill=COLORblack, width=3)
+        IAconschem.create_text(X+6, Y-6, text="AWG A", fill=COLORblack, anchor="e", font=("arial", FontSize ))
+        IAconschem.create_text(X-2, Y+9, text="CH A", fill=COLORblack, anchor="e", font=("arial", FontSize+1 ))
+        IAconschem.create_text(X-1, Y+50, text=IACMString, fill=COLORblack, anchor="e", font=("arial", FontSize+1 ))
+        IAconschem.create_text(X+67, Y, text="CH B", fill=COLORblack, anchor="w", font=("arial", FontSize+1 ))
+        IAconschem.create_text(X+19, Y+14, text="Zut", fill=COLORblack, anchor="w", font=("arial", FontSize+1 ))
+        IAconschem.create_text(X+45, Y+30, text="Rext", fill=COLORblack, anchor="e", font=("arial", FontSize+1 ))
 #
 def DestroyIAScreen():
     global iawindow, IAScreenStatus, IAca, IADisp
@@ -12265,7 +12413,7 @@ def MakeNyquistPlot():
     global COLORcanvas, CANVASwidthNqP, CANVASheightNqP, RevDate
     global GRWNqP, X0LNqP, GRHNqP, Y0TNqP, DeBugMode, SWRev
     global NetworkScreenStatus, NqPSweepSaved
-    global FrameRefief, BorderSize
+    global FrameRelief, BorderSize
 
     if NqPScreenStatus.get() == 0:
         NqPScreenStatus.set(1)
@@ -12276,7 +12424,7 @@ def MakeNyquistPlot():
         nqpwindow.title("Nyquist Plot " + SWRev + RevDate)
         nqpwindow.protocol("WM_DELETE_WINDOW", DestroyNqPScreen)
 
-        frame2nqp = Frame(nqpwindow, borderwidth=BorderSize, relief=FrameRefief)
+        frame2nqp = Frame(nqpwindow, borderwidth=BorderSize, relief=FrameRelief)
         frame2nqp.pack(side=TOP, expand=YES, fill=BOTH)
 
         NqPca = Canvas(frame2nqp, width=CANVASwidthNqP, height=CANVASheightNqP, background=COLORcanvas, cursor='cross')
@@ -12306,7 +12454,7 @@ def MakeNqPScreen():
     global NqPca, GRWNqP, XOLNqP, GRHNqP, Y0TNqP, CANVASwidthNqP, CANVASheightNqP, COLORtrace1
     global COLORgrid, GridWidth, SmoothCurvesBP, SmoothBool, DBlevelBP, DBdivlist, DBdivindexBP
     global FSweepAdB, FSweepBdB, FSweepBPh, FSweepAPh, ShowMathBP, NqPline, TRACEwidth
-    global Vdiv, FStep, PhaseOffset
+    global Vdiv, FStep
     global FontSize
     
     # Delete all items on the canvas
@@ -12367,7 +12515,7 @@ def MakeNqPScreen():
                 RelPhase = RelPhase - 360
             elif RelPhase < -180:
                 RelPhase = RelPhase + 360
-            RelPhase = RelPhase - PhaseOffset # - 9.0
+            RelPhase = RelPhase # - 9.0
             y1 = ycenter - MagRadius*math.sin(math.radians(RelPhase))
             if y1 > 1500:
                 y1 = xright
@@ -12389,7 +12537,7 @@ def MakeNicPlot():
     global COLORcanvas, CANVASwidthNic, CANVASheightNic, RevDate
     global GRWNiC, X0LNiC, GRHNiC, Y0TNiC, DeBugMode
     global NetworkScreenStatus, NiCSweepSaved
-    global FrameRefief, BorderSize
+    global FrameRelief, BorderSize
 
     if NiCScreenStatus.get() == 0:
         NiCScreenStatus.set(1)
@@ -12400,7 +12548,7 @@ def MakeNicPlot():
         nicwindow.title("Nichols Plot " + SWRev + RevDate)
         nicwindow.protocol("WM_DELETE_WINDOW", DestroyNiCScreen)
 
-        frame2nic = Frame(nicwindow, borderwidth=BorderSize, relief=FrameRefief)
+        frame2nic = Frame(nicwindow, borderwidth=BorderSize, relief=FrameRelief)
         frame2nic.pack(side=TOP, expand=YES, fill=BOTH)
 
         NiCca = Canvas(frame2nic, width=CANVASwidthNic, height=CANVASheightNic, background=COLORcanvas, cursor='cross')
@@ -12431,7 +12579,7 @@ def MakeNiCScreen():
     global COLORzeroline, GridWidth, COLORgrid, FSweepAdB, FSweepBdB, ShowMathBP
     global FSweepBPh, FSweepAPh, SmoothCurvesBP, SmoothBool, DBlevelBP, DBdivlist, DBdivindexBP
     global Vdiv, FStep, PhCenBodeEntry, RelPhaseCenter
-    global FontSize, PhaseOffset
+    global FontSize
     
     Ymin = Y0TNiC                  # Minimum position of XY grid (top)
     Ymax = Y0TNiC + GRHNiC            # Maximum position of XY grid (bottom)
@@ -12537,8 +12685,6 @@ def MakeNiCScreen():
                 RelPhase = RelPhase - 360
             elif RelPhase < -180:
                 RelPhase = RelPhase + 360
-
-            RelPhase = RelPhase - PhaseOffset
             xa = Xp + Xphconv * RelPhase
             if (xa < Xmin):
                 xa = Ymin
@@ -12643,7 +12789,7 @@ def MakePhAWindow():
     global GRWPhA, X0LPhA, GRHPhA, Y0TPhA, DeBugMode, SWRev, PhAPlotMode
     global VScale, IScale, RefphEntry, AppendPhAData
     global vat_btn, vbt_btn, vct_btn, vabt_btn, vdt_btn
-    global FrameRefief, BorderSize, CHANNELS
+    global FrameRelief, BorderSize, CHANNELS
 
     if PhAScreenStatus.get() == 0:
         PhAScreenStatus.set(1)
@@ -12655,10 +12801,10 @@ def MakePhAWindow():
         phawindow = Toplevel()
         phawindow.title("Phase Analyzer " + SWRev + RevDate)
         phawindow.protocol("WM_DELETE_WINDOW", DestroyPhAScreen)
-        frame2phar = Frame(phawindow, borderwidth=BorderSize, relief=FrameRefief)
+        frame2phar = Frame(phawindow, borderwidth=BorderSize, relief=FrameRelief)
         frame2phar.pack(side=RIGHT, expand=NO, fill=BOTH)
 
-        frame2pha = Frame(phawindow, borderwidth=BorderSize, relief=FrameRefief)
+        frame2pha = Frame(phawindow, borderwidth=BorderSize, relief=FrameRelief)
         frame2pha.pack(side=TOP, expand=YES, fill=BOTH)
 
         PhAca = Canvas(frame2pha, width=CANVASwidthPhA, height=CANVASheightPhA, background=COLORcanvas, cursor='cross')
@@ -13916,7 +14062,9 @@ def MakeFreqScreen():       # Update the screen with traces and text
     idTXT = Freqca.create_text (x, y, text=txt, anchor=W, fill=COLORtext, font=("arial", FontSize ))
 
     # Start and stop frequency and dB/div and trace mode
-    txt = str(StartFrequency) + " to " + str(StopFrequency) + " Hz"
+    SR_label = ' {0:.1f} '.format(StartFrequency)
+    SF_label = ' {0:.1f} '.format(StopFrequency)
+    txt = SR_label + " to " + SF_label + " Hz"
     txt = txt + " " + str(DBdivlist[DBdivindex.get()]) + " dB/div"
     txt = txt + " Level: " + str(DBlevel.get()) + " dB "
     if FFTwindow.get() < 7:
@@ -15180,7 +15328,7 @@ def MakeBodeWindow():
     global GRWBP, GRHBP, X0LBP, FStepSync, FSweepSync, BDSweepFile, MinigenScreenStatus
     global Show_Rseries, Show_Xseries, Show_Magnitude, Show_Angle, ImpedanceCenter, ImCenBodeEntry
     global Show_RseriesRef, Show_XseriesRef, Show_MagnitudeRef, Show_AngleRef
-    global FrameRefief, BorderSize, LocalLanguage
+    global FrameRelief, BorderSize, LocalLanguage
     global sbode_tip, rbode_tip, bd3_tip, bd4_tip, bd5_tip, bd6_tip, bd7_tip, bd8_tip, bodismiss1button_tip
     global bstopfreqlab, bstartfreqlab, ImCenlab, BPhCenlab
     
@@ -15195,10 +15343,10 @@ def MakeBodeWindow():
         bodewindow = Toplevel()
         bodewindow.title("Bode Plotter " + SWRev + RevDate)
         bodewindow.protocol("WM_DELETE_WINDOW", DestroyBodeScreen)
-        frame2bp = Frame(bodewindow, borderwidth=BorderSize, relief=FrameRefief)
+        frame2bp = Frame(bodewindow, borderwidth=BorderSize, relief=FrameRelief)
         frame2bp.pack(side=RIGHT, expand=NO, fill=BOTH)
 
-        frame2b = Frame(bodewindow, borderwidth=BorderSize, relief=FrameRefief)
+        frame2b = Frame(bodewindow, borderwidth=BorderSize, relief=FrameRelief)
         frame2b.pack(side=TOP, expand=YES, fill=BOTH)
 
         Bodeca = Canvas(frame2b, width=CANVASwidthBP, height=CANVASheightBP, background=COLORcanvas, cursor='cross')
@@ -15489,7 +15637,7 @@ def MakeSpectrumWindow():
     global ShowRMath, FSweepMode, FSweepCont, Freqca, SpectrumScreenStatus, RevDate, AWGShowAdvanced
     global HScale, StopFreqEntry, StartFreqEntry, ShowFCur, ShowdBCur, FCursor, dBCursor
     global CANVASwidthF, GRWF, X0LF, CANVASheightF, GRHF, FontSize, PhCenFreqEntry, RelPhaseCenter
-    global FrameRefief, BorderSize, LocalLanguage, SAVScale, SAVPSD, SAvertmaxEntry, SAvertminEntry
+    global FrameRelief, BorderSize, LocalLanguage, SAVScale, SAVPSD, SAvertmaxEntry, SAvertminEntry
     global sb_tip, rb_tip, bless_tip, bmore_tip, b3_tip, b4_tip, b5_tip, b6_tip, b7_tip, b8_tip, sadismiss1button_tip
     global SAMagdiv, SAVScale, SAvertmaxEntry, SAvertminEntry, SAVPSD
     
@@ -15502,10 +15650,10 @@ def MakeSpectrumWindow():
         freqwindow = Toplevel()
         freqwindow.title("Spectrum Analyzer " + SWRev + RevDate)
         freqwindow.protocol("WM_DELETE_WINDOW", DestroySpectrumScreen)
-        frame2fr = Frame(freqwindow, borderwidth=BorderSize, relief=FrameRefief)
+        frame2fr = Frame(freqwindow, borderwidth=BorderSize, relief=FrameRelief)
         frame2fr.pack(side=RIGHT, expand=NO, fill=BOTH)
 
-        frame2f = Frame(freqwindow, borderwidth=BorderSize, relief=FrameRefief)
+        frame2f = Frame(freqwindow, borderwidth=BorderSize, relief=FrameRelief)
         frame2f.pack(side=TOP, expand=YES, fill=BOTH)
 
         Freqca = Canvas(frame2f, width=CANVASwidthF, height=CANVASheightF, background=COLORcanvas, cursor='cross')
@@ -15815,7 +15963,7 @@ def MakeXYWindow():
     global CHMXsb, CHMYsb, CHMXPosEntry, CHMYPosEntry
     global XYvpdiv, ScreenXYrefresh, CHANNELS
     global YminXY, Y0TXY, YmaxXY, GRHXY, XminXY, X0LXY, XmaxXY, X0LXY, GRWXY, CANVASwidthXY, CANVASheightXY
-    global FrameRefief, BorderSize, LocalLanguage, User3Entry, User4Entry
+    global FrameRelief, BorderSize, LocalLanguage, User3Entry, User4Entry
     global math_tip, bsxy_tip, brxy_tip, snapbutton_tip, savebutton_tip, dismissxybutton_tip, CHAxylab_tip
     global CHBxylab_tip, CHAxyofflab_tip, CHBxyofflab_tip, CHAIxyofflab_tip, CHBIxyofflab_tip
     
@@ -15832,19 +15980,19 @@ def MakeXYWindow():
         xywindow = Toplevel()
         xywindow.title("X-Y Plot " + SWRev + RevDate)
         xywindow.protocol("WM_DELETE_WINDOW", DestroyXYScreen)
-        frame2xyr = Frame(xywindow, borderwidth=BorderSize, relief=FrameRefief)
+        frame2xyr = Frame(xywindow, borderwidth=BorderSize, relief=FrameRelief)
         frame2xyr.pack(side=RIGHT, expand=NO, fill=BOTH)
 
-        frame2xy = Frame(xywindow, borderwidth=BorderSize, relief=FrameRefief)
+        frame2xy = Frame(xywindow, borderwidth=BorderSize, relief=FrameRelief)
         frame2xy.pack(side=TOP, expand=YES, fill=BOTH)
 
-        frame3xy = Frame(xywindow, borderwidth=BorderSize, relief=FrameRefief)
+        frame3xy = Frame(xywindow, borderwidth=BorderSize, relief=FrameRelief)
         frame3xy.pack(side=TOP, expand=NO, fill=BOTH)
 
-        frame4xy = Frame(xywindow, borderwidth=BorderSize, relief=FrameRefief)
+        frame4xy = Frame(xywindow, borderwidth=BorderSize, relief=FrameRelief)
         frame4xy.pack(side=TOP, expand=NO, fill=BOTH)
 
-        frame5xy = Frame(xywindow, borderwidth=BorderSize, relief=FrameRefief)
+        frame5xy = Frame(xywindow, borderwidth=BorderSize, relief=FrameRelief)
         frame5xy.pack(side=TOP, expand=NO, fill=BOTH)
 
         XYca = Canvas(frame2xy, width=CANVASwidthXY, height=CANVASheightXY, background=COLORcanvas, cursor='cross')
@@ -15892,13 +16040,13 @@ def MakeXYWindow():
         if CHANNELS >= 4:
             rbx4 = Radiobutton(chcxmenu, text='Ch D', style="Strace4.TCheckbutton", variable=Xsignal, value=4, command=UpdateXYTrace)
             rbx4.pack(side=LEFT, anchor=W)
-        rbx6 = Radiobutton(frame2xyr, text='Math', style="Strace5.TCheckbutton", variable=Xsignal, value=5, command=UpdateXYTrace)
+        rbx6 = Radiobutton(frame2xyr, text='Math-X', style="Strace6.TCheckbutton", variable=Xsignal, value=6, command=UpdateXYTrace)
         rbx6.pack(side=TOP)
         if CHANNELS >= 1:
-            rbx7 = Radiobutton(frame2xyr, text='Histogram Ch A', variable=Xsignal, value=6, command=BHistAsPercent)
+            rbx7 = Radiobutton(frame2xyr, text='Histogram Ch A', variable=Xsignal, value=8, command=BHistAsPercent)
             rbx7.pack(side=TOP)
         if CHANNELS >= 2:
-            rbx8 = Radiobutton(frame2xyr, text='Histogram Ch B', variable=Xsignal, value=7, command=BHistAsPercent)
+            rbx8 = Radiobutton(frame2xyr, text='Histogram Ch B', variable=Xsignal, value=9, command=BHistAsPercent)
             rbx8.pack(side=TOP)
         #
         AxisLabY = Label(frame2xyr, text ="-Y Axis-", style="A10R2.TLabelframe.Label")
@@ -16285,34 +16433,34 @@ def MakeDigFiltWindow():
         BCVDSkewEntry.insert(0,0)
         bcbisklab = Label(digfiltb, text="# Samples")
         bcbisklab.grid(row=8, column=2, sticky=W)
-        # AWG A controls
-        awgfilta = Frame( frame4 )
-        awgfilta.pack(side=LEFT)
-        lab7 = Checkbutton(awgfilta,text="Filter AWG A", variable=AWGFiltA, command=MakeAWGwaves)
-        lab7.grid(row=0, column=0, columnspan=2, sticky=W)
-        lab8 = Checkbutton(awgfilta,text="Box Car", variable=AWGFiltABoxCar, command=BuildAWGBoxCarA)
-        lab8.grid(row=1, column=0, sticky=W)
-        AWGALenEntry = Entry(awgfilta, width=3, cursor='double_arrow')
-        AWGALenEntry.bind("<Return>", onRetAWGFiltA)
-        AWGALenEntry.bind('<MouseWheel>', onAWGFiltAScroll)
-        AWGALenEntry.bind("<Button-4>", onAWGFiltAScroll)# with Linux OS
-        AWGALenEntry.bind("<Button-5>", onAWGFiltAScroll)
-        # BCALenEntry.bind('<Key>', onTextKey)
-        AWGALenEntry.grid(row=1, column=1, sticky=W)
-        AWGALenEntry.delete(0,"end")
-        AWGALenEntry.insert(0,2)
-        awgalab = Label(awgfilta, text="Length")
-        awgalab.grid(row=1, column=2, sticky=W)
-        AWGFiltALength = Label(awgfilta, text="Length = 0 ")
-        AWGFiltALength.grid(row=2, column=0, sticky=W)
-        AWGFiltAFile = Label(awgfilta, text="File Name, none ")
-        AWGFiltAFile.grid(row=3, column=0, columnspan=3, sticky=W)
-        awgaload = Button(awgfilta, text='Load From File', command=BLoadAWGFiltA)
-        awgaload.grid(row=4, column=0, columnspan=3, sticky=W)
-        awgacb = Button(awgfilta, text='Load From Clip Board', command=BLoadAWGAFiltClip)
-        awgacb.grid(row=5, column=0, columnspan=3, sticky=W)
-        awgamath = Button(awgfilta, text='AWG A Filter formula', command=BAWGFiltAMath)
-        awgamath.grid(row=6, column=0, columnspan=3, sticky=W)
+##        # AWG A controls
+##        awgfilta = Frame( frame4 )
+##        awgfilta.pack(side=LEFT)
+##        lab7 = Checkbutton(awgfilta,text="Filter AWG A", variable=AWGFiltA, command=MakeAWGwaves)
+##        lab7.grid(row=0, column=0, columnspan=2, sticky=W)
+##        lab8 = Checkbutton(awgfilta,text="Box Car", variable=AWGFiltABoxCar, command=BuildAWGBoxCarA)
+##        lab8.grid(row=1, column=0, sticky=W)
+##        AWGALenEntry = Entry(awgfilta, width=3, cursor='double_arrow')
+##        AWGALenEntry.bind("<Return>", onRetAWGFiltA)
+##        AWGALenEntry.bind('<MouseWheel>', onAWGFiltAScroll)
+##        AWGALenEntry.bind("<Button-4>", onAWGFiltAScroll)# with Linux OS
+##        AWGALenEntry.bind("<Button-5>", onAWGFiltAScroll)
+##        # BCALenEntry.bind('<Key>', onTextKey)
+##        AWGALenEntry.grid(row=1, column=1, sticky=W)
+##        AWGALenEntry.delete(0,"end")
+##        AWGALenEntry.insert(0,2)
+##        awgalab = Label(awgfilta, text="Length")
+##        awgalab.grid(row=1, column=2, sticky=W)
+##        AWGFiltALength = Label(awgfilta, text="Length = 0 ")
+##        AWGFiltALength.grid(row=2, column=0, sticky=W)
+##        AWGFiltAFile = Label(awgfilta, text="File Name, none ")
+##        AWGFiltAFile.grid(row=3, column=0, columnspan=3, sticky=W)
+##        awgaload = Button(awgfilta, text='Load From File', command=BLoadAWGFiltA)
+##        awgaload.grid(row=4, column=0, columnspan=3, sticky=W)
+##        awgacb = Button(awgfilta, text='Load From Clip Board', command=BLoadAWGAFiltClip)
+##        awgacb.grid(row=5, column=0, columnspan=3, sticky=W)
+##        awgamath = Button(awgfilta, text='AWG A Filter formula', command=BAWGFiltAMath)
+##        awgamath.grid(row=6, column=0, columnspan=3, sticky=W)
         #
         #
 def onRetDigFiltA(event):
@@ -17640,7 +17788,7 @@ def DestroyDMMScreen():
 def MakeOhmWindow():
     global OhmDisp, OhmStatus, ohmwindow, RevDate, RMode, OhmA0, OhmA1, OhmRunStatus
     global CHATestVEntry, CHATestREntry, SWRev, OnBoardRes
-    global FrameRefief, BorderSize, OhmSche, Rint, CHBIntREntry
+    global FrameRelief, BorderSize, OhmSche, Rint, CHBIntREntry
     
     if OhmStatus.get() == 0:
         OhmStatus.set(1)
@@ -17652,7 +17800,7 @@ def MakeOhmWindow():
         ohmwindow.title("DC Ohmmeter " + SWRev + RevDate)
         ohmwindow.resizable(FALSE,FALSE)
         ohmwindow.protocol("WM_DELETE_WINDOW", DestroyOhmScreen)
-        frame1 = Frame(ohmwindow, borderwidth=BorderSize, relief=FrameRefief)
+        frame1 = Frame(ohmwindow, borderwidth=BorderSize, relief=FrameRelief)
         frame1.grid(row=0, column=0, sticky=W)
         #
         buttons = Frame( frame1 )
@@ -17814,7 +17962,7 @@ def MakeSettingsMenu():
     global CHA_A1, CHA_A2, CHB_A1, CHB_A2
     global cha_TC1Entry, cha_TC2Entry, chb_TC1Entry, chb_TC2Entry
     global cha_A1Entry, cha_A2Entry, chb_A1Entry, chb_A2Entry
-    global FrameRefief, BorderSize
+    global FrameRelief, BorderSize
 
     if SettingsStatus.get() == 0:
         SettingsStatus.set(1)
@@ -17822,7 +17970,7 @@ def MakeSettingsMenu():
         Settingswindow.title("Settings " + SWRev + RevDate)
         Settingswindow.resizable(FALSE,FALSE)
         Settingswindow.protocol("WM_DELETE_WINDOW", DestroySettings)
-        frame1 = Frame(Settingswindow, borderwidth=BorderSize, relief=FrameRefief)
+        frame1 = Frame(Settingswindow, borderwidth=BorderSize, relief=FrameRelief)
         frame1.grid(row=0, column=0, sticky=W)
         #
         Row = 0
@@ -18179,7 +18327,7 @@ def OpenOtherTools():
     global EnablePhaseAnalizer, EnableSpectrumAnalizer, EnableBodePlotter, EnableImpedanceAnalizer
     global EnableOhmMeter, OOTphckb, OOTBuildPhAScreen, OOTckb3, OOTBuildSpectrumScreen, OOTckb5, ckb1
     global OOTBuildBodeScreen, OOTckb4, OOTBuildIAScreen, OOTckb6, OOTBuildOhmScreen, OOTScreenStatus
-    global OOTwindow, SWRev, RevDate, BorderSize, FrameRefief, OOTdismissclbutton, EnableDigIO
+    global OOTwindow, SWRev, RevDate, BorderSize, FrameRelief, OOTdismissclbutton, EnableDigIO
     global EnablePIODACMode, EnableMuxMode, EnableMinigenMode, EnablePmodDA1Mode, EnableDigPotMode, EnableGenericSerialMode
     global EnableAD5626SerialMode, EnableDigitalFilter, EnableCommandInterface, EnableMeasureScreen, EnableETSScreen
 
@@ -18189,7 +18337,7 @@ def OpenOtherTools():
         OOTwindow.title("Instruments " + SWRev + RevDate)
         OOTwindow.resizable(FALSE,FALSE)
         OOTwindow.protocol("WM_DELETE_WINDOW", DestroyOOTwindow)
-        frame1 = Frame(OOTwindow, borderwidth=BorderSize, relief=FrameRefief)
+        frame1 = Frame(OOTwindow, borderwidth=BorderSize, relief=FrameRelief)
         frame1.grid(row=0, column=0, sticky=W)
         #
         nextrow = 1
@@ -18683,20 +18831,20 @@ root.style.configure("RGray.TButton", background="#808080", width=7, relief=RAIS
 root.style.configure("SGray.TButton", background="#808080", width=7, relief=SUNKEN)
 #
 root.style.configure("A10T5.TLabelframe.Label", background=FrameBG, foreground=COLORtraceR5, font=('Arial', 10, 'bold'))
-root.style.configure("A10T5.TLabelframe", borderwidth=BorderSize, relief=FrameRefief)
+root.style.configure("A10T5.TLabelframe", borderwidth=BorderSize, relief=FrameRelief)
 root.style.configure("A10T6.TLabelframe.Label", background=FrameBG, foreground=COLORtrace6, font=('Arial', 10, 'bold'))
-root.style.configure("A10T6.TLabelframe", borderwidth=BorderSize, relief=FrameRefief)
+root.style.configure("A10T6.TLabelframe", borderwidth=BorderSize, relief=FrameRelief)
 root.style.configure("A10T7.TLabelframe.Label", background=FrameBG, foreground=COLORtrace7, font=('Arial', 10, 'bold'))
-root.style.configure("A10T7.TLabelframe", borderwidth=BorderSize, relief=FrameRefief)
+root.style.configure("A10T7.TLabelframe", borderwidth=BorderSize, relief=FrameRelief)
 #
 root.style.configure("A10R1.TLabelframe.Label", background=FrameBG, foreground=COLORtraceR1, font=('Arial', 10, 'bold'))
-root.style.configure("A10R1.TLabelframe", borderwidth=BorderSize, relief=FrameRefief)
+root.style.configure("A10R1.TLabelframe", borderwidth=BorderSize, relief=FrameRelief)
 root.style.configure("A10R2.TLabelframe.Label", background=FrameBG, foreground=COLORtraceR2, font=('Arial', 10, 'bold'))
-root.style.configure("A10R2.TLabelframe", borderwidth=BorderSize, relief=FrameRefief)
+root.style.configure("A10R2.TLabelframe", borderwidth=BorderSize, relief=FrameRelief)
 root.style.configure("A10R6.TLabelframe.Label", background=FrameBG, foreground=COLORtraceR7, font=('Arial', 10, 'bold'))
-root.style.configure("A10R6.TLabelframe", borderwidth=BorderSize, relief=FrameRefief)
+root.style.configure("A10R6.TLabelframe", borderwidth=BorderSize, relief=FrameRelief)
 root.style.configure("A10.TLabelframe.Label", background=FrameBG, font=('Arial', 10, 'bold'))
-root.style.configure("A10.TLabelframe", borderwidth=BorderSize, relief=FrameRefief)
+root.style.configure("A10.TLabelframe", borderwidth=BorderSize, relief=FrameRelief)
 root.style.configure("A10B.TLabel", foreground=ButtonText, font="Arial 10 bold") # Black text
 root.style.configure("A10R.TLabel", foreground=ButtonRed, font="Arial 10 bold") # Red text
 root.style.configure("A10G.TLabel", foreground=ButtonGreen, font="Arial 10 bold") # Red text
@@ -18749,19 +18897,19 @@ root.style.configure('Right1.TButton',font=('',FontSize,'bold'), width=7, arrowc
 root.style.configure('Left2.TButton',font=('',FontSize,'bold'), width=6, arrowcolor='black')
 root.style.configure('Right2.TButton',font=('',FontSize,'bold'), width=6, arrowcolor='black')
 # Create frames
-frame2r = Frame(root, borderwidth=BorderSize, relief=FrameRefief)
+frame2r = Frame(root, borderwidth=BorderSize, relief=FrameRelief)
 frame2r.pack(side=RIGHT, fill=BOTH, expand=NO)
 
-frame1 = Frame(root, borderwidth=BorderSize, relief=FrameRefief)
+frame1 = Frame(root, borderwidth=BorderSize, relief=FrameRelief)
 frame1.pack(side=TOP, fill=BOTH, expand=NO)
 
-frame2 = Frame(root, borderwidth=BorderSize, relief=FrameRefief)
+frame2 = Frame(root, borderwidth=BorderSize, relief=FrameRelief)
 frame2.pack(side=TOP, fill=BOTH, expand=YES)
 
-frame3 = Frame(root, borderwidth=BorderSize, relief=FrameRefief)
+frame3 = Frame(root, borderwidth=BorderSize, relief=FrameRelief)
 frame3.pack(side=TOP, fill=BOTH, expand=NO)
 
-frame4 = Frame(root, borderwidth=BorderSize, relief=FrameRefief)
+frame4 = Frame(root, borderwidth=BorderSize, relief=FrameRelief)
 frame4.pack(side=TOP, fill=BOTH, expand=NO)
 # create a pulldown menu
 # Trigger signals
@@ -19410,17 +19558,6 @@ if ButtonOrder == 0:
 #
 # Scope PGA controls
 if EnablePGAGain == 1:
-    if CHANNELS >= 2:
-        CHBpgalab = Button(frame3, text="B Gain", style="Rtrace2.TButton") #, command=SetScaleB)
-        CHBpgalab.pack(side=RIGHT)
-        CHBpgasb = Spinbox(frame3, width=3, cursor='double_arrow', values=ScopePGAGain, command=BCHBPGAgain)
-        CHBpgasb.bind('<MouseWheel>', onSpinBoxScroll)
-        CHBpgasb.bind('<Button-4>', onSpinBoxScroll)
-        CHBpgasb.bind('<Button-4>', onSpinBoxScroll)
-        CHBpgasb.pack(side=RIGHT)
-        CHBpgasb.delete(0,"end")
-        CHBpgasb.insert(0,"1")
-    #
     if CHANNELS >= 1:
         CHApgalab = Button(frame3, text="A Gain", style="Rtrace1.TButton") #, command=SetScaleB)
         CHApgalab.pack(side=RIGHT)
@@ -19432,6 +19569,18 @@ if EnablePGAGain == 1:
         CHApgasb.delete(0,"end")
         CHApgasb.insert(0,"1")
 #
+if EnablePGAGain >= 2:
+    if CHANNELS >= 2:
+        CHBpgalab = Button(frame3, text="B Gain", style="Rtrace2.TButton") #, command=SetScaleB)
+        CHBpgalab.pack(side=RIGHT)
+        CHBpgasb = Spinbox(frame3, width=3, cursor='double_arrow', values=ScopePGAGain, command=BCHBPGAgain)
+        CHBpgasb.bind('<MouseWheel>', onSpinBoxScroll)
+        CHBpgasb.bind('<Button-4>', onSpinBoxScroll)
+        CHBpgasb.bind('<Button-4>', onSpinBoxScroll)
+        CHBpgasb.pack(side=RIGHT)
+        CHBpgasb.delete(0,"end")
+        CHBpgasb.insert(0,"1")
+    #
 if ShowBallonHelp > 0:
     if CHANNELS >= 1:
         CHAlab_tip = CreateToolTip(CHAlab, 'Select Ch A-V vertical range/position axis to be used for markers and drawn color')
@@ -19508,19 +19657,8 @@ if CHANNELS >= 4:
     if ButtonOrder == 0:
         CHDofflab = Button(frame4, text="D V Pos", style="Rtrace4.TButton", command=SetVDPoss)
         CHDofflab.pack(side=LEFT)
-# PGA
-if EnablePGAGain == 1:
-    if CHANNELS >= 4:
-        CHDpgalab = Button(frame4, text="D Gain", style="Rtrace4.TButton") #, command=SetScaleB)
-        CHDpgalab.pack(side=RIGHT)
-        CHDpgasb = Spinbox(frame4, width=3, cursor='double_arrow', values=ScopePGAGain, command=BCHDPGAgain)
-        CHDpgasb.bind('<MouseWheel>', onSpinBoxScroll)
-        CHDpgasb.bind('<Button-4>', onSpinBoxScroll)
-        CHDpgasb.bind('<Button-4>', onSpinBoxScroll)
-        CHDpgasb.pack(side=RIGHT)
-        CHDpgasb.delete(0,"end")
-        CHDpgasb.insert(0,"1")
-    #
+# PGA controls
+if EnablePGAGain >= 3:
     if CHANNELS >= 3:
         CHCpgalab = Button(frame4, text="C Gain", style="Rtrace3.TButton") #, command=SetScaleB)
         CHCpgalab.pack(side=RIGHT)
@@ -19531,6 +19669,18 @@ if EnablePGAGain == 1:
         CHCpgasb.pack(side=RIGHT)
         CHCpgasb.delete(0,"end")
         CHCpgasb.insert(0,"1")
+    #
+if EnablePGAGain >= 4:
+    if CHANNELS >= 4:
+        CHDpgalab = Button(frame4, text="D Gain", style="Rtrace4.TButton") #, command=SetScaleB)
+        CHDpgalab.pack(side=RIGHT)
+        CHDpgasb = Spinbox(frame4, width=3, cursor='double_arrow', values=ScopePGAGain, command=BCHDPGAgain)
+        CHDpgasb.bind('<MouseWheel>', onSpinBoxScroll)
+        CHDpgasb.bind('<Button-4>', onSpinBoxScroll)
+        CHDpgasb.bind('<Button-4>', onSpinBoxScroll)
+        CHDpgasb.pack(side=RIGHT)
+        CHDpgasb.delete(0,"end")
+        CHDpgasb.insert(0,"1")
     #
 #
 root.geometry('+300+0')

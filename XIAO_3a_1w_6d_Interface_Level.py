@@ -1,6 +1,6 @@
 #
 # Hardware specific interface functions
-# For Arduino XIAO Two analog + 2 AWG + 6 digital channel scope (12-29-2023)
+# For Arduino XIAO Two analog + 2 AWG + 6 digital channel scope (2-4-2024)
 # Written using Python version 3.10, Windows OS 
 #
 try:
@@ -18,13 +18,14 @@ AWGChannels = 2 # Number of supported Analog output channels
 PWMChannels = 1 # Number of supported PWM output channels
 DigChannels = 6 # Number of supported Dig channels
 LogicChannels = 6 # Number of supported Logic Analyzer channels
-EnablePGAGain = 0 #
+EnablePGAGain = 0 # Number is number of ADC channels with a PGA
+ScopePGAGain = (1, 2, 4, 8, 16)
 EnableAWGNoise = 0 #
 AllowFlashFirmware = 1
 Tdiv.set(10)
 AWG_Amp_Mode.set(0)
 AWGPeakToPeak = 3.30
-ADC_Cal = 3.30
+ADC_Cal = 3.299
 ScopeRes = 4096.0
 LSBsizeA =  LSBsizeB = LSBsizeC = LSBsize = ADC_Cal/ScopeRes
 Rint = 2.0E7 # ~2 Meg Ohm internal resistor to ground
@@ -36,7 +37,8 @@ TimeSpan = 0.01
 InterpRate = 4
 EnableInterpFilter.set(1)
 MaxSampleRate = SAMPLErate = 25000*InterpRate
-AWGSampleRate = 50000
+MaxAWGSampleRate = int(1.0/0.000014) # set to 14 uSec
+AWGSampleRate = MaxAWGSampleRate
 PhaseOffset = 12.5
 HardwareBuffer = 2048 # Max hardware waveform buffer size
 MinSamples = 2048 # capture sample buffer size
@@ -57,6 +59,8 @@ VmemoryB = numpy.ones(MinSamples*InterpRate) # The memory for averaging
 VmemoryC = numpy.ones(MinSamples*InterpRate)
 VmemoryD = numpy.ones(MinSamples*InterpRate)
 #
+IACMString = "+1.65"
+IA_Mode.set(1)
 #
 ## hardware specific Fucntion to close and exit ALICE
 def Bcloseexit():
@@ -951,7 +955,8 @@ def Get_Data_Three():
 ## try to connect to Arduino XIAO board
 #
 def ConnectDevice():
-    global SerComPort, DevID, MaxSamples, SAMPLErate, MinSamples, AWGSampleRate
+    global SerComPort, DevID, MaxSamples, SAMPLErate, MinSamples
+    global MaxAWGSampleRate, AWGSampleRate
     global bcon, FWRevOne, HWRevOne, MaxSampleRate, ser, SHOWsamples
     global CH1Probe, CH2Probe, CH1VRange, CH2VRange, TimeDiv, InterpRate
     global CHAsb, CHBsb, TMsb, LSBsizeA, LSBsizeB, ADC_Cal, LSBsize
@@ -1005,15 +1010,22 @@ def ConnectDevice():
             ser.write(b'T14\n') # send AWG sample time in uSec
             time.sleep(0.005)
             print("set at: 14 uSec")
-            AWGSampleRate = int(1.0/0.000014)
+            MaxAWGSampleRate = int(1.0/0.000014)
+            AWGSampleRate = MaxAWGSampleRate
             ## send Scope Buffer Length
             SendStr = 'b' + str(MinSamples) + '\n'
             # print(SendStr)
             SendByt = SendStr.encode('utf-8')
             ser.write(SendByt)
-            # ser.write(b'b1024\n')  
             time.sleep(0.005)
             print("set Scope Samples: ", MinSamples)
+            # Set ADC settling delay to 4 (default is 1)
+            ser.write(b'd4\n')
+            time.sleep(0.005)
+            # Set ADC PGA gain to 1 by default
+            ser.write(b'g15\n')
+            # Set ADC V Ref to 3.3 (2 * Vdd/2)
+            ser.write(b'v2\n')
             #
             ser.write(b'N1024\n') # send AWG A Buffer Length
             ser.write(b'M1024\n') # send AWG B Buffer Length
@@ -1023,7 +1035,7 @@ def ConnectDevice():
             
             MaxSamples = MinSamples * InterpRate # 4096 assume 4X interpolation
             #
-            ser.write(b'Rx\n') # turn off AWG sync by default
+            ser.write(b'R0\n') # turn off AWG sync by default
             #
             ser.write(b'sx\n') # turn off PWM output by default
             ser.write(b'Gx\n') # turn off AWG A by default
@@ -1053,6 +1065,33 @@ def ConnectDevice():
             return(False)
     else:
         return(False)
+#
+# ADC Input Programable Gain Controls
+#
+def BCHAPGAgain():
+    global ser, CHApgasb, ScopePGAGain
+    global LSBsizeA, LSBsizeB, LSBsizeC, LSBsize
+
+    Gval = int(CHApgasb.get())
+    # LSBsize is V/LSB for 3.3 V FS.
+    # print("Gval = ", Gval)
+    if Gval == 1:
+        LSBsizeA = LSBsizeB = LSBsizeC = LSBsize 
+        ser.write(b'g15\n')
+    elif Gval == 2:
+        LSBsizeA = LSBsizeB = LSBsizeC = LSBsize / 2
+        ser.write(b'g0\n')
+    elif Gval == 4:
+        LSBsizeA = LSBsizeB = LSBsizeC = LSBsize / 4
+        ser.write(b'g1\n')
+    elif Gval == 8:
+        LSBsizeA = LSBsizeB = LSBsizeC = LSBsize / 8
+        ser.write(b'g2\n')
+    elif Gval == 16:
+        LSBsizeA = LSBsizeB = LSBsizeC = LSBsize / 16
+        ser.write(b'g3\n')
+    # print("LSBsizeA = ", LSBsizeA, "LSBsize = ", LSBsize)
+#
 #
 def SetBufferLength(NewLength):
     global ser, MinSamples, MaxSamples, InterpRate, HardwareBuffer
@@ -1220,48 +1259,57 @@ def BAWGSync():
     global AWGSync
 
     if AWGSync.get() > 0:
-        ser.write(b'Ro\n') # turn on sync
+        ser.write(b'R10\n') # turn on sync
     else:
-        ser.write(b'Rx\n') # turn off sync
+        ser.write(b'R0\n') # turn off sync
 #
 ##    
 #
 def SetAwgSampleRate():
-    global AWGAFreqEntry, AWGBFreqEntry, FSweepMode
-    global AWGBuffLen, AWGSampleRate, AWGBuffLen
+    global AWGAFreqEntry, AWGBFreqEntry, FSweepMode, MaxAWGSampleRate
+    global AWGBuffLen, AWGSampleRate, AWGBuffLen, MaxRepRate
 
     BAWGAFreq()
     # BAWGBFreq()
 
-    MaxRepRate = numpy.ceil(AWGSampleRate / AWGBuffLen)
+    MaxRepRate = numpy.ceil(MaxAWGSampleRate / AWGBuffLen)
     FreqA = UnitConvert(AWGAFreqEntry.get())
     #reqB = UnitConvert(AWGBFreqEntry.get())
     Cycles = 1
-    if FSweepMode.get() == 1: # If doing a frequency sweep only make new AWG A sine wave
-        if FreqA > MaxRepRate:
-            Cycles = numpy.ceil(FreqA/MaxRepRate)
-            if Cycles <= 0: # check if divide by zero
-                Cycles = 1
-            FreqA = FreqA/Cycles
-    # Set the AWG buffer Rep rate (Freq for one cycle of buffer)
-        SetAwgSampleFrequency(FreqA)
-        AWGRepRate = FreqA
-        # AWGSampleRate = FreqA * AWGBuffLen
-            # AWGSampleRate = FreqB * MaxSamples
-    # print("Cycles = ", Cycles)
+    #print("MaxRepRate = ", MaxRepRate)
+    #print("FreqA = ", FreqA)
+    # if FSweepMode.get() == 1: # If doing a frequency sweep only make new AWG A sine wave
+    if FreqA < MaxRepRate:
+        CycFrac = FreqA/MaxRepRate
+        #print("Cycles = ", CycFrac)
+        if CycFrac > 0.9:
+            CycFrac = 0.9
+        FreqA = FreqA * CycFrac
+# Set the AWG buffer Rep rate (Freq for one cycle of buffer)
+    SetAwgSampleFrequency(FreqA)
+    AWGRepRate = FreqA
+    # AWGSampleRate = FreqA * AWGBuffLen
+        # AWGSampleRate = FreqB * MaxSamples
+    # 
 #
 def SetAwgSampleFrequency(FreqANum):
-    global AWGBuffLen
+    global AWGBuffLen, AWGSampleRate, MaxAWGSampleRate
     #
     NewSampleRate = FreqANum * AWGBuffLen # Samples per second
+    if NewSampleRate > MaxAWGSampleRate:
+        NewSampleRate = MaxAWGSampleRate
     NewAT = int(1000000/NewSampleRate) # in uSec
-    if NewAT < 15:
-        NewAT = 15
+    if NewAT < 14:
+        NewAT = 14
+    if NewAT > 500:
+        NewAT = 500
     SendStr = 'T' + str(NewAT) + '\n'
     # print(SendStr)
     SendByt = SendStr.encode('utf-8')
     # print(SendByt)
     ser.write(SendByt) #
+    AWGSampleRate = int(1000000/NewAT)
+    # print("AWGSampleRate = ", AWGSampleRate)
 #
 # for built in firmware waveforms...
 #
@@ -1547,16 +1595,17 @@ def UpdatePWM():
     # ByteStr = 'p' + str(FreqValue) + "\n"
     # SendByt = ByteStr.encode('utf-8')
     # PWM frequency = 48MHz / (1 * (95999 + 1)) = 500Hz
-    Divider = int(48000000 / FreqValue) - 1
-    # print("Divider = ", Divider)
-    ByteStr = 'p' + str(Divider) + "\n"
+    # Divider = int(48000000 / FreqValue) - 1
+    # print("FreqValue = ", FreqValue)
+    ByteStr = 'p' + str(FreqValue) + "\n"
     SendByt = ByteStr.encode('utf-8')
     ser.write(SendByt)
     time.sleep(0.1)
     
     DutyCycle = int(PWMWidthEntry.get())
-    DutyCycle = int((DutyCycle * Divider)/100) # value can be 0 to 1000
+    DutyCycle = int((DutyCycle * 1024)/100) # value can be 0 to 1000
     #DutyCycle = DutyCycle * 10 # value can be 0 to 1000
+    # print("DutyCycle = ",DutyCycle)
     #
     ByteStr = 'm' + str(DutyCycle) + "\n"
     SendByt = ByteStr.encode('utf-8')
