@@ -1,7 +1,7 @@
 #!/usr/bin/python
 # -*- coding: cp1252 -*-
 #
-# Alice-universal-alpha.py(w) (2-18-2024)
+# Alice-universal-alpha.py(w) (3-1-2024)
 # Written using Python version 3.10, Windows OS 
 # Requires a hardware interface level functions add-on file
 # Created by D Mercer ()
@@ -67,7 +67,7 @@ import webbrowser
 # check which operating system
 import platform
 #
-RevDate = "18 Feb 2024"
+RevDate = "1 March 2024"
 SWRev = "1.0 "
 #
 # small bit map of triangle logo for window icon
@@ -156,8 +156,12 @@ ResDivDisp = IntVar()
 ResDivDisp.set(0)
 SetResDivA = IntVar()
 SetResDivB = IntVar()
+SetResDivC = IntVar()
+SetResDivD = IntVar()
 SetResDivA.set(0)
 SetResDivB.set(0)
+SetResDivC.set(0)
+SetResDivD.set(0)
 Rint = 1.0E7 # 10 Meg Ohm internal resistor to ground
 Cint = 1.25E-12 # ADC input switched capacitor value
 RDeffective = Rint
@@ -360,6 +364,10 @@ EnableDmmMeter = 1
 EnableDigIO = 1
 EnableCommandInterface = 0
 EnablePGAGain = 1
+EnableLoopBack = 0
+LoopBack = IntVar()
+LoopBack.set(0)
+LBList = ("CH A", "CH B", "CH C", "CH D")
 EnableAWGNoise = 0 #
 EnableDigitalFilter = 0
 EnableInterpFilter = IntVar()
@@ -396,7 +404,23 @@ CHB_A1 = DoubleVar()
 CHB_A1.set(1)
 CHB_A2 = DoubleVar()
 CHB_A2.set(1)
-
+#
+CHC_TC1 = DoubleVar()
+CHC_TC1.set(1)
+CHC_TC2 = DoubleVar()
+CHC_TC2.set(1)
+CHD_TC1 = DoubleVar()
+CHD_TC1.set(1)
+CHD_TC2 = DoubleVar()
+CHD_TC2.set(1)
+CHC_A1 = DoubleVar()
+CHC_A1.set(1)
+CHC_A2 = DoubleVar()
+CHC_A2.set(1)
+CHD_A1 = DoubleVar()
+CHD_A1.set(1)
+CHD_A2 = DoubleVar()
+CHD_A2.set(1)
 # 
 #('winnative', 'clam', 'alt', 'default', 'classic', 'vista', 'xpnative')
 # 'aqua' built-in native Mac OS X only; Native Mac OS X
@@ -610,7 +634,7 @@ TMYline = []                # Time Y math Trace line
 T1VRline = []               # V reference Trace line channel A
 T2VRline = []               # V reference Trace line channel B
 T3VRline = []               # V reference Trace line channel C
-T3VRline = []               # V reference Trace line channel D
+T4VRline = []               # V reference Trace line channel D
 TMRline = []                # Math reference Trace line
 Triggerline = []            # Triggerline
 Triggersymbol = []          # Trigger symbol
@@ -2534,11 +2558,11 @@ def AWGAMakeFullWaveSine():
     # print(AWGSampleRate, AWGAFreqvalue, MaxSamples)
     AWGAperiodvalue = AWGSampleRate/AWGAFreqvalue
     #
-    Cycles = numpy.ceil(AWGAFreqvalue/MaxRepRate)
+    Cycles = numpy.floor(AWGAFreqvalue/MaxRepRate)
     if Cycles < 1:
         Cycles = 1
     RecLength = int(Cycles * AWGAperiodvalue)
-    AWG3 = numpy.cos(numpy.linspace(0, 2*Cycles*numpy.pi, RecLength))
+    AWG3 = numpy.sin(numpy.linspace(0, 2*Cycles*numpy.pi, RecLength))
     AWG3 = numpy.absolute(AWG3) # * -1.0
     AWG3 = AWG3 - 0.5
     AWG3 = AWG3 * 2.0
@@ -2564,7 +2588,7 @@ def AWGAMakeHalfWaveSine():
     # print(AWGSampleRate, AWGAFreqvalue, MaxSamples)
     AWGAperiodvalue = AWGSampleRate/AWGAFreqvalue
     #
-    Cycles = numpy.ceil(AWGAFreqvalue/MaxRepRate)
+    Cycles = numpy.floor(AWGAFreqvalue/MaxRepRate)
     if Cycles < 1:
         Cycles = 1
     RecLength = int(Cycles * AWGAperiodvalue)
@@ -2598,7 +2622,7 @@ def AWGAMakeFourier():
     # print(AWGSampleRate, AWGAFreqvalue, MaxSamples)
     AWGAperiodvalue = AWGSampleRate/AWGAFreqvalue
     #
-    Cycles = numpy.ceil(AWGAFreqvalue/MaxRepRate)
+    Cycles = numpy.floor(AWGAFreqvalue/MaxRepRate)
     if Cycles < 1:
         Cycles = 1
     RecLength = int(Cycles * AWGAperiodvalue)
@@ -2987,7 +3011,7 @@ def AWGBMakeFullWaveSine():
     # print(AWGSampleRate, AWGAFreqvalue, MaxSamples)
     AWGBperiodvalue = AWGSampleRate/AWGBFreqvalue
     #
-    Cycles = numpy.ceil(AWGBFreqvalue/MaxRepRate)
+    Cycles = numpy.floor(AWGBFreqvalue/MaxRepRate)
     if Cycles < 1:
         Cycles = 1
     RecLength = int(Cycles * AWGBperiodvalue)
@@ -3018,7 +3042,7 @@ def AWGBMakeHalfWaveSine():
     # print(AWGSampleRate, AWGAFreqvalue, MaxSamples)
     AWGAperiodvalue = AWGSampleRate/AWGAFreqvalue
     #
-    Cycles = numpy.ceil(AWGAFreqvalue/MaxRepRate)
+    Cycles = numpy.floor(AWGAFreqvalue/MaxRepRate)
     if Cycles < 1:
         Cycles = 1
     RecLength = int(Cycles * AWGAperiodvalue)
@@ -3051,7 +3075,7 @@ def AWGBMakeFourier():
     # print(AWGSampleRate, AWGAFreqvalue, MaxSamples)
     AWGBperiodvalue = AWGSampleRate/AWGBFreqvalue
     #
-    Cycles = numpy.ceil(AWGBFreqvalue/MaxRepRate)
+    Cycles = numpy.floor(AWGBFreqvalue/MaxRepRate)
     if Cycles < 1:
         Cycles = 1
     RecLength = int(Cycles * AWGBperiodvalue)
@@ -4739,6 +4763,14 @@ def DMMCheckBox():
         else:
             OOTckb7.config(style="Disab.TCheckbutton")
 #
+def LbCheckBox():
+    global LoopBack, lbckb
+
+    if LoopBack.get() > 0:
+        lbckb.config(style="Enab.TCheckbutton")
+    else:
+        lbckb.config(style="Disab.TCheckbutton")
+#
 # ========================= Main routine ====================================
 ## Main Loop
 #
@@ -5234,33 +5266,42 @@ def Analog_Fast_time():
     global CHCVPosEntry, CHDVPosEntry
     global InOffA, InGainA, InOffB, InGainB, InOffC, InGainC, InOffD, InGainD
     global DigFiltA, DigFiltB, DFiltACoef, DFiltBCoef, DigBuffA, DigBuffB
-    global CHA_A1, CHA_A2, CHB_A1, CHB_A2
     global MeasGateLeft, MeasGateRight, MeasGateNum, MeasGateStatus
     global ShowC1_V, ShowC2_V, ShowC3_V, ShowC4_V, Interp4Filter
     global CH1vpdvLevel, CH2vpdvLevel, CHAOffset, CHBOffset
     global CHCvpdvLevel, CHDvpdvLevel, CHCOffset, CHDOffset
     global BCVASkewEntry, BCVBSkewEntry, DigDeSkewVA, DigDeSkewVB
-    global CHA_RC_HP, CHB_RC_HP, CHA_TC1, CHA_TC2, CHB_TC1, CHB_TC2, CHAI_RC_HP, CHBI_RC_HP
+    global CHA_RC_HP, CHB_RC_HP, CHA_TC1, CHA_TC2, CHB_TC1, CHB_TC2, CHC_RC_HP, CHD_RC_HP
+    global CHA_A1, CHA_A2, CHB_A1, CHB_A2
+    global CHC_TC1, CHC_TC2, CHD_TC1, CHD_TC2
+    global CHC_A1, CHC_A2, CHD_A1, CHD_A2
     global cha_TC1Entry, cha_TC2Entry, chb_TC1Entry, chb_TC2Entry
     global cha_A1Entry, cha_A2Entry, chb_A1Entry, chb_A2Entry
+    global chc_TC1Entry, chc_TC2Entry, chd_TC1Entry, chd_TC2Entry
+    global chc_A1Entry, chc_A2Entry, chd_A1Entry, chd_A2Entry
     global Show_CBA, Show_CBB, Show_CBC, Show_CBD
     global LSBsizeA, LSBsizeB, LSBsizeC, LSBsizeD
     global vat_btn, vbt_btn, vct_btn, vdt_btn, PhAScreenStatus
     
     if TRACEmodeTime.get() == 0 and TRACEresetTime == False:
-        TRACEresetTime = True               # Clear the memory for averaging
+        TRACEresetTime = True
+        if len(VBuffA) != len(VmemoryA):
+            VmemoryA = VBuffA # Clear the memory for averaging
+            VmemoryB = VBuffB
+            VmemoryC = VBuffC
+            VmemoryD = VBuffD
     elif TRACEmodeTime.get() == 1:
         if TRACEresetTime == True:
             TRACEresetTime = False
         # Save previous trace in memory for average trace
-        if len(VBuffA) == len(VmemoryA):
-            VmemoryA = VBuffA
-        if len(VBuffB) == len(VmemoryB):
-            VmemoryB = VBuffB
-        if len(VBuffC) == len(VmemoryC):
-            VmemoryC = VBuffC
-        if len(VBuffD) == len(VmemoryD):
-            VmemoryD = VBuffD
+        #if len(VBuffA) == len(VmemoryA):
+        VmemoryA = VBuffA
+        #if len(VBuffB) == len(VmemoryB):
+        VmemoryB = VBuffB
+        #if len(VBuffC) == len(VmemoryC):
+        VmemoryC = VBuffC
+        #if len(VBuffD) == len(VmemoryD):
+        VmemoryD = VBuffD
 #
     try:
         HozPoss = float(eval(HozPossentry.get()))
@@ -5342,6 +5383,67 @@ def Analog_Fast_time():
         if len(VBuffB) > 4:
             VBuffB = Digital_RC_High_Pass( VBuffB, TC1B, Gain1B )
             VBuffB = Digital_RC_High_Pass( VBuffB, TC2B, Gain2B )
+#
+    if CHC_RC_HP.get() == 1 and ShowC3_V.get() > 0:
+        try:
+            TC1C = float(chc_TC1Entry.get())
+            if TC1C < 0:
+                TC1C = 0
+                chc_TC1Entry.delete(0,END)
+                chc_TC1Entry.insert(0, TC1C)
+        except:
+            TC1C = CHC_TC1.get()
+        try:
+            TC2C = float(chc_TC2Entry.get())
+            if TC2C < 0:
+                TC2C = 0
+                chc_TC2Entry.delete(0,END)
+                chc_TC2Entry.insert(0, TC2C)
+        except:
+            TC2C = CHC_TC2.get()
+        #
+        try:
+            Gain1C = float(chc_A1Entry.get())
+        except:
+            Gain1C = CHC_A1.get()
+        try:
+            Gain2C = float(chc_A2Entry.get())
+        except:
+            Gain2C = CHC_A2.get()
+        #
+        if len(VBuffC) > 4:
+            VBuffC = Digital_RC_High_Pass( VBuffC, TC1C, Gain1C )
+            VBuffC = Digital_RC_High_Pass( VBuffC, TC2C, Gain2C )
+    if CHD_RC_HP.get() == 1 and ShowC4_V.get() > 0:
+        try:
+            TC1D = float(chd_TC1Entry.get())
+            if TC1D < 0:
+                TC1D = 0
+                chd_TC1Entry.delete(0, END)
+                chd_TC1Entry.insert(0, TC1D)
+        except:
+            TC1D = CHD_TC1.get()
+        try:
+            TC2D = float(chd_TC2Entry.get())
+            if TC2D < 0:
+                TC2D = 0
+                chd_TC2Entry.delete(0, END)
+                chd_TC2Entry.insert(0, TC2D)
+        except:
+            TC2D = CHD_TC2.get()
+        #
+        try:
+            Gain1D = float(chd_A1Entry.get())
+        except:
+            Gain1D = CHD_A1.get()
+        try:
+            Gain2D = float(chd_A2Entry.get())
+        except:
+            Gain2D = CHD_A2.get()
+        #
+        if len(VBuffD) > 4:
+            VBuffD = Digital_RC_High_Pass( VBuffD, TC1D, Gain1D )
+            VBuffD = Digital_RC_High_Pass( VBuffD, TC2D, Gain2D )
 # 
 # Check if need to DeSkew waveform data
     if DigDeSkewVA.get() > 0 and ShowC1_V.get() > 0:
@@ -6446,6 +6548,14 @@ def MakeTimeTrace():
         CHBOffset = DCV2
         CHBVPosEntry.delete(0,END)
         CHBVPosEntry.insert(0, ' {0:.2f} '.format(CHBOffset))
+    if AutoCenterC.get() > 0:
+        CHCOffset = DCV3
+        CHCVPosEntry.delete(0,END)
+        CHCVPosEntry.insert(0, ' {0:.2f} '.format(CHCOffset))
+    if AutoCenterD.get() > 0:
+        CHDOffset = DCV4
+        CHDVPosEntry.delete(0,END)
+        CHDVPosEntry.insert(0, ' {0:.2f} '.format(CHDOffset))
     # get the vertical ranges
     # get the vertical offsets
     # prevent divide by zero error
@@ -8958,15 +9068,15 @@ def onCanvasClickLeft(event):
         vt = TimeDiv * ZeroGrid.get() # (Tdiv.get()/-2)
         Tpoint = ((event.x-X0L) * Tstep) + vt
         #
-        TString = ' {0:.1f} '.format(Tpoint) + " nS"
+        TString = ' {0:.3f} '.format(Tpoint) + " nS"
         if Tpoint >= 1.0:
-            TString = ' {0:.1f} '.format(Tpoint) + " S"
+            TString = ' {0:.3f} '.format(Tpoint) + " S"
         if Tpoint < 1.0 and Tpoint >= 0.001:
             axis_value = Tpoint * 1000
-            TString = ' {0:.1f} '.format(axis_value) + " mS"
+            TString = ' {0:.3f} '.format(axis_value) + " mS"
         if Tpoint < 0.001:
             axis_value = Tpoint * 1000000
-            TString = ' {0:.1f} '.format(axis_value) + " uS"
+            TString = ' {0:.3f} '.format(axis_value) + " uS"
         #
         yvolts = ((event.y-c1)/Yconv1) - Yoffset1
         if MarkerScale.get() == 1 or MarkerScale.get() == 2:
@@ -8983,15 +9093,15 @@ def onCanvasClickLeft(event):
             if Roll_Mode.get() == 0: # should be same as First_Slow_sweep == 0
                 DT = (Tpoint-PrevT)
                 #
-                DeltaT = ' {0:.1f} '.format(DT) + " nS"
+                DeltaT = ' {0:.3f} '.format(DT) + " nS"
                 if Tpoint >= 1.0:
-                    DeltaT = ' {0:.1f} '.format(DT) + " S"
+                    DeltaT = ' {0:.3f} '.format(DT) + " S"
                 if Tpoint < 1.0 and Tpoint >= 0.001:
                     axis_value = DT * 1000
-                    DeltaT = ' {0:.1f} '.format(axis_value) + " mS"
+                    DeltaT = ' {0:.3f} '.format(axis_value) + " mS"
                 if Tpoint < 0.001:
                     axis_value = DT * 1000000
-                    DeltaT = ' {0:.1f} '.format(axis_value) + " uS"
+                    DeltaT = ' {0:.3f} '.format(axis_value) + " uS"
                 #
                 DeltaFreq = 1.0/(Tpoint-PrevT)
                 
@@ -14812,7 +14922,7 @@ def onSpinBoxScroll(event):
 #
 # ================ Make awg sub window ==========================
 def MakeAWGWindow():
-    global AWGAShape, AWGBShape, awgwindow, AWGChannels
+    global AWGAShape, AWGBShape, awgwindow, AWGChannels, FrameBG, BorderSize
     global AWGScreenStatus, AWGAShapeLabel, AwgAOnOffBt
     global AWGAAmplEntry, AWGAOffsetEntry, AWGAFreqEntry, AWGADutyCycleEntry
     global AWGBShapeLabel, AwgBOnOffBt, AuxDACEntry, awgbph, AWGBPhaseEntry
@@ -14831,6 +14941,7 @@ def MakeAWGWindow():
         awgwindow.title("AWG Controls " + SWRev + RevDate)
         awgwindow.resizable(FALSE,FALSE)
         awgwindow.geometry('+0+100')
+        awgwindow.configure(background=FrameBG, borderwidth=BorderSize)
         awgwindow.protocol("WM_DELETE_WINDOW", DestroyAWGScreen)
         #
         frame2 = LabelFrame(awgwindow, text="AWG CH A", style="A10R1.TLabelframe")
@@ -17006,7 +17117,7 @@ def MakeDigScreen():
     global DigScreenStatus, win2, PWMDivEntry, PWMWidthEntry, PWMChannels
     global RoundRedBtn, RoundGrnBtn, RoundOrBtn, DigChannels, LogicChannels
     global d0btn, d1btn, d2btn, d3btn, d4btn, d5btn, d6btn, d7btn, TgInput
-    global pwmbtn, PWMLabel
+    global pwmbtn, PWMLabel, FrameBG, BorderSize
     
     # setup Dig output window
     if DigScreenStatus.get() == 0:
@@ -17015,6 +17126,7 @@ def MakeDigScreen():
         win2.title("Digital Controls")
         win2.resizable(FALSE,FALSE)
         win2.protocol("WM_DELETE_WINDOW", DestroyDigScreen)
+        win2.configure(background=FrameBG, borderwidth=BorderSize)
         RowNum = 1
         d7lab = Label(win2, text="  D7  ", background = "#8080ff")
         d7lab.grid(row=RowNum, column=1, sticky=W)
@@ -17712,27 +17824,29 @@ def MakeMeterWindow():
         DMMStatus.set(1)
         DMMDisp.set(1)
         DMMCheckBox()
-        Grow = 1
         dmmwindow = Toplevel()
         dmmwindow.title("Analog Meter " + SWRev + RevDate)
-        DmmLabel1 = Label(dmmwindow, font = "Arial 16 bold")
+        framet = Frame(dmmwindow, borderwidth=BorderSize, relief=FrameRelief)
+        framet.grid(row=0, column=0, sticky=W)
+        Grow = 1
+        DmmLabel1 = Label(framet, font = "Arial 16 bold")
         DmmLabel1.grid(row=Grow, columnspan=3, sticky=W)
         DmmLabel1.config(text = "A Volts B Volts")
         if CHANNELS >= 3:
             Grow = Grow + 1
-            DmmLabel2 = Label(dmmwindow, font = "Arial 16 bold")
+            DmmLabel2 = Label(framet, font = "Arial 16 bold")
             DmmLabel2.grid(row=Grow, columnspan=3, sticky=W)
             DmmLabel2.config(text = "C Volts D Volts")
         Grow = Grow + 1
-        DmmLabel3 = Label(dmmwindow, font = "Arial 16 bold")
+        DmmLabel3 = Label(framet, font = "Arial 16 bold")
         DmmLabel3.grid(row=Grow, columnspan=3, sticky=W)
         DmmLabel3.config(text = "Math")
         Grow = Grow + 1
-        DmmLabel4 = Label(dmmwindow, font = "Arial 16 bold")
+        DmmLabel4 = Label(framet, font = "Arial 16 bold")
         DmmLabel4.grid(row=Grow, columnspan=3, sticky=W)
         DmmLabel4.config(text = "MathX MathY")
         Grow = Grow + 1
-        frame0 = Frame( dmmwindow )
+        frame0 = Frame( framet )
         frame0.grid(row=Grow, column=0, sticky=W)
         rb1 = Radiobutton(frame0, text="Stop", style="Stop.TRadiobutton", variable=DMMRunStatus, value=0, command=BStop )
         rb1.pack(side=LEFT)#.grid(row=2, column=0, sticky=W)
@@ -17740,7 +17854,7 @@ def MakeMeterWindow():
         rb2.pack(side=LEFT)#.grid(row=2, column=1, sticky=W)
         # Entry inputs for Meter Min and Max
         Grow = Grow + 1
-        frame1 = Frame( dmmwindow )
+        frame1 = Frame( framet )
         frame1.grid(row=Grow, column=0, sticky=W)
         MeterMinEntry = Entry(frame1, width=5, cursor='double_arrow')
         #MeterMinEntry.bind("<Return>", BOffsetA)
@@ -17769,10 +17883,10 @@ def MakeMeterWindow():
         # Define Analog Meter display
         Build_meter()
         Grow = Grow + 1
-        dlcheck = Checkbutton(dmmwindow, text="DLog to file", variable=dlog, command=Dloger_on_off)
+        dlcheck = Checkbutton(framet, text="DLog to file", variable=dlog, command=Dloger_on_off)
         dlcheck.grid(row=Grow, column=0, sticky=W, pady=7)
         Grow = Grow + 1
-        dmmdismissclbutton = Button(dmmwindow, text="Dismiss", style="W8.TButton", command=DestroyDMMScreen)
+        dmmdismissclbutton = Button(framet, text="Dismiss", style="W8.TButton", command=DestroyDMMScreen)
         dmmdismissclbutton.grid(row=Grow, column=0, sticky=W, pady=7)
 #
 def DestroyDMMScreen():
@@ -17960,8 +18074,12 @@ def MakeSettingsMenu():
     global TrgLPFEntry, Trigger_LPF_length
     global CHA_RC_HP, CHB_RC_HP, CHA_TC1, CHA_TC2, CHB_TC1, CHB_TC2
     global CHA_A1, CHA_A2, CHB_A1, CHB_A2
+    global CHC_RC_HP, CHD_RC_HP, CHC_TC1, CHC_TC2, CHD_TC1, CHD_TC2
+    global CHC_A1, CHC_A2, CHD_A1, CHD_A2
     global cha_TC1Entry, cha_TC2Entry, chb_TC1Entry, chb_TC2Entry
     global cha_A1Entry, cha_A2Entry, chb_A1Entry, chb_A2Entry
+    global chc_TC1Entry, chc_TC2Entry, chd_TC1Entry, chd_TC2Entry
+    global chc_A1Entry, chc_A2Entry, chd_A1Entry, chd_A2Entry
     global FrameRelief, BorderSize
 
     if SettingsStatus.get() == 0:
@@ -18085,102 +18203,201 @@ def MakeSettingsMenu():
         AwgAmplrb2 = Radiobutton(frame1, text="AWG Amp/Off ", variable=AWG_Amp_Mode, value=1, command=UpdateAWGWin)
         AwgAmplrb2.grid(row=Row, column=1, sticky=W)
         #
-        Row = Row + 1
-        cha_Rcomplab = Label(frame1, text="CHA Comp, TC1 (uSec), A1", style= "A10B.TLabel") # in micro seconds
-        cha_Rcomplab.grid(row=Row, column=0, sticky=W)
-        cha_RcomplabMode = Frame( frame1 )
-        cha_RcomplabMode.grid(row=Row, column=1, sticky=W)
-        cha_TC1Entry = Entry(cha_RcomplabMode, width=5, cursor='double_arrow')
-        cha_TC1Entry.bind("<Return>", SettingsTextKey)
-        cha_TC1Entry.bind('<MouseWheel>', Settingsscroll)
-        cha_TC1Entry.bind("<Button-4>", Settingsscroll)# with Linux OS
-        cha_TC1Entry.bind("<Button-5>", Settingsscroll)
-        cha_TC1Entry.bind('<Key>', SettingsTextKey)
-        cha_TC1Entry.pack(side=LEFT)
-        cha_TC1Entry.delete(0,"end")
-        cha_TC1Entry.insert(0,CHA_TC1.get())
-        cha_A1Entry = Entry(cha_RcomplabMode, width=5, cursor='double_arrow')
-        cha_A1Entry.bind("<Return>", SettingsTextKey)
-        cha_A1Entry.bind('<MouseWheel>', Settingsscroll)
-        cha_A1Entry.bind("<Button-4>", Settingsscroll)# with Linux OS
-        cha_A1Entry.bind("<Button-5>", Settingsscroll)
-        cha_A1Entry.bind('<Key>', SettingsTextKey)
-        cha_A1Entry.pack(side=LEFT)
-        cha_A1Entry.delete(0,"end")
-        cha_A1Entry.insert(0,CHA_A1.get())
+        if CHANNELS >= 1:
+            Row = Row + 1
+            cha_Rcomplab = Label(frame1, text="CHA Comp, TC1 (uSec), A1", style= "A10B.TLabel") # in micro seconds
+            cha_Rcomplab.grid(row=Row, column=0, sticky=W)
+            cha_RcomplabMode = Frame( frame1 )
+            cha_RcomplabMode.grid(row=Row, column=1, sticky=W)
+            cha_TC1Entry = Entry(cha_RcomplabMode, width=5, cursor='double_arrow')
+            cha_TC1Entry.bind("<Return>", SettingsTextKey)
+            cha_TC1Entry.bind('<MouseWheel>', Settingsscroll)
+            cha_TC1Entry.bind("<Button-4>", Settingsscroll)# with Linux OS
+            cha_TC1Entry.bind("<Button-5>", Settingsscroll)
+            cha_TC1Entry.bind('<Key>', SettingsTextKey)
+            cha_TC1Entry.pack(side=LEFT)
+            cha_TC1Entry.delete(0,"end")
+            cha_TC1Entry.insert(0,CHA_TC1.get())
+            cha_A1Entry = Entry(cha_RcomplabMode, width=5, cursor='double_arrow')
+            cha_A1Entry.bind("<Return>", SettingsTextKey)
+            cha_A1Entry.bind('<MouseWheel>', Settingsscroll)
+            cha_A1Entry.bind("<Button-4>", Settingsscroll)# with Linux OS
+            cha_A1Entry.bind("<Button-5>", Settingsscroll)
+            cha_A1Entry.bind('<Key>', SettingsTextKey)
+            cha_A1Entry.pack(side=LEFT)
+            cha_A1Entry.delete(0,"end")
+            cha_A1Entry.insert(0,CHA_A1.get())
         #
-        Row = Row + 1
-        cha_Ccomplab = Label(frame1, text="CHA Comp, TC2 (uSec), A2", style= "A10B.TLabel") # in micro seconds
-        cha_Ccomplab.grid(row=Row, column=0, sticky=W)
-        cha_CcomplabMode = Frame( frame1 )
-        cha_CcomplabMode.grid(row=Row, column=1, sticky=W)
-        cha_TC2Entry = Entry(cha_CcomplabMode, width=5, cursor='double_arrow')
-        cha_TC2Entry.bind("<Return>", SettingsTextKey)
-        cha_TC2Entry.bind('<MouseWheel>', Settingsscroll)
-        cha_TC2Entry.bind("<Button-4>", Settingsscroll)# with Linux OS
-        cha_TC2Entry.bind("<Button-5>", Settingsscroll)
-        cha_TC2Entry.bind('<Key>', SettingsTextKey)
-        cha_TC2Entry.pack(side=LEFT)
-        cha_TC2Entry.delete(0,"end")
-        cha_TC2Entry.insert(0,CHA_TC2.get())
-        cha_A2Entry = Entry(cha_CcomplabMode, width=5, cursor='double_arrow')
-        cha_A2Entry.bind("<Return>", SettingsTextKey)
-        cha_A2Entry.bind('<MouseWheel>', Settingsscroll)
-        cha_A2Entry.bind("<Button-4>", Settingsscroll)# with Linux OS
-        cha_A2Entry.bind("<Button-5>", Settingsscroll)
-        cha_A2Entry.bind('<Key>', SettingsTextKey)
-        cha_A2Entry.pack(side=LEFT)
-        cha_A2Entry.delete(0,"end")
-        cha_A2Entry.insert(0,CHA_A2.get())
+            Row = Row + 1
+            cha_Ccomplab = Label(frame1, text="CHA Comp, TC2 (uSec), A2", style= "A10B.TLabel") # in micro seconds
+            cha_Ccomplab.grid(row=Row, column=0, sticky=W)
+            cha_CcomplabMode = Frame( frame1 )
+            cha_CcomplabMode.grid(row=Row, column=1, sticky=W)
+            cha_TC2Entry = Entry(cha_CcomplabMode, width=5, cursor='double_arrow')
+            cha_TC2Entry.bind("<Return>", SettingsTextKey)
+            cha_TC2Entry.bind('<MouseWheel>', Settingsscroll)
+            cha_TC2Entry.bind("<Button-4>", Settingsscroll)# with Linux OS
+            cha_TC2Entry.bind("<Button-5>", Settingsscroll)
+            cha_TC2Entry.bind('<Key>', SettingsTextKey)
+            cha_TC2Entry.pack(side=LEFT)
+            cha_TC2Entry.delete(0,"end")
+            cha_TC2Entry.insert(0,CHA_TC2.get())
+            cha_A2Entry = Entry(cha_CcomplabMode, width=5, cursor='double_arrow')
+            cha_A2Entry.bind("<Return>", SettingsTextKey)
+            cha_A2Entry.bind('<MouseWheel>', Settingsscroll)
+            cha_A2Entry.bind("<Button-4>", Settingsscroll)# with Linux OS
+            cha_A2Entry.bind("<Button-5>", Settingsscroll)
+            cha_A2Entry.bind('<Key>', SettingsTextKey)
+            cha_A2Entry.pack(side=LEFT)
+            cha_A2Entry.delete(0,"end")
+            cha_A2Entry.insert(0,CHA_A2.get())
         #
-        Row = Row + 1
-        chb_Rcomplab = Label(frame1, text="CHB Comp, TC1 (uSec), A1", style= "A10B.TLabel") # in micro seconds
-        chb_Rcomplab.grid(row=Row, column=0, sticky=W)
-        chb_RcomplabMode = Frame( frame1 )
-        chb_RcomplabMode.grid(row=Row, column=1, sticky=W)
-        chb_TC1Entry = Entry(chb_RcomplabMode, width=5, cursor='double_arrow')
-        chb_TC1Entry.bind("<Return>", SettingsTextKey)
-        chb_TC1Entry.bind('<MouseWheel>', Settingsscroll)
-        chb_TC1Entry.bind("<Button-4>", Settingsscroll)# with Linux OS
-        chb_TC1Entry.bind("<Button-5>", Settingsscroll)
-        chb_TC1Entry.bind('<Key>', SettingsTextKey)
-        chb_TC1Entry.pack(side=LEFT)
-        chb_TC1Entry.delete(0,"end")
-        chb_TC1Entry.insert(0,CHB_TC1.get())
-        chb_A1Entry = Entry(chb_RcomplabMode, width=5, cursor='double_arrow')
-        chb_A1Entry.bind("<Return>", SettingsTextKey)
-        chb_A1Entry.bind('<MouseWheel>', Settingsscroll)
-        chb_A1Entry.bind("<Button-4>", Settingsscroll)# with Linux OS
-        chb_A1Entry.bind("<Button-5>", Settingsscroll)
-        chb_A1Entry.bind('<Key>', SettingsTextKey)
-        chb_A1Entry.pack(side=LEFT)
-        chb_A1Entry.delete(0,"end")
-        chb_A1Entry.insert(0,CHB_A1.get())
+        if CHANNELS >= 2:
+            Row = Row + 1
+            chb_Rcomplab = Label(frame1, text="CHB Comp, TC1 (uSec), A1", style= "A10B.TLabel") # in micro seconds
+            chb_Rcomplab.grid(row=Row, column=0, sticky=W)
+            chb_RcomplabMode = Frame( frame1 )
+            chb_RcomplabMode.grid(row=Row, column=1, sticky=W)
+            chb_TC1Entry = Entry(chb_RcomplabMode, width=5, cursor='double_arrow')
+            chb_TC1Entry.bind("<Return>", SettingsTextKey)
+            chb_TC1Entry.bind('<MouseWheel>', Settingsscroll)
+            chb_TC1Entry.bind("<Button-4>", Settingsscroll)# with Linux OS
+            chb_TC1Entry.bind("<Button-5>", Settingsscroll)
+            chb_TC1Entry.bind('<Key>', SettingsTextKey)
+            chb_TC1Entry.pack(side=LEFT)
+            chb_TC1Entry.delete(0,"end")
+            chb_TC1Entry.insert(0,CHB_TC1.get())
+            chb_A1Entry = Entry(chb_RcomplabMode, width=5, cursor='double_arrow')
+            chb_A1Entry.bind("<Return>", SettingsTextKey)
+            chb_A1Entry.bind('<MouseWheel>', Settingsscroll)
+            chb_A1Entry.bind("<Button-4>", Settingsscroll)# with Linux OS
+            chb_A1Entry.bind("<Button-5>", Settingsscroll)
+            chb_A1Entry.bind('<Key>', SettingsTextKey)
+            chb_A1Entry.pack(side=LEFT)
+            chb_A1Entry.delete(0,"end")
+            chb_A1Entry.insert(0,CHB_A1.get())
         #
-        Row = Row + 1
-        chb_Ccomplab = Label(frame1, text="CHB Comp, TC2 (uSec), A2", style= "A10B.TLabel") # in micro seconds
-        chb_Ccomplab.grid(row=Row, column=0, sticky=W)
-        chb_CcomplabMode = Frame( frame1 )
-        chb_CcomplabMode.grid(row=Row, column=1, sticky=W)
-        chb_TC2Entry = Entry(chb_CcomplabMode, width=5, cursor='double_arrow')
-        chb_TC2Entry.bind("<Return>", SettingsTextKey)
-        chb_TC2Entry.bind('<MouseWheel>', Settingsscroll)
-        chb_TC2Entry.bind("<Button-4>", Settingsscroll)# with Linux OS
-        chb_TC2Entry.bind("<Button-5>", Settingsscroll)
-        chb_TC2Entry.bind('<Key>', SettingsTextKey)
-        chb_TC2Entry.pack(side=LEFT)
-        chb_TC2Entry.delete(0,"end")
-        chb_TC2Entry.insert(0,CHB_TC2.get())
-        chb_A2Entry = Entry(chb_CcomplabMode, width=5, cursor='double_arrow')
-        chb_A2Entry.bind("<Return>", SettingsTextKey)
-        chb_A2Entry.bind('<MouseWheel>', Settingsscroll)
-        chb_A2Entry.bind("<Button-4>", Settingsscroll)# with Linux OS
-        chb_A2Entry.bind("<Button-5>", Settingsscroll)
-        chb_A2Entry.bind('<Key>', SettingsTextKey)
-        chb_A2Entry.pack(side=LEFT)
-        chb_A2Entry.delete(0,"end")
-        chb_A2Entry.insert(0,CHB_A2.get())
+            Row = Row + 1
+            chb_Ccomplab = Label(frame1, text="CHB Comp, TC2 (uSec), A2", style= "A10B.TLabel") # in micro seconds
+            chb_Ccomplab.grid(row=Row, column=0, sticky=W)
+            chb_CcomplabMode = Frame( frame1 )
+            chb_CcomplabMode.grid(row=Row, column=1, sticky=W)
+            chb_TC2Entry = Entry(chb_CcomplabMode, width=5, cursor='double_arrow')
+            chb_TC2Entry.bind("<Return>", SettingsTextKey)
+            chb_TC2Entry.bind('<MouseWheel>', Settingsscroll)
+            chb_TC2Entry.bind("<Button-4>", Settingsscroll)# with Linux OS
+            chb_TC2Entry.bind("<Button-5>", Settingsscroll)
+            chb_TC2Entry.bind('<Key>', SettingsTextKey)
+            chb_TC2Entry.pack(side=LEFT)
+            chb_TC2Entry.delete(0,"end")
+            chb_TC2Entry.insert(0,CHB_TC2.get())
+            chb_A2Entry = Entry(chb_CcomplabMode, width=5, cursor='double_arrow')
+            chb_A2Entry.bind("<Return>", SettingsTextKey)
+            chb_A2Entry.bind('<MouseWheel>', Settingsscroll)
+            chb_A2Entry.bind("<Button-4>", Settingsscroll)# with Linux OS
+            chb_A2Entry.bind("<Button-5>", Settingsscroll)
+            chb_A2Entry.bind('<Key>', SettingsTextKey)
+            chb_A2Entry.pack(side=LEFT)
+            chb_A2Entry.delete(0,"end")
+            chb_A2Entry.insert(0,CHB_A2.get())
         #
+        if CHANNELS >= 3:
+            Row = Row + 1
+            chc_Rcomplab = Label(frame1, text="CHC Comp, TC1 (uSec), A1", style= "A10B.TLabel") # in micro seconds
+            chc_Rcomplab.grid(row=Row, column=0, sticky=W)
+            chc_RcomplabMode = Frame( frame1 )
+            chc_RcomplabMode.grid(row=Row, column=1, sticky=W)
+            chc_TC1Entry = Entry(chc_RcomplabMode, width=5, cursor='double_arrow')
+            chc_TC1Entry.bind("<Return>", SettingsTextKey)
+            chc_TC1Entry.bind('<MouseWheel>', Settingsscroll)
+            chc_TC1Entry.bind("<Button-4>", Settingsscroll)# with Linux OS
+            chc_TC1Entry.bind("<Button-5>", Settingsscroll)
+            chc_TC1Entry.bind('<Key>', SettingsTextKey)
+            chc_TC1Entry.pack(side=LEFT)
+            chc_TC1Entry.delete(0,"end")
+            chc_TC1Entry.insert(0,CHC_TC1.get())
+            chc_A1Entry = Entry(chc_RcomplabMode, width=5, cursor='double_arrow')
+            chc_A1Entry.bind("<Return>", SettingsTextKey)
+            chc_A1Entry.bind('<MouseWheel>', Settingsscroll)
+            chc_A1Entry.bind("<Button-4>", Settingsscroll)# with Linux OS
+            chc_A1Entry.bind("<Button-5>", Settingsscroll)
+            chc_A1Entry.bind('<Key>', SettingsTextKey)
+            chc_A1Entry.pack(side=LEFT)
+            chc_A1Entry.delete(0,"end")
+            chc_A1Entry.insert(0,CHC_A1.get())
+        #
+            Row = Row + 1
+            chc_Ccomplab = Label(frame1, text="CHC Comp, TC2 (uSec), A2", style= "A10B.TLabel") # in micro seconds
+            chc_Ccomplab.grid(row=Row, column=0, sticky=W)
+            chc_CcomplabMode = Frame( frame1 )
+            chc_CcomplabMode.grid(row=Row, column=1, sticky=W)
+            chc_TC2Entry = Entry(chc_CcomplabMode, width=5, cursor='double_arrow')
+            chc_TC2Entry.bind("<Return>", SettingsTextKey)
+            chc_TC2Entry.bind('<MouseWheel>', Settingsscroll)
+            chc_TC2Entry.bind("<Button-4>", Settingsscroll)# with Linux OS
+            chc_TC2Entry.bind("<Button-5>", Settingsscroll)
+            chc_TC2Entry.bind('<Key>', SettingsTextKey)
+            chc_TC2Entry.pack(side=LEFT)
+            chc_TC2Entry.delete(0,"end")
+            chc_TC2Entry.insert(0,CHC_TC2.get())
+            chc_A2Entry = Entry(chc_CcomplabMode, width=5, cursor='double_arrow')
+            chc_A2Entry.bind("<Return>", SettingsTextKey)
+            chc_A2Entry.bind('<MouseWheel>', Settingsscroll)
+            chc_A2Entry.bind("<Button-4>", Settingsscroll)# with Linux OS
+            chc_A2Entry.bind("<Button-5>", Settingsscroll)
+            chc_A2Entry.bind('<Key>', SettingsTextKey)
+            chc_A2Entry.pack(side=LEFT)
+            chc_A2Entry.delete(0,"end")
+            chc_A2Entry.insert(0,CHC_A2.get())
+        #
+        if CHANNELS >= 4:
+            Row = Row + 1
+            chd_Rcomplab = Label(frame1, text="CHD Comp, TC1 (uSec), A1", style= "A10B.TLabel") # in micro seconds
+            chd_Rcomplab.grid(row=Row, column=0, sticky=W)
+            chd_RcomplabMode = Frame( frame1 )
+            chd_RcomplabMode.grid(row=Row, column=1, sticky=W)
+            chd_TC1Entry = Entry(chd_RcomplabMode, width=5, cursor='double_arrow')
+            chd_TC1Entry.bind("<Return>", SettingsTextKey)
+            chd_TC1Entry.bind('<MouseWheel>', Settingsscroll)
+            chd_TC1Entry.bind("<Button-4>", Settingsscroll)# with Linux OS
+            chd_TC1Entry.bind("<Button-5>", Settingsscroll)
+            chd_TC1Entry.bind('<Key>', SettingsTextKey)
+            chd_TC1Entry.pack(side=LEFT)
+            chd_TC1Entry.delete(0,"end")
+            chd_TC1Entry.insert(0,CHD_TC1.get())
+            chd_A1Entry = Entry(chd_RcomplabMode, width=5, cursor='double_arrow')
+            chd_A1Entry.bind("<Return>", SettingsTextKey)
+            chd_A1Entry.bind('<MouseWheel>', Settingsscroll)
+            chd_A1Entry.bind("<Button-4>", Settingsscroll)# with Linux OS
+            chd_A1Entry.bind("<Button-5>", Settingsscroll)
+            chd_A1Entry.bind('<Key>', SettingsTextKey)
+            chd_A1Entry.pack(side=LEFT)
+            chd_A1Entry.delete(0,"end")
+            chd_A1Entry.insert(0,CHD_A1.get())
+        #
+            Row = Row + 1
+            chd_Ccomplab = Label(frame1, text="CHD Comp, TC2 (uSec), A2", style= "A10B.TLabel") # in micro seconds
+            chd_Ccomplab.grid(row=Row, column=0, sticky=W)
+            chd_CcomplabMode = Frame( frame1 )
+            chd_CcomplabMode.grid(row=Row, column=1, sticky=W)
+            chd_TC2Entry = Entry(chd_CcomplabMode, width=5, cursor='double_arrow')
+            chd_TC2Entry.bind("<Return>", SettingsTextKey)
+            chd_TC2Entry.bind('<MouseWheel>', Settingsscroll)
+            chd_TC2Entry.bind("<Button-4>", Settingsscroll)# with Linux OS
+            chd_TC2Entry.bind("<Button-5>", Settingsscroll)
+            chd_TC2Entry.bind('<Key>', SettingsTextKey)
+            chd_TC2Entry.pack(side=LEFT)
+            chd_TC2Entry.delete(0,"end")
+            chd_TC2Entry.insert(0,CHD_TC2.get())
+            chd_A2Entry = Entry(chd_CcomplabMode, width=5, cursor='double_arrow')
+            chd_A2Entry.bind("<Return>", SettingsTextKey)
+            chd_A2Entry.bind('<MouseWheel>', Settingsscroll)
+            chd_A2Entry.bind("<Button-4>", Settingsscroll)# with Linux OS
+            chd_A2Entry.bind("<Button-5>", Settingsscroll)
+            chd_A2Entry.bind('<Key>', SettingsTextKey)
+            chd_A2Entry.pack(side=LEFT)
+            chd_A2Entry.delete(0,"end")
+            chd_A2Entry.insert(0,CHD_A2.get())
 def UpdateAWGWin():
 
     UpdateAWGA()
@@ -18479,10 +18696,34 @@ def RDSetBGO():
     CHBVGainEntry.insert(0,Gain_str)
     CHBVOffsetEntry.delete(0,"end")
     CHBVOffsetEntry.insert(0,Voff_str)
+##
+def RDSetCGO():
+    global CHCVGainEntry, CHCVOffsetEntry
+    global RDGain, RDOffset, CHBIleak, RDeffective
+
+    DivOffset = RDOffset + (CHBIleak * RDeffective)
+    Gain_str = '{0:.3f}'.format(RDGain)
+    Voff_str = '{0:.3f}'.format(DivOffset)
+    CHCVGainEntry.delete(0,"end")
+    CHCVGainEntry.insert(0,Gain_str)
+    CHCVOffsetEntry.delete(0,"end")
+    CHCVOffsetEntry.insert(0,Voff_str)
+##
+def RDSetDGO():
+    global CHDVGainEntry, CHDVOffsetEntry
+    global RDGain, RDOffset, CHBIleak, RDeffective
+
+    DivOffset = RDOffset + (CHBIleak * RDeffective)
+    Gain_str = '{0:.3f}'.format(RDGain)
+    Voff_str = '{0:.3f}'.format(DivOffset)
+    CHDVGainEntry.delete(0,"end")
+    CHDVGainEntry.insert(0,Gain_str)
+    CHDVOffsetEntry.delete(0,"end")
+    CHDVOffsetEntry.insert(0,Voff_str)
 #
 def MakeResDivWindow():
     global SWRev, RevDate, ResDivStatus, ResDivDisp, R1, R2, Voff, COLORblack, COLORwhite
-    global SetResDivA, SetResDivB
+    global SetResDivA, SetResDivB, SetResDivC, SetResDivB, CHANNELS, FrameBG, BorderSize
     global display8, display9, resdivwindow, RDGRW, RDGRH, RDY0T, RDX0L
     
     if ResDivStatus.get() == 0: #
@@ -18493,7 +18734,10 @@ def MakeResDivWindow():
         resdivwindow.resizable(FALSE,FALSE)
         resdivwindow.protocol("WM_DELETE_WINDOW", DestroyResDivScreen)
         resdivwindow.geometry("530x310")
+        resdivwindow.configure(background=FrameBG, borderwidth=BorderSize)
 # from here down we build GUI
+        #framet = Frame(resdivwindow, borderwidth=BorderSize, relief=FrameRelief)
+        #framet.place(x=530, y=310) # , sticky=W)
         Font_tuple = ("Comic Sans MS", 10, "bold")
         #
         display = Label(resdivwindow, text="Scope Input Resistor Divider", foreground= "Blue",font = Font_tuple)
@@ -18531,14 +18775,18 @@ def MakeResDivWindow():
         
         ResDivdismissbutton = Button(resdivwindow, text="Dismiss", command=DestroyResDivScreen)
         ResDivdismissbutton.place(x = 230, y = 260)
-
-        #ResDivCHAsetbutton = Button(resdivwindow, text="Set CH A", command=RDSetAGO)
-        ResDivCHAsetbutton = Checkbutton(resdivwindow, text='Set Ch A', style="Strace1.TCheckbutton", variable=SetResDivA, command=RDSetAGO)#
-        ResDivCHAsetbutton.place(x = 330, y = 260)
-
-        # ResDivCHBsetbutton = Button(resdivwindow, text="Set CH B", command=RDSetBGO)
-        ResDivCHBsetbutton = Checkbutton(resdivwindow, text='Set Ch B', style="Strace2.TCheckbutton", variable=SetResDivB, command=RDSetBGO)#
-        ResDivCHBsetbutton.place(x = 430, y = 260)
+        if CHANNELS >= 1:
+            ResDivCHAsetbutton = Checkbutton(resdivwindow, text='Set Ch A', style="Strace1.TCheckbutton", variable=SetResDivA, command=RDSetAGO)#
+            ResDivCHAsetbutton.place(x = 330, y = 260)
+        if CHANNELS >= 2:
+            ResDivCHBsetbutton = Checkbutton(resdivwindow, text='Set Ch B', style="Strace2.TCheckbutton", variable=SetResDivB, command=RDSetBGO)#
+            ResDivCHBsetbutton.place(x = 430, y = 260)
+        if CHANNELS >= 3:
+            ResDivCHCsetbutton = Checkbutton(resdivwindow, text='Set Ch C', style="Strace3.TCheckbutton", variable=SetResDivC, command=RDSetCGO)#
+            ResDivCHCsetbutton.place(x = 330, y = 280)
+        if CHANNELS >= 4:
+            ResDivCHDsetbutton = Checkbutton(resdivwindow, text='Set Ch D', style="Strace4.TCheckbutton", variable=SetResDivD, command=RDSetDGO)#
+            ResDivCHDsetbutton.place(x = 430, y = 280)
         
         Sche = Canvas(resdivwindow, width=RDGRW, height=RDGRH, background=COLORwhite)
         Sche.place(x = 230, y = RDY0T) #
@@ -18632,6 +18880,8 @@ Show_MathX = IntVar()
 Show_MathY = IntVar()
 AutoCenterA = IntVar()
 AutoCenterB = IntVar()
+AutoCenterC = IntVar()
+AutoCenterD = IntVar()
 SmoothCurves = IntVar()
 ZOHold = IntVar()
 TRACEmodeTime = IntVar()
@@ -18730,6 +18980,8 @@ MarkerScale.set(1)
 SettingsStatus = IntVar()
 CHA_RC_HP = IntVar()
 CHB_RC_HP = IntVar()
+CHC_RC_HP = IntVar()
+CHD_RC_HP = IntVar()
 HScale = IntVar()
 SAVScale = IntVar()
 SAVPSD = IntVar()
@@ -18755,9 +19007,13 @@ Sucess = ConnectDevice()
 if GUITheme == "Light": # Can be Light or Dark or Blue or LtBlue
     FrameBG = "#d7d7d7"
     ButtonText = "#000000"
+    COLORwhite = "#ffffff" # 100% white
+    COLORblack = "#000000" # 100% black
 elif GUITheme == "Dark":
     FrameBG = "#484848"
     ButtonText = "#ffffff"
+    COLORwhite = "#000000" # 100% black
+    COLORblack = "#ffffff" # 100% white
 elif GUITheme == "Blue":
     FrameBG = "#242468"
     ButtonText = "#d0d0ff"
@@ -18918,13 +19174,13 @@ Triggermenu.menu = Menu(Triggermenu, tearoff = 0 )
 Triggermenu["menu"]  = Triggermenu.menu
 Triggermenu.menu.add_radiobutton(label='None', variable=TgInput, value=0)
 if CHANNELS >= 1:
-    Triggermenu.menu.add_radiobutton(label='CA', variable=TgInput, value=1, command=BSetTriggerSource)
+    Triggermenu.menu.add_radiobutton(label='CH A', background=COLORtrace1, variable=TgInput, value=1, command=BSetTriggerSource)
 if CHANNELS >= 2:
-    Triggermenu.menu.add_radiobutton(label='CB', variable=TgInput, value=2, command=BSetTriggerSource)
+    Triggermenu.menu.add_radiobutton(label='CH B', background=COLORtrace2, variable=TgInput, value=2, command=BSetTriggerSource)
 if CHANNELS >= 3:
-    Triggermenu.menu.add_radiobutton(label='CC', variable=TgInput, value=3, command=BSetTriggerSource)
+    Triggermenu.menu.add_radiobutton(label='CH C', background=COLORtrace3, variable=TgInput, value=3, command=BSetTriggerSource)
 if CHANNELS >= 4:
-    Triggermenu.menu.add_radiobutton(label='CD', variable=TgInput, value=4, command=BSetTriggerSource)
+    Triggermenu.menu.add_radiobutton(label='CH D', background=COLORtrace4, variable=TgInput, value=4, command=BSetTriggerSource)
 Triggermenu.menu.add_radiobutton(label='Internal', variable=TgSource, value=0, command=BTrigIntExt)
 Triggermenu.menu.add_radiobutton(label='External', variable=TgSource, value=1, command=BTrigIntExt)
 Triggermenu.menu.add_checkbutton(label='Auto Level', variable=AutoLevel)
@@ -18993,14 +19249,32 @@ if CHANNELS >= 4:
 Showmenu.menu.add_checkbutton(label='Math-X', background=COLORtrace6, variable=Show_MathX, command=UpdateTimeTrace)
 Showmenu.menu.add_checkbutton(label='Math-Y', background=COLORtrace7, variable=Show_MathY, command=UpdateTimeTrace)
 Showmenu.menu.add_command(label="-Auto Vert Center-", foreground="blue", command=donothing)
-Showmenu.menu.add_checkbutton(label='Center CA', variable=AutoCenterA)
-Showmenu.menu.add_checkbutton(label='Center CB', variable=AutoCenterB)
+if CHANNELS >= 1:
+    Showmenu.menu.add_checkbutton(label='Center CA', variable=AutoCenterA)
+if CHANNELS >= 2:
+    Showmenu.menu.add_checkbutton(label='Center CB', variable=AutoCenterB)
+if CHANNELS >= 3:
+    Showmenu.menu.add_checkbutton(label='Center CC', variable=AutoCenterC)
+if CHANNELS >= 4:
+    Showmenu.menu.add_checkbutton(label='Center CD', variable=AutoCenterD)
 Showmenu.menu.add_command(label="-Input HP Comp-", foreground="blue", command=donothing)
-Showmenu.menu.add_checkbutton(label='Comp CA-V', variable=CHA_RC_HP)
-Showmenu.menu.add_checkbutton(label='Comp CB-V', variable=CHB_RC_HP)
+if CHANNELS >= 1:
+    Showmenu.menu.add_checkbutton(label='Comp CH A', variable=CHA_RC_HP)
+if CHANNELS >= 2:
+    Showmenu.menu.add_checkbutton(label='Comp CH B', variable=CHB_RC_HP)
+if CHANNELS >= 3:
+    Showmenu.menu.add_checkbutton(label='Comp CH C', variable=CHC_RC_HP)
+if CHANNELS >= 4:
+    Showmenu.menu.add_checkbutton(label='Comp CH D', variable=CHC_RC_HP)
 Showmenu.menu.add_separator()
-Showmenu.menu.add_checkbutton(label='RA', background=COLORtraceR1, variable=ShowRA_V, command=UpdateTimeTrace)
-Showmenu.menu.add_checkbutton(label='RB', background=COLORtraceR2, variable=ShowRB_V, command=UpdateTimeTrace)
+if CHANNELS >= 1:
+    Showmenu.menu.add_checkbutton(label='RA', background=COLORtraceR1, variable=ShowRA_V, command=UpdateTimeTrace)
+if CHANNELS >= 2:
+    Showmenu.menu.add_checkbutton(label='RB', background=COLORtraceR2, variable=ShowRB_V, command=UpdateTimeTrace)
+if CHANNELS >= 3:
+    Showmenu.menu.add_checkbutton(label='RC', background=COLORtraceR3, variable=ShowRC_V, command=UpdateTimeTrace)
+if CHANNELS >= 4:
+    Showmenu.menu.add_checkbutton(label='RD', background=COLORtraceR4, variable=ShowRD_V, command=UpdateTimeTrace)
 Showmenu.menu.add_checkbutton(label='RMath', background=COLORtraceR5, variable=ShowMath, command=UpdateTimeTrace)
 Showmenu.menu.add_separator()
 Showmenu.menu.add_checkbutton(label='T Cursor (t)', variable=ShowTCur, command=UpdateTimeTrace)
@@ -19285,6 +19559,19 @@ if ShowTraceControls > 0:
     if CHANNELS >= 4:
         ckbtd = Checkbutton(trctrlc, text='CH D (4)', style="Strace4.TCheckbutton", variable=ShowC4_V, command=SelectChannels) #
         ckbtd.pack(side=LEFT,fill=X)
+    if EnableLoopBack > 0:
+        trctrlbk = Frame( frame2r )
+        trctrlbk.pack(side=TOP)
+        lbckb = Checkbutton(trctrlbk, text="LoopBack", style="Disab.TCheckbutton", variable=LoopBack, command=LbCheckBox)
+        lbckb.pack(side=LEFT)
+        LBsb = Spinbox(trctrlbk, cursor='double_arrow', width=5, values=LBList) #, command=LBSpinBox)
+        LBsb.bind('<MouseWheel>', onSpinBoxScroll)
+        LBsb.bind("<Button-4>", onSpinBoxScroll)# with Linux OS
+        LBsb.bind("<Button-5>", onSpinBoxScroll)
+        LBsb.pack(side=LEFT)
+        LBsb.delete(0,"end")
+        LBsb.insert(0,"CH A") # "CH A"
+
 #
 if ShowBallonHelp > 0:
     try:
