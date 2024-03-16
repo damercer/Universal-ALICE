@@ -1,7 +1,7 @@
 #!/usr/bin/python
 # -*- coding: cp1252 -*-
 #
-# Alice-universal-alpha.py(w) (3-1-2024)
+# Alice-universal-alpha.py(w) (3-15-2024)
 # Written using Python version 3.10, Windows OS 
 # Requires a hardware interface level functions add-on file
 # Created by D Mercer ()
@@ -67,7 +67,7 @@ import webbrowser
 # check which operating system
 import platform
 #
-RevDate = "1 March 2024"
+RevDate = "15 March 2024"
 SWRev = "1.0 "
 #
 # small bit map of triangle logo for window icon
@@ -229,6 +229,7 @@ FrameRelief = RIDGE
 LocalLanguage = "English"
 #
 Power2 = [ 1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384]
+UseSoftwareTrigger = 0
 # Set sample buffer size
 HoldOff = 5
 LShift = 0
@@ -1996,59 +1997,59 @@ def SetBCompA():
     global AWGAAmplEntry, AWGBAmplEntry, AWGAOffsetEntry, AWGBOffsetEntry, AWGAFreqEntry, AWGBFreqEntry
     global AWGAPhaseEntry, AWGBPhaseEntry, AWGADutyCycleEntry, AWGBDutyCycleEntry, AWGAShape, AWGBShape
     global BisCompA, AWGAWave, AWG_Amp_Mode
-# if BisCompA.get() == 1:
-    if AWG_Amp_Mode.get() == 0: # 0 = Min/Max mode, 1 = Amp/Offset
-        # sawp Min and Max values
-        if AWGAShape.get() == 0: # if AWGAWave == 'dc':
-            AWGBAmplvalue = float(eval(AWGAAmplEntry.get()))
-            AWGBOffsetvalue = 2.5 - (float(eval(AWGAOffsetEntry.get()))-2.5)
-            AWGBAmplEntry.delete(0,"end")
-            AWGBAmplEntry.insert(0, AWGBAmplvalue)
-            AWGBOffsetEntry.delete(0,"end")
-            AWGBOffsetEntry.insert(0, AWGBOffsetvalue)
-        else:
-            AWGBAmplvalue = float(eval(AWGAAmplEntry.get()))
-            AWGBOffsetvalue = float(eval(AWGAOffsetEntry.get()))
-            AWGBAmplEntry.delete(0,"end")
-            AWGBAmplEntry.insert(0, AWGBOffsetvalue)
-            AWGBOffsetEntry.delete(0,"end")
-            AWGBOffsetEntry.insert(0, AWGBAmplvalue)
-        try:
-            AWGBPhasevalue = float(eval(AWGAPhaseEntry.get()))
-            AWGBPhaseEntry.delete(0,"end")
-            AWGBPhaseEntry.insert(0, AWGBPhasevalue)
-        except:
-                pass
-    else:
-        if AWGAShape.get() == 0: # if AWGAWave == 'dc':
-            AWGBAmplvalue = float(eval(AWGAAmplEntry.get()))
-            AWGBOffsetvalue = 2.5 - (float(eval(AWGAOffsetEntry.get()))-2.5)
-            AWGBAmplEntry.delete(0,"end")
-            AWGBAmplEntry.insert(0, AWGBAmplvalue)
-            AWGBOffsetEntry.delete(0,"end")
-            AWGBOffsetEntry.insert(0, AWGBOffsetvalue)
-        else:
-            AWGBAmplvalue = float(eval(AWGAAmplEntry.get()))
-            AWGBOffsetvalue = 0.0 - (float(eval(AWGAOffsetEntry.get())))
-            AWGBAmplEntry.delete(0,"end")
-            AWGBAmplEntry.insert(0, AWGBAmplvalue)
-            AWGBOffsetEntry.delete(0,"end")
-            AWGBOffsetEntry.insert(0, AWGBOffsetvalue)
+    if BisCompA.get() == 1:
+        if AWG_Amp_Mode.get() == 0: # 0 = Min/Max mode, 1 = Amp/Offset
+            # sawp Min and Max values
+            if AWGAShape.get() == 0: # if AWGAWave == 'dc':
+                AWGBAmplvalue = float(eval(AWGAAmplEntry.get()))
+                AWGBOffsetvalue = 2.5 - (float(eval(AWGAOffsetEntry.get()))-2.5)
+                AWGBAmplEntry.delete(0,"end")
+                AWGBAmplEntry.insert(0, AWGBAmplvalue)
+                AWGBOffsetEntry.delete(0,"end")
+                AWGBOffsetEntry.insert(0, AWGBOffsetvalue)
+            else:
+                AWGBAmplvalue = float(eval(AWGAAmplEntry.get()))
+                AWGBOffsetvalue = float(eval(AWGAOffsetEntry.get()))
+                AWGBAmplEntry.delete(0,"end")
+                AWGBAmplEntry.insert(0, AWGBOffsetvalue)
+                AWGBOffsetEntry.delete(0,"end")
+                AWGBOffsetEntry.insert(0, AWGBAmplvalue)
             try:
-                AWGBPhasevalue = float(eval(AWGAPhaseEntry.get())) + 180.0
+                AWGBPhasevalue = float(eval(AWGAPhaseEntry.get()))
                 AWGBPhaseEntry.delete(0,"end")
                 AWGBPhaseEntry.insert(0, AWGBPhasevalue)
             except:
-                pass
-    # copy everything else
-    AWGBFreqvalue = float(eval(AWGAFreqEntry.get()))
-    AWGBFreqEntry.delete(0,"end")
-    AWGBFreqEntry.insert(0, AWGBFreqvalue)
-    AWGBDutyCyclevalue = float(eval(AWGADutyCycleEntry.get()))
-    AWGBDutyCycleEntry.delete(0,"end")
-    AWGBDutyCycleEntry.insert(0, AWGBDutyCyclevalue)
-    AWGBShape.set(AWGAShape.get())
-    #
+                    pass
+        else:
+            if AWGAShape.get() == 0: # if AWGAWave == 'dc':
+                AWGBAmplvalue = float(eval(AWGAAmplEntry.get()))
+                AWGBOffsetvalue = 2.5 - (float(eval(AWGAOffsetEntry.get()))-2.5)
+                AWGBAmplEntry.delete(0,"end")
+                AWGBAmplEntry.insert(0, AWGBAmplvalue)
+                AWGBOffsetEntry.delete(0,"end")
+                AWGBOffsetEntry.insert(0, AWGBOffsetvalue)
+            else:
+                AWGBAmplvalue = float(eval(AWGAAmplEntry.get()))
+                AWGBOffsetvalue = 0.0 - (float(eval(AWGAOffsetEntry.get())))
+                AWGBAmplEntry.delete(0,"end")
+                AWGBAmplEntry.insert(0, AWGBAmplvalue)
+                AWGBOffsetEntry.delete(0,"end")
+                AWGBOffsetEntry.insert(0, AWGBOffsetvalue)
+                try:
+                    AWGBPhasevalue = float(eval(AWGAPhaseEntry.get())) + 180.0
+                    AWGBPhaseEntry.delete(0,"end")
+                    AWGBPhaseEntry.insert(0, AWGBPhasevalue)
+                except:
+                    pass
+        # copy everything else
+        AWGBFreqvalue = float(eval(AWGAFreqEntry.get()))
+        AWGBFreqEntry.delete(0,"end")
+        AWGBFreqEntry.insert(0, AWGBFreqvalue)
+        AWGBDutyCyclevalue = float(eval(AWGADutyCycleEntry.get()))
+        AWGBDutyCycleEntry.delete(0,"end")
+        AWGBDutyCycleEntry.insert(0, AWGBDutyCyclevalue)
+        AWGBShape.set(AWGAShape.get())
+        #
 
 def UpdateAWGA():
     global ana_out, fg
@@ -5247,8 +5248,11 @@ def Analog_Roll_time():
 def Analog_Fast_time():
     global VBuffA, VBuffB, VBuffC, VBuffD, VFilterA, VFilterB, VmemoryA, VmemoryB
     global VmemoryC, VmemoryD, VUnAvgA, VUnAvgB, UnAvgSav, NoiseCH1, NoiseCH2
+    global D0_is_on, D1_is_on, D2_is_on, D3_is_on, SaveDig
+    global D4_is_on, D5_is_on, D6_is_on, D7_is_on, COLORtrace8
+    global DBuff0, DBuff1, DBuff2, DBuff3, DBuff4, DBuff5, DBuff6, DBuff7
     global AWGSync, TMsb, HoldOff, HozPoss, HozPossentry
-    global DecimateOption, divfactor
+    global DecimateOption, divfactor, UseSoftwareTrigger
     global TRACEresetTime, TRACEmodeTime, TRACEaverage, TRIGGERsample, TgInput, LShift, TgLabel
     global discontloop, contloop, DeBugMode, TRIGGERentry, TRIGGERlevel
     global CHANNELS, TRACESread, TRACEsize
@@ -5270,7 +5274,8 @@ def Analog_Fast_time():
     global ShowC1_V, ShowC2_V, ShowC3_V, ShowC4_V, Interp4Filter
     global CH1vpdvLevel, CH2vpdvLevel, CHAOffset, CHBOffset
     global CHCvpdvLevel, CHDvpdvLevel, CHCOffset, CHDOffset
-    global BCVASkewEntry, BCVBSkewEntry, DigDeSkewVA, DigDeSkewVB
+    global BCVASkewEntry, BCVBSkewEntry, BCVCSkewEntry, BCVDSkewEntry
+    global DigDeSkewVA, DigDeSkewVB, DigDeSkewVC, DigDeSkewVD
     global CHA_RC_HP, CHB_RC_HP, CHA_TC1, CHA_TC2, CHB_TC1, CHB_TC2, CHC_RC_HP, CHD_RC_HP
     global CHA_A1, CHA_A2, CHB_A1, CHB_A2
     global CHC_TC1, CHC_TC2, CHD_TC1, CHD_TC2
@@ -5444,16 +5449,39 @@ def Analog_Fast_time():
         if len(VBuffD) > 4:
             VBuffD = Digital_RC_High_Pass( VBuffD, TC1D, Gain1D )
             VBuffD = Digital_RC_High_Pass( VBuffD, TC2D, Gain2D )
-# 
 # Check if need to DeSkew waveform data
     if DigDeSkewVA.get() > 0 and ShowC1_V.get() > 0:
-        Shift = int(BCVASkewEntry.get())
+        try:
+            Shift = int(BCVASkewEntry.get())
+        except:
+            Shift = 0
+            DigDeSkewVA.set(0)
         if Shift != 0:
             VBuffA = numpy.roll(VBuffA, Shift)
     if DigDeSkewVB.get() > 0 and ShowC2_V.get() > 0:
-        Shift = int(BCVBSkewEntry.get())
+        try:
+            Shift = int(BCVBSkewEntry.get())
+        except:
+            Shift = 0
+            DigDeSkewVB.set(0)
         if Shift != 0:
             VBuffB = numpy.roll(VBuffB, Shift)
+    if DigDeSkewVC.get() > 0 and ShowC3_V.get() > 0:
+        try:
+            Shift = int(BCVCSkewEntry.get())
+        except:
+            Shift = 0
+            DigDeSkewVC.set(0)
+        if Shift != 0:
+            VBuffC = numpy.roll(VBuffC, Shift)
+    if DigDeSkewVD.get() > 0 and ShowC4_V.get() > 0:
+        try:
+            Shift = int(BCVDSkewEntry.get())
+        except:
+            Shift = 0
+            DigDeSkewVD.set(0)
+        if Shift != 0:
+            VBuffD = numpy.roll(VBuffD, Shift)
 # check if digital filter box checked
     if DigFiltA.get() == 1 and ShowC1_V.get() > 0:
         if len(DFiltACoef) > 1:
@@ -5461,8 +5489,65 @@ def Analog_Fast_time():
     if DigFiltB.get() == 1 and ShowC2_V.get() > 0:
         if len(DFiltBCoef) > 1:
             VBuffB = numpy.convolve(VBuffB, DFiltBCoef)
+# Check if we ned to do Software triggering
+    if UseSoftwareTrigger > 0:
+        # Find trigger sample point if necessary
+        # print("Array Len ",len(VBuffA), "SHOWsamples ", SHOWsamples)
+        LShift = 0
+        if TgInput.get() == 1 and ShowC1_V.get() > 0:
+            FindTriggerSample(VBuffA)
+        if TgInput.get() == 2 and ShowC2_V.get() > 0:
+            FindTriggerSample(VBuffB)
+        if TgInput.get() == 3 and ShowC3_V.get() > 0:
+            FindTriggerSample(VBuffC)
+        if TgInput.get() == 4 and ShowC4_V.get() > 0:
+            FindTriggerSample(VBuffD)
+        if TgInput.get() > 4:
+            TRIGGERentry.delete(0,"end")
+            TRIGGERentry.insert(0,0.5)
+            if TgInput.get() == 5:
+                FindTriggerSample(DBuff0)
+            if TgInput.get() == 6:
+                FindTriggerSample(DBuff1)
+            if TgInput.get() == 7:
+                FindTriggerSample(DBuff2)
+            if TgInput.get() == 8:
+                FindTriggerSample(DBuff3)
+            if TgInput.get() == 9:
+                FindTriggerSample(DBuff4)
+            if TgInput.get() == 10:
+                FindTriggerSample(DBuff5)
+        if TgInput.get() > 0: # if triggering left shift all arrays such that trigger point is at index 0
+            LShift = 0 - TRIGGERsample
+            if ShowC1_V.get() > 0:
+                VBuffA = numpy.roll(VBuffA, LShift)
+            if ShowC2_V.get() > 0:
+                VBuffB = numpy.roll(VBuffB, LShift+2)
+            if ShowC3_V.get() > 0:
+                VBuffC = numpy.roll(VBuffC, LShift+2)
+            if ShowC4_V.get() > 0:
+                VBuffD = numpy.roll(VBuffD, LShift+3)
+            if SaveDig:
+                VBuffG = numpy.roll(VBuffG, LShift)
+                if D0_is_on:
+                    DBuff0 = numpy.roll(DBuff0, LShift)
+                if D1_is_on:
+                    DBuff1 = numpy.roll(DBuff1, LShift)
+                if D2_is_on:
+                    DBuff2 = numpy.roll(DBuff2, LShift)
+                if D3_is_on:
+                    DBuff3 = numpy.roll(DBuff3, LShift)
+                if D4_is_on:
+                    DBuff4 = numpy.roll(DBuff4, LShift)
+                if D5_is_on:
+                    DBuff5 = numpy.roll(DBuff5, LShift)
+    else:
+        # VBuffA = numpy.roll(VBuffA, -2)
+        VBuffA = numpy.roll(VBuffA, -4)
+        VBuffB = numpy.roll(VBuffB, -2)
+        VBuffC = numpy.roll(VBuffC, -1)
+        VBuffD = numpy.roll(VBuffD, -1)
 #
-    LShift = 0
     Endsample = SHOWsamples - 1
     if TRACEmodeTime.get() == 1 and TRACEresetTime == False:
         if len(VBuffA) == len(VmemoryA):
@@ -19571,6 +19656,9 @@ if ShowTraceControls > 0:
         LBsb.pack(side=LEFT)
         LBsb.delete(0,"end")
         LBsb.insert(0,"CH A") # "CH A"
+        if ShowBallonHelp > 0:
+            loopback_tip = CreateToolTip(lbckb, 'Enable / Disable loopback to AWG output')
+            lbselect_tip = CreateToolTip(LBsb, 'Select which scope channel to loopback to AWG output')
 
 #
 if ShowBallonHelp > 0:
@@ -19867,16 +19955,6 @@ if EnablePGAGain >= 2:
         CHBpgasb.pack(side=RIGHT)
         CHBpgasb.delete(0,"end")
         CHBpgasb.insert(0,"1")
-    #
-if ShowBallonHelp > 0:
-    if CHANNELS >= 1:
-        CHAlab_tip = CreateToolTip(CHAlab, 'Select Ch A-V vertical range/position axis to be used for markers and drawn color')
-        CHAofflab_tip = CreateToolTip(CHAofflab, 'Set Ch A-V position to DC average of signal')
-        gain1lab_tip = CreateToolTip(gain1lab, 'Reset Gain to 1.0 and Offset to 0.0')
-    if CHANNELS >= 2:
-        CHBlab_tip = CreateToolTip(CHBlab, 'Select Ch A-V vertical range/position axis to be used for markers and drawn color')
-        CHBofflab_tip = CreateToolTip(CHBofflab, 'Set Ch B-V position to DC average of signal')
-        gain2lab_tip = CreateToolTip(gain2lab, 'Reset Gain to 1.0 and Offset to 0.0')
 #
 # Voltage channel C
 #
@@ -19969,6 +20047,24 @@ if EnablePGAGain >= 4:
         CHDpgasb.delete(0,"end")
         CHDpgasb.insert(0,"1")
     #
+if ShowBallonHelp > 0:
+    prlab_tip = CreateToolTip(prlab, 'Open input divider calculator')
+    if CHANNELS >= 1:
+        CHAlab_tip = CreateToolTip(CHAlab, 'Select Ch A-V vertical range/position axis to be used for markers and drawn color')
+        CHAofflab_tip = CreateToolTip(CHAofflab, 'Set Ch A-V position to DC average of signal')
+        gain1lab_tip = CreateToolTip(gain1lab, 'Reset Gain to 1.0 and Offset to 0.0')
+    if CHANNELS >= 2:
+        CHBlab_tip = CreateToolTip(CHBlab, 'Select Ch B-V vertical range/position axis to be used for markers and drawn color')
+        CHBofflab_tip = CreateToolTip(CHBofflab, 'Set Ch B-V position to DC average of signal')
+        gain2lab_tip = CreateToolTip(gain2lab, 'Reset Gain to 1.0 and Offset to 0.0')
+    if CHANNELS >= 3:
+        CHClab_tip = CreateToolTip(CHClab, 'Select Ch C-V vertical range/position axis to be used for markers and drawn color')
+        CHCofflab_tip = CreateToolTip(CHCofflab, 'Set Ch C-V position to DC average of signal')
+        gain3lab_tip = CreateToolTip(gain3lab, 'Reset Gain to 1.0 and Offset to 0.0')
+    if CHANNELS >= 4:
+        CHDlab_tip = CreateToolTip(CHDlab, 'Select Ch D-V vertical range/position axis to be used for markers and drawn color')
+        CHDofflab_tip = CreateToolTip(CHDofflab, 'Set Ch D-V position to DC average of signal')
+        gain4lab_tip = CreateToolTip(gain4lab, 'Reset Gain to 1.0 and Offset to 0.0')
 #
 root.geometry('+300+0')
 root.protocol("WM_DELETE_WINDOW", Bcloseexit)

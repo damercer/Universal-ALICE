@@ -1,6 +1,6 @@
 #
 # Hardware specific interface functions
-# For Arduino XIAO 4 analog + 1 AWG + 1 PWM scope (2-24-2024)
+# For Arduino XIAO 4 analog + 1 AWG + 1 PWM scope (3-14-2024)
 # Written using Python version 3.10, Windows OS 
 #
 try:
@@ -16,13 +16,14 @@ except:
 CHANNELS = 4 # Number of supported Analog input channels
 AWGChannels = 2 # Number of supported Analog output channels
 PWMChannels = 1 # Number of supported PWM output channels
-DigChannels = 0 # Number of supported Dig channels
-LogicChannels = 0 # Number of supported Logic Analyzer channels
+DigChannels = 5 # Number of supported Dig channels
+LogicChannels = 5 # Number of supported Logic Analyzer channels
 EnablePGAGain = 0 # Number is number of ADC channels with a PGA
 ScopePGAGain = (1, 2, 4, 8, 16)
 EnableAWGNoise = 0 #
 EnableLoopBack = 1
 LBList = ("CH A", "CH B", "CH C", "CH D")
+UseSoftwareTrigger = 1
 AllowFlashFirmware = 1
 Tdiv.set(10)
 AWG_Amp_Mode.set(0)
@@ -107,28 +108,28 @@ def SetSampleRate():
         if TRACESread == 1:
             ser.write(b't8\n') # 100 KSPS
         elif TRACESread == 2:
-            ser.write(b't14\n') # 62.5 KSPS
+            ser.write(b't13\n') # 62.5 KSPS
         else:
             ser.write(b't20\n') # 40 KSPS
     elif TimeDiv > 0.000099 and TimeDiv < 0.000199:
         if TRACESread == 1:
             ser.write(b't8\n') # 100 KSPS
         elif TRACESread == 2:
-            ser.write(b't14\n') # 62.5 KSPS
+            ser.write(b't13\n') # 62.5 KSPS
         else:
             ser.write(b't20\n') # 40 KSPS
     elif TimeDiv > 0.000199 and TimeDiv < 0.0005:
         if TRACESread == 1:
             ser.write(b't8\n') # 100 KSPS
         elif TRACESread == 2:
-            ser.write(b't14\n') # 62.5 KSPS
+            ser.write(b't13\n') # 62.5 KSPS
         else:
             ser.write(b't20\n') # 40 KSPS
     elif TimeDiv >= 0.0005 and TimeDiv < 0.001:
         if TRACESread == 1:
             ser.write(b't8\n') # 100 KSPS
         elif TRACESread == 2:
-            ser.write(b't14\n') # 62.5 KSPS
+            ser.write(b't13\n') # 62.5 KSPS
         else:
             ser.write(b't20\n') # 40 KSPS
     elif TimeDiv >= 0.001 and TimeDiv < 0.002:
@@ -162,20 +163,21 @@ def Get_Data():
     global ShowC1_V, ShowC2_V, ShowC3_V, ShowC4_V
     global TgInput, VBuffA, VBuffB, VBuffC, VBuffD, VBuffG
     global D0_is_on, D1_is_on, D2_is_on, D3_is_on
-    global D4_is_on, D5_is_on, D6_is_on, D7_is_on
+    global D4_is_on, D5_is_on, D6_is_on, D7_is_on, COLORtrace8
     global DBuff0, DBuff1, DBuff2, DBuff3, DBuff4, DBuff5, DBuff6, DBuff7
     global D0line, D1line, D2line, D3line, D4line, D5line, D6line, D7line
     global TRIGGERentry, TRIGGERsample, SaveDig, CHANNELS, TRACESread
 
-    # Get data from pi pico
+    # Get data from Xiao SAMD21
     #
     SaveDig = False
     if D0_is_on or D1_is_on or D2_is_on or D3_is_on or D4_is_on or D5_is_on or D6_is_on:
         SaveDig = True
+        Get_Dig()
+        COLORtrace8 = "#800000"   # 80% red
     else:
         SaveDig = False
     #
-    SetSampleRate()
     if ShowC1_V.get() > 0 and ShowC2_V.get() > 0 and ShowC3_V.get() == 0 and ShowC4_V.get() == 0:
         TRACESread = 2 # A and B
         Get_Data_Two()
@@ -199,7 +201,6 @@ def Get_Data():
         Get_Data_One()
     elif ShowC1_V.get() == 0 and ShowC2_V.get() > 0 and ShowC3_V.get() == 0 and ShowC4_V.get() == 0:
         TRACESread = 1 # B
-        SetSampleRate()
         Get_Data_One()
     elif ShowC1_V.get() == 0 and ShowC2_V.get() == 0 and ShowC3_V.get() > 0 and ShowC4_V.get() == 0:
         TRACESread = 1 # C
@@ -222,6 +223,8 @@ def Get_Data():
     elif ShowC1_V.get() > 0 and ShowC2_V.get() > 0 and ShowC3_V.get() > 0 and ShowC4_V.get() > 0:
         TRACESread = 4 # A and B and C and D
         Get_Data_Four()
+    elif SaveDig:
+        pass
     else:
         return
     # do external Gain / Offset calculations before software triggering
@@ -237,39 +240,103 @@ def Get_Data():
     if ShowC4_V.get() > 0 and CHANNELS >= 4:
         VBuffD = numpy.array(VBuffD)
         VBuffD = (VBuffD - InOffD) * InGainD
-    # Find trigger sample point if necessary
-    # print("Array Len ",len(VBuffA), "SHOWsamples ", SHOWsamples)
-    LShift = 0
-    if TgInput.get() == 1 and ShowC1_V.get() > 0:
-        FindTriggerSample(VBuffA)
-    if TgInput.get() == 2 and ShowC2_V.get() > 0:
-        FindTriggerSample(VBuffB)
-    if TgInput.get() == 3 and ShowC3_V.get() > 0:
-        FindTriggerSample(VBuffC)
-    if TgInput.get() == 4 and ShowC4_V.get() > 0:
-        FindTriggerSample(VBuffD)
-    if TgInput.get() > 0: # if triggering left shift all arrays such that trigger point is at index 0
-        LShift = 0 - TRIGGERsample
-        if ShowC1_V.get() > 0:
-            VBuffA = numpy.roll(VBuffA, LShift)
-        if ShowC2_V.get() > 0:
-            VBuffB = numpy.roll(VBuffB, LShift+2)
-        if ShowC3_V.get() > 0:
-            VBuffC = numpy.roll(VBuffC, LShift+2)
-        if ShowC4_V.get() > 0:
-            VBuffD = numpy.roll(VBuffD, LShift+3)
-    else:
-        # VBuffA = numpy.roll(VBuffA, -2)
-        VBuffA = numpy.roll(VBuffA, -4)
-        VBuffB = numpy.roll(VBuffB, -2)
-        VBuffC = numpy.roll(VBuffC, -1)
-        VBuffD = numpy.roll(VBuffD, -1)
 #
-def Get_Data_One():
+def Get_Buffer():
+    global Wait, ser, MaxSampleRate, InterpRate, SAMPLErate
+    global ABuff, iterCount, SampleTime, MinSamples, TRACESread
+    
+    time.sleep(Wait)
+    ratestring = str(ser.readline())
+    # print("Raw string ", ratestring)
+    if "stReal=" in ratestring: #
+        DTime = ratestring.replace("b'stReal=","")
+        DTime = DTime.replace("\\\\","")
+        DTime = DTime.replace("r","")
+        DTime = DTime.replace("n","")
+        DTime = DTime.replace("\\","")
+        DTime = DTime.replace("'","")
+        # print(DTime, UnitConvert(DTime)/MinSamples)
+        SampleTime = (UnitConvert(DTime)/MinSamples) * 1.0e-6 # convert to uSec
+        # set actual samplerate from returned time per sample
+        MaxSampleRate = SAMPLErate = int((1.0/SampleTime)*InterpRate)
+        # print("Sample Time: ", SampleTime)
+        # print("Sample Rate = ", SAMPLErate )
+    #
+    #StartTime = time.time()
+    VBuffRaw = []
+    ABuff = []
+    time.sleep(Wait*TRACESread)
+    ### Wait to buffer enough samples to satisfy the entire frame
+    # print("iterCount = ", iterCount)
+    Count = 0
+    Chunk = TRACESread * MinSamples
+    ## 1 chan 324, 108, 36
+    ## 2 chan 640, 320, 160
+    ## 3,4 chan 500, 250
+    ByTwo = 500
+    ByFour = 250
+    ByEight = 160
+    if TRACESread == 2:
+        ByTwo = 640
+        ByFour = 320
+        ByEight = 160
+    if TRACESread > 1:
+        Chunk = Chunk + MinSamples
+    waiting0 = ser.in_waiting
+    #print("Serial Length:", waiting0)
+    while waiting0 >= 1:
+        # print("Number Bytes waiting = ", waiting0)
+        # read in chunks divisible by 3
+        # Read an integer as two bytes, big-endian
+        time.sleep(0.015)
+        waiting0 = ser.in_waiting
+        if waiting0 > Chunk:
+            VBuffRaw = ser.read(Chunk)
+            Count = Count + Chunk
+        elif waiting0 > MinSamples:
+            VBuffRaw = ser.read(MinSamples)
+            Count = Count + MinSamples
+        elif waiting0 > ByTwo:
+            VBuffRaw = ser.read(ByTwo)
+            Count = Count + ByTwo
+        elif waiting0 > ByFour:
+            VBuffRaw = ser.read(ByFour)
+            Count = Count + ByFour
+        elif waiting0 > ByEight:
+            if TRACESread == 2:
+                VBuffRaw = ser.read(ByEight)
+                Count = Count + ByEight
+            else:
+                VBuffRaw = ser.read(waiting0)
+                Count = Count + waiting0
+        else:
+            VBuffRaw = ser.read(waiting0)
+            Count = Count + waiting0
+        # print("Count = ", Count)
+        # print("Length AB: Raw: ", len(ABuff), len(VBuffRaw))
+        index = 0
+        while index < len(VBuffRaw):
+            ABuff.append(VBuffRaw[index])
+            index = index + 1
+        # Count = Count + waiting0
+        waiting0 = ser.in_waiting
+        #print("Serial Length:", waiting0)
+        # time.sleep(Wait)
+        if Count >= iterCount: # Sample Buffer now full
+            # print("Count = ", Count, "iterCount = ", iterCount)
+            break
+    #print("Frames = ", Frams)
+    #EndTime = time.time()
+    #Elapsed = EndTime - StartTime
+    #print("Elapsed Time = ", Elapsed)
+    # print("received Bytes = ", Count)
+    # print("Length: ", len(ABuff))
+#
+def Get_Dig():
     global VBuffA, VBuffB, VBuffC, VBuffD
     global ShowC1_V, ShowC2_V, ShowC3_V, ShowC4_V
     global LSBsizeA, LSBsizeB, LSBsizeC, LSBsizeD
-    global LoopBack, LBsb
+    global LoopBack, LBsb, InterpRate
     global MaxSampleRate, SAMPLErate, EnableInterpFilter
     global ser, SHOWsamples, TRIGGERsample, TgInput, TimeSpan
     global TrigSource, TriggerEdge, TriggerInt, Is_Triggered
@@ -279,34 +346,10 @@ def Get_Data_One():
     global DBuff0, DBuff1, DBuff2, DBuff3, DBuff4, DBuff5, DBuff6, DBuff7
     global D0line, D1line, D2line, D3line, D4line, D5line, D6line, D7line
     
-    #
+    SetSampleRate()
     Wait = 0.02
-    if SAMPLErate <= 4000:
-        Wait = 0.08
     #
-    if ShowC1_V.get() > 0:
-        if LoopBack.get() > 0 and LBsb.get() == "CH A":
-            ser.write(b'A0\n') # capture on DAC / A0
-        else:
-            ser.write(b'A4\n') # capture on A1
-    elif ShowC2_V.get() > 0:
-        if LoopBack.get() > 0 and LBsb.get() == "CH B":
-            ser.write(b'A0\n') # capture on DAC / A0
-        else:
-            ser.write(b'A18\n') # capture on A2
-    elif ShowC3_V.get() > 0:
-        if LoopBack.get() > 0 and LBsb.get() == "CH C":
-            ser.write(b'A0\n') # capture on DAC / A0
-        else:
-            ser.write(b'A19\n') # capture on A3
-    elif ShowC4_V.get() > 0:
-        if LoopBack.get() > 0 and LBsb.get() == "CH D":
-            ser.write(b'A0\n') # capture on DAC / A0
-        else:
-            ser.write(b'A16\n') # capture on A4
-    else:
-        return
-    ser.write(b'1') # capture one channel
+    ser.write(b'0') # capture just dig channels
     #
     time.sleep(Wait)
     ratestring = str(ser.readline())
@@ -330,9 +373,6 @@ def Get_Data_One():
     #StartTime = time.time()
     VBuffRaw = []
     ABuff = []
-    VBuff1=[]
-    VBuff2=[]
-    VBuff3=[]
     time.sleep(Wait)
     ### Wait to buffer enough samples to satisfy the entire frame
     # print("iterCount = ", iterCount)
@@ -343,7 +383,7 @@ def Get_Data_One():
         # print("Number Bytes waiting = ", waiting0)
         # read in chunks divisible by 3
         # Read an integer as two bytes, big-endian
-        time.sleep(0.040)
+        time.sleep(0.010)
         waiting0 = ser.in_waiting
         if waiting0 > MinSamples:
             VBuffRaw = ser.read(MinSamples)
@@ -386,6 +426,99 @@ def Get_Data_One():
         dump = ser.read(waiting0)
     #Frams = 0
     index = 0
+    VBuffG = []
+    # Interpolate 
+    while index < len(ABuff): # build array 
+        pointer = 0
+        while pointer < InterpRate:
+            VBuffG.append(ABuff[index])
+            pointer = pointer + 1
+        index = index + 1
+    # Extract Digital buffers if needed
+    VBuffG = numpy.array(VBuffG) * 1
+    if SaveDig:
+        VBuffG = VBuffG.astype(int)
+        if D0_is_on:
+            DBuff0 = VBuffG & 1
+        if D1_is_on:
+            DBuff1 = VBuffG & 2
+            DBuff1 = DBuff1 / 2
+        if D2_is_on:
+            DBuff2 = VBuffG & 4
+            DBuff2 = DBuff2 / 4
+        if D3_is_on:
+            DBuff3 = VBuffG & 8
+            DBuff3 = DBuff3 / 8
+        if D4_is_on:
+            DBuff4 = VBuffG & 16
+            DBuff4 = DBuff4 / 16
+        #
+    else:
+        SaveDig = False
+        DBuff0 = []
+        DBuff1 = []
+        DBuff2 = []
+        DBuff3 = []
+        DBuff4 = []
+        DBuff5 = []
+        DBuff6 = []
+        DBuff7 = []
+#
+def Get_Data_One():
+    global VBuffA, VBuffB, VBuffC, VBuffD, VBuff1
+    global ShowC1_V, ShowC2_V, ShowC3_V, ShowC4_V
+    global LSBsizeA, LSBsizeB, LSBsizeC, LSBsizeD
+    global LoopBack, LBsb, TRACESread, Wait, iterCount
+    global MaxSampleRate, SAMPLErate, EnableInterpFilter
+    global ser, SHOWsamples, TRIGGERsample, TgInput, TimeSpan
+    global TrigSource, TriggerEdge, TriggerInt, Is_Triggered
+    global vct_btn, vdt_btn, HoldOff, MinSamples, Interp4Filter
+    global SaveDig, D0_is_on, D1_is_on, D2_is_on, D3_is_on
+    global D4_is_on, D5_is_on, D6_is_on, D7_is_on
+    global DBuff0, DBuff1, DBuff2, DBuff3, DBuff4, DBuff5, DBuff6, DBuff7
+    global D0line, D1line, D2line, D3line, D4line, D5line, D6line, D7line
+    
+    #
+    SetSampleRate()
+    Wait = 0.02
+    if SAMPLErate <= 4000:
+        Wait = 0.08
+    #
+    if ShowC1_V.get() > 0:
+        if LoopBack.get() > 0 and LBsb.get() == "CH A":
+            ser.write(b'A0\n') # capture on DAC / A0
+        else:
+            ser.write(b'A4\n') # capture on A1
+    elif ShowC2_V.get() > 0:
+        if LoopBack.get() > 0 and LBsb.get() == "CH B":
+            ser.write(b'A0\n') # capture on DAC / A0
+        else:
+            ser.write(b'A18\n') # capture on A2
+    elif ShowC3_V.get() > 0:
+        if LoopBack.get() > 0 and LBsb.get() == "CH C":
+            ser.write(b'A0\n') # capture on DAC / A0
+        else:
+            ser.write(b'A19\n') # capture on A3
+    elif ShowC4_V.get() > 0:
+        if LoopBack.get() > 0 and LBsb.get() == "CH D":
+            ser.write(b'A0\n') # capture on DAC / A0
+        else:
+            ser.write(b'A16\n') # capture on A4
+    else:
+        return
+    ser.write(b'1') # capture one channel
+    #
+    iterCount = (MinSamples * 2) # 2 bytes for one channel
+    #
+    Get_Buffer()
+    #
+    VBuff1=[]
+    waiting0 = ser.in_waiting
+    if waiting0 > 0:
+        # print("Serial Length:", waiting0)
+        dump = ser.read(waiting0)
+    #Frams = 0
+    index = 0
     while index < MinSamples: # len(ABuff)-2:
         #Frams = Frams + 1
         # Get CH 1 data
@@ -394,8 +527,6 @@ def Get_Data_One():
         data = ((inputHigh*256)+inputLow)
         VBuff1.append(data)
         index = index + 1
-    #
-    #print("Frames = ", Frams)
     #
     VBuffG=[]
     #
@@ -464,13 +595,12 @@ def Get_Data_One():
         #
     else:
         return
-
 #
 def Get_Data_Two():
-    global VBuffA, VBuffB, VBuffC, VBuffD
+    global VBuffA, VBuffB, VBuffC, VBuffD, ABuff
     global ShowC1_V, ShowC2_V, ShowC3_V, ShowC4_V
     global LSBsizeA, LSBsizeB, LSBsizeC,  LSBsizeD
-    global LoopBack, LBsb
+    global LoopBack, LBsb, Wait, iterCount
     global MaxSampleRate, SAMPLErate, EnableInterpFilter
     global ser, SHOWsamples, TRIGGERsample, TgInput, TimeSpan
     global TrigSource, TriggerEdge, TriggerInt, Is_Triggered
@@ -481,7 +611,8 @@ def Get_Data_Two():
     global D0line, D1line, D2line, D3line, D4line, D5line, D6line, D7line
     
     #
-    Wait = 0.02
+    SetSampleRate()
+    Wait = 0.015
     if SAMPLErate <= 4000:
         Wait = 0.08
     ### send command to readout data
@@ -543,83 +674,12 @@ def Get_Data_Two():
         return
     ser.write(b'2') # capture two channels
     #
-    time.sleep(0.010)
-    ratestring = str(ser.readline())
-    #print("Raw string ", ratestring)
-    if "stReal=" in ratestring: #
-        DTime = ratestring.replace("b'stReal=","")
-        DTime = DTime.replace("\\\\","")
-        DTime = DTime.replace("r","")
-        DTime = DTime.replace("n","")
-        DTime = DTime.replace("\\","")
-        DTime = DTime.replace("'","")
-        # print(DTime)
-        SampleTime = (UnitConvert(DTime)/MinSamples) * 1.0e-6 # convert to uSec
-        # SampleTime = UnitConvert(DTime) * 1.0e-6 # convert to uSec
-        # set actual samplerate from returned time per sample
-        MaxSampleRate = SAMPLErate = (1.0/SampleTime)*InterpRate
-        # print("Sample Time: ", SampleTime)
-        # print("Sample Rate = ", SAMPLErate )
-    # 
     iterCount = (MinSamples * 4) # 4 bytes for two channels
     #
-    #StartTime = time.time()
-    VBuffRaw = []
-    ABuff = []
+    Get_Buffer()
+    #
     VBuff1=[]
     VBuff2=[]
-    VBuff3=[]
-    BuffD=[]
-    time.sleep(Wait*2)
-    ### Wait to buffer enough samples to satisfy the entire frame
-    # print("iterCount = ", iterCount)
-    Count = 0
-    waiting0 = ser.in_waiting
-    while waiting0 >= 1:
-        # print("Number Bytes waiting = ", waiting0)
-        # read in chunks divisible by 5
-        # Read an integer as two bytes, big-endian
-        time.sleep(0.040)
-        waiting0 = ser.in_waiting
-        Chunk = 3 * MinSamples
-        if waiting0 > Chunk:
-            VBuffRaw = ser.read(Chunk)
-            Count = Count + Chunk
-        elif waiting0 > MinSamples:
-            VBuffRaw = ser.read(MinSamples)
-            Count = Count + MinSamples
-        elif waiting0 > 640:
-            VBuffRaw = ser.read(640)
-            Count = Count + 640
-        elif waiting0 > 320:
-            VBuffRaw = ser.read(320)
-            Count = Count + 320
-        elif waiting0 > 160:
-            VBuffRaw = ser.read(160)
-            Count = Count + 160
-        else:
-            VBuffRaw = ser.read(waiting0)
-            Count = Count + waiting0
-        #print("Count = ", Count)
-        #print("Length AB: Raw: ", len(ABuff), len(VBuffRaw))
-        index = 0
-        while index < len(VBuffRaw):
-            ABuff.append(VBuffRaw[index])
-            index = index + 1
-        # Count = Count + waiting0
-        waiting0 = ser.in_waiting
-        # print("Serial Length:", waiting0)
-        # time.sleep(Wait)
-        if Count >= iterCount: # Sample Buffer now full
-            # print("Count = ", Count, "iterCount = ", iterCount)
-            break
-    #
-    #EndTime = time.time()
-    #Elapsed = EndTime - StartTime
-    #print("Elapsed Time = ", Elapsed)
-    #print("received Bytes = ", Count)
-    #print("Length: ", len(ABuff))
-    #
     waiting0 = ser.in_waiting
     if waiting0 > 0:
         # print("Serial Length:", waiting0)
@@ -780,10 +840,10 @@ def Get_Data_Two():
         return
 #    
 def Get_Data_Three():
-    global VBuffA, VBuffB, VBuffC, VBuffD
+    global VBuffA, VBuffB, VBuffC, VBuffD, ABuff
     global ShowC1_V, ShowC2_V, ShowC3_V, ShowC4_V
     global LSBsizeA, LSBsizeB, LSBsizeC
-    global LoopBack, LBsb
+    global LoopBack, LBsb, Wait, iterCount
     global MaxSampleRate, SAMPLErate, EnableInterpFilter
     global ser, SHOWsamples, TRIGGERsample, TgInput, TimeSpan
     global TrigSource, TriggerEdge, TriggerInt, Is_Triggered
@@ -794,7 +854,8 @@ def Get_Data_Three():
     global D0line, D1line, D2line, D3line, D4line, D5line, D6line, D7line
     
     #
-    Wait = 0.02
+    SetSampleRate()
+    Wait = 0.015
     if SAMPLErate <= 4000:
         Wait = 0.08
     # 
@@ -854,82 +915,16 @@ def Get_Data_Three():
     else:
         #print("none of the cases found?")
         return
-    time.sleep(0.01)
+    time.sleep(0.015)
     ser.write(b'3') # capture three channels
     #
-    time.sleep(Wait)
-    ratestring = str(ser.readline())
-    # print("Raw string ", ratestring)
-    if "stReal=" in ratestring: #
-        DTime = ratestring.replace("b'stReal=","")
-        DTime = DTime.replace("\\\\","")
-        DTime = DTime.replace("r","")
-        DTime = DTime.replace("n","")
-        DTime = DTime.replace("\\","")
-        DTime = DTime.replace("'","")
-        # print(DTime)
-        # SampleTime = UnitConvert(DTime) * 1.0e-6 # convert to uSec
-        SampleTime = (UnitConvert(DTime)/MinSamples) * 1.0e-6 # convert to uSec
-        # set actual samplerate from returned time per sample
-        MaxSampleRate = SAMPLErate = (1.0/SampleTime)*InterpRate
-        # print("Sample Time: ", SampleTime)
-        # print("Sample Rate = ", SAMPLErate )
-    # 
     iterCount = (MinSamples * 6) # 6 bytes for three channels
     #
-    #StartTime = time.time()
-    VBuffRaw = []
-    ABuff = []
+    Get_Buffer()
+    #
     VBuff1=[]
     VBuff2=[]
     VBuff3=[]
-    BuffD=[]
-    time.sleep(Wait*3)
-    ### Wait to buffer enough samples to satisfy the entire frame
-    # print("iterCount = ", iterCount)
-    Count = 0
-    waiting0 = ser.in_waiting
-    while waiting0 >= 1:
-        # print("Number Bytes waiting = ", waiting0)
-        # read in chunks divisible by 7
-        # Read an integer as two bytes, big-endian
-        time.sleep(0.040)
-        waiting0 = ser.in_waiting
-        Chunk = 4 * MinSamples
-        if waiting0 > Chunk:
-            VBuffRaw = ser.read(Chunk)
-            Count = Count + Chunk
-        elif waiting0 > MinSamples:
-            VBuffRaw = ser.read(MinSamples)
-            Count = Count + MinSamples
-        elif waiting0 > 500:
-            VBuffRaw = ser.read(500)
-            Count = Count + 500
-        elif waiting0 > 250:
-            VBuffRaw = ser.read(250)
-            Count = Count + 250
-        else:
-            VBuffRaw = ser.read(waiting0)
-            Count = Count + waiting0
-        #print("Count = ", Count)
-        #print("Length AB: Raw: ", len(ABuff), len(VBuffRaw))
-        index = 0
-        while index < len(VBuffRaw):
-            ABuff.append(VBuffRaw[index])
-            index = index + 1
-        # Count = Count + waiting0
-        waiting0 = ser.in_waiting
-        # print("Serial Length:", waiting0)
-        # time.sleep(Wait)
-        if Count >= iterCount: # Sample Buffer now full
-            # print("Count = ", Count, "iterCount = ", iterCount)
-            break
-    #
-    #EndTime = time.time()
-    #Elapsed = EndTime - StartTime
-    #print("Elapsed Time = ", Elapsed)
-    #print("received Bytes = ", Count)
-    #print("Length: ", len(ABuff))
     #
     waiting0 = ser.in_waiting
     if waiting0 > 0:
@@ -1086,10 +1081,10 @@ def Get_Data_Three():
             VBuffD = VBuffD[4:SHOWsamples+4]
     #
 def Get_Data_Four():
-    global VBuffA, VBuffB, VBuffC, VBuffD
+    global VBuffA, VBuffB, VBuffC, VBuffD, ABuff
     global ShowC1_V, ShowC2_V, ShowC3_V, ShowC4_V
     global LSBsizeA, LSBsizeB, LSBsizeC, LSBsizeD
-    global LoopBack, LBsb
+    global LoopBack, LBsb, Wait, iterCount
     global MaxSampleRate, SAMPLErate, EnableInterpFilter
     global ser, SHOWsamples, TRIGGERsample, TgInput, TimeSpan
     global TrigSource, TriggerEdge, TriggerInt, Is_Triggered
@@ -1100,7 +1095,8 @@ def Get_Data_Four():
     global D0line, D1line, D2line, D3line, D4line, D5line, D6line, D7line
     
     #
-    Wait = 0.02
+    SetSampleRate()
+    Wait = 0.015
     if SAMPLErate <= 4000:
         Wait = 0.08
     # capture on A1 A2 A3 and A4
@@ -1122,80 +1118,14 @@ def Get_Data_Four():
         ser.write(b'D16\n')
     ser.write(b'4') # capture Four channels
     #
-    time.sleep(Wait)
-    ratestring = str(ser.readline())
-    # print("Raw string ", ratestring)
-    if "stReal=" in ratestring: #
-        DTime = ratestring.replace("b'stReal=","")
-        DTime = DTime.replace("\\\\","")
-        DTime = DTime.replace("r","")
-        DTime = DTime.replace("n","")
-        DTime = DTime.replace("\\","")
-        DTime = DTime.replace("'","")
-        # print(DTime)
-        # SampleTime = UnitConvert(DTime) * 1.0e-6 # convert to uSec
-        SampleTime = (UnitConvert(DTime)/MinSamples) * 1.0e-6 # convert to uSec
-        # set actual samplerate from returned time per sample
-        MaxSampleRate = SAMPLErate = (1.0/SampleTime)*InterpRate
-        # print("Sample Time: ", SampleTime)
-        # print("Sample Rate = ", SAMPLErate )
-    # 
     iterCount = (MinSamples * 8) # 8 bytes for Four channels
     #
-    #StartTime = time.time()
-    VBuffRaw = []
-    ABuff = []
+    Get_Buffer()
+    #
     VBuff1=[]
     VBuff2=[]
     VBuff3=[]
     VBuff4=[]
-    time.sleep(Wait*3)
-    ### Wait to buffer enough samples to satisfy the entire frame
-    # print("iterCount = ", iterCount)
-    Count = 0
-    waiting0 = ser.in_waiting
-    while waiting0 >= 1:
-        # print("Number Bytes waiting = ", waiting0)
-        # read in chunks divisible by 7
-        # Read an integer as two bytes, big-endian
-        time.sleep(0.040)
-        waiting0 = ser.in_waiting
-        Chunk = 4 * MinSamples
-        if waiting0 > Chunk:
-            VBuffRaw = ser.read(Chunk)
-            Count = Count + Chunk
-        elif waiting0 > MinSamples:
-            VBuffRaw = ser.read(MinSamples)
-            Count = Count + MinSamples
-        elif waiting0 > 500:
-            VBuffRaw = ser.read(500)
-            Count = Count + 500
-        elif waiting0 > 250:
-            VBuffRaw = ser.read(250)
-            Count = Count + 250
-        else:
-            VBuffRaw = ser.read(waiting0)
-            Count = Count + waiting0
-        #print("Count = ", Count)
-        #print("Length AB: Raw: ", len(ABuff), len(VBuffRaw))
-        index = 0
-        while index < len(VBuffRaw):
-            ABuff.append(VBuffRaw[index])
-            index = index + 1
-        # Count = Count + waiting0
-        waiting0 = ser.in_waiting
-        # print("Serial Length:", waiting0)
-        # time.sleep(Wait)
-        if Count >= iterCount: # Sample Buffer now full
-            # print("Count = ", Count, "iterCount = ", iterCount)
-            break
-    #
-    #EndTime = time.time()
-    #Elapsed = EndTime - StartTime
-    #print("Elapsed Time = ", Elapsed)
-    #print("received Bytes = ", Count)
-    #print("Length: ", len(ABuff))
-    #
     waiting0 = ser.in_waiting
     if waiting0 > 0:
         # print("Serial Length:", waiting0)
@@ -1274,6 +1204,22 @@ def Get_Data_Four():
         VBuffD = VBuffD[4:SHOWsamples+4]
 #
 # Hardware Help
+#
+def PrintID():
+    global ser
+    
+    ser.write(b'I\n') # request board ID
+    time.sleep(0.05)
+    #print("sent I, wating for response")
+    if ser.in_waiting > 0:
+        IDstring = str(ser.readline())
+        ID = IDstring.replace("b'","")
+        ID = ID.replace("\\\\","")
+        ID = ID.replace("r","")
+        ID = ID.replace("n","")
+        ID = ID.replace("\\","")
+        ID = ID.replace("'","")
+        print("ID string ", ID)
 #
 ## try to connect to Arduino XIAO board
 #
