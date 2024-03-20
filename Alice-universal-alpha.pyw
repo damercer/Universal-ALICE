@@ -1,7 +1,7 @@
 #!/usr/bin/python
 # -*- coding: cp1252 -*-
 #
-# Alice-universal-alpha.py(w) (3-15-2024)
+# Alice-universal-alpha.py(w) (3-19-2024)
 # Written using Python version 3.10, Windows OS 
 # Requires a hardware interface level functions add-on file
 # Created by D Mercer ()
@@ -22,6 +22,13 @@ try:
     matplot_found = True
 except:
     matplot_found = False
+# Check to see if user has Sun Vally theme installed
+try:
+    import sv_ttk
+    sv_ttk_found = True
+    print("Sun Valley ttk found!")
+except:
+    sv_ttk_found = False
 #
 import csv
 import wave
@@ -67,7 +74,7 @@ import webbrowser
 # check which operating system
 import platform
 #
-RevDate = "15 March 2024"
+RevDate = "19 March 2024"
 SWRev = "1.0 "
 #
 # small bit map of triangle logo for window icon
@@ -348,7 +355,7 @@ ZEROstuffing.set(1)
 FFTwindow = IntVar()   # FFT window function variable
 FFTwindow.set(5)        # FFTwindow 0=None (rectangular B=1), 1=Cosine (B=1.24), 2=Triangular non-zero endpoints (B=1.33),
                         # 3=Hann (B=1.5), 4=Blackman (B=1.73), 5=Nuttall (B=2.02), 6=Flat top (B=3.77)
-RelPhaseCorrection = 15 # Relative Phase error seems to be a random number each time board is powered up
+RelPhaseCorrection = 0 # Relative Phase error seems to be a random number each time board is powered up
 RelPhaseCenter = IntVar()
 RelPhaseCenter.set(0) # Center line value for phase plots
 ImpedanceCenter = IntVar()
@@ -626,6 +633,8 @@ XYlineMX = []
 XYlineMY = []
 XYRlineVA = []               # XY reference trace lines
 XYRlineVB = []
+XYRlineVC = []               # XY reference trace lines
+XYRlineVD = []
 XYRlineM = []
 XYRlineMX = []
 XYRlineMY = []
@@ -834,6 +843,8 @@ YsignalMY = IntVar()
 YsignalVB.set(1)
 XYRefAV = IntVar()   # show reference XY traces
 XYRefBV = IntVar()
+XYRefCV = IntVar()
+XYRefDV = IntVar()
 XYRefM = IntVar()
 XYRefMX = IntVar()
 XYRefMY = IntVar()
@@ -3912,13 +3923,17 @@ def BSnapShot():
 #
 ## Take snap shot of displayed XY Traces
 def BSnapShotXY():
-    global XYlineVA, XYlineVB, XYlineM, XYlineMX, XYlineMY
-    global XYRlineVA, XYRlineVB, XYRlineM, XYRlineMX, XYRlineMY
+    global XYlineVA, XYlineVB, XYlineVC, XYlineVD, XYlineM, XYlineMX, XYlineMY
+    global XYRlineVA, XYRlineVB, XYRlineVC, XYRlineVD, XYRlineM, XYRlineMX, XYRlineMY
     
     if len(XYlineVA) > 4:
         XYRlineVA = XYlineVA
     if len(XYlineVB) > 4:
         XYRlineVB = XYlineVB
+    if len(XYlineVC) > 4:
+        XYRlineVC = XYlineVC
+    if len(XYlineVD) > 4:
+        XYRlineVD = XYlineVD
     if len(XYlineM) > 4:
         XYRlineM = XYlineM
     if len(XYlineMX) > 4:
@@ -7409,7 +7424,7 @@ def MakeXYTrace():
             xlo = VBuffC[t] - CHCOffset
             xlo = int(c2 + Xconv3 * xlo)
         elif Xsignal.get() == 4: # CVD
-            xlo = VBuffD[t] - CHCOffset
+            xlo = VBuffD[t] - CHDOffset
             xlo = int(c2 + Xconv4 * xlo)
         elif Xsignal.get() == 6: # X-Math
             xlo = MBuffX[t] - CHMXOffset
@@ -7447,7 +7462,7 @@ def MakeXYTrace():
             XYlineVC.append(int(xlo))
             XYlineVC.append(int(yloVC))
         if YsignalVD.get() == 1: # CDV
-            yloVD = VBuffB[t] - CHDOffset
+            yloVD = VBuffD[t] - CHDOffset
             yloVD = int(c1 - Yconv4 * yloVD)
             if yloVD < YminXY: # clip waveform if going off grid
                 yloVD  = YminXY
@@ -8161,7 +8176,7 @@ def MakeTimeScreen():
 ## Update the XY screen traces and text
 def MakeXYScreen():
     global XYlineVA, XYlineVB, XYlineVC, XYlineVD, XYlineM, XYlineMX, XYlineMY # active trave lines
-    global Tmathline, TMRline, XYRlineVA, XYRlineVB, XYRlineM, XYRlineMX, XYRlineMY
+    global Tmathline, TMRline, XYRlineVA, XYRlineVB, XYRlineVC, XYRlineVD, XYRlineM, XYRlineMX, XYRlineMY
     global X0LXY         # Left top X value
     global Y0TXY          # Left top Y value
     global GRWXY          # Screenwidth
@@ -8173,7 +8188,7 @@ def MakeXYScreen():
     global ShowMath, MathUnits, MathXUnits, MathYUnits
     global Xsignal, MathAxis, MathXAxis, MathYAxis
     global YsignalVA, YsignalVC, YsignalVB, YsignalVD, YsignalM, YsignalMY, YsignalMX
-    global XYRefAV, XYRefC, XYRefBV, XYRefD, XYRefM, XYRefMX, XYRefMY
+    global XYRefAV, XYRefCV, XYRefBV, XYRefDV, XYRefM, XYRefMX, XYRefMY
     global RUNstatus, SingleShot, ManualTrigger    # 0 stopped, 1 start, 2 running, 3 stop now, 4 stop and restart
     global CHAsbxy, CHBsbxy, CHCsbxy, CHDsbxy      # spinbox Index 
     global CHAOffset, CHBOffset, CHCOffset, CHDOffset    # Offset values     
@@ -8458,6 +8473,10 @@ def MakeXYScreen():
         XYca.create_line(XYRlineVA, fill=COLORtraceR1, width=TRACEwidth.get())
     if len(XYRlineVB) > 4 and XYRefBV.get() == 1:
         XYca.create_line(XYRlineVB, fill=COLORtraceR2, width=TRACEwidth.get())
+    if len(XYRlineVC) > 4 and XYRefCV.get() == 1:
+        XYca.create_line(XYRlineVC, fill=COLORtraceR3, width=TRACEwidth.get())
+    if len(XYRlineVD) > 4 and XYRefDV.get() == 1:
+        XYca.create_line(XYRlineVD, fill=COLORtraceR4, width=TRACEwidth.get())
     if len(XYRlineM) > 4 and XYRefM.get() == 1:
         XYca.create_line(XYRlineM, fill=COLORtraceR5, width=TRACEwidth.get())
     if len(XYRlineMX) > 4 and XYRefMX.get() == 1:
@@ -10976,8 +10995,8 @@ def MakeFreqTrace():        # Update the grid and trace
     YVc = float(Y0TF) + YVconv * SAvertmax
     Ymin = Y0TF                  # Minimum position of screen grid (top)
     Ymax = Y0TF + GRHF            # Maximum position of screen grid (bottom)
-    Yphconv = float(GRHF) / 360
-    Yp = float(Y0TF) + Yphconv + 180
+    Yphconv = float(GRHF / 360)
+    Yp = float(Y0TF + (Yphconv * 180))
     # Horizontal conversion factors (frequency Hz) and border limits
     Fpixel = (SAfreq_max - SAfreq_min) / GRWF    # Frequency step per screen pixel
     Fsample = (SAfreq_max - SAfreq_min) / SAnum_bins  # CZT done from start to stop
@@ -11121,7 +11140,6 @@ def MakeFreqTrace():        # Update the grid and trace
                 RelPhase = RelPhase - 360
             elif RelPhase < -180:
                 RelPhase = RelPhase + 360
-            RelPhase = RelPhase - 20.0
             ya = Yp - Yphconv * RelPhase
             T1Pline.append(int(ya + 0.5))
         if ShowC2_P.get() == 1:
@@ -11135,7 +11153,6 @@ def MakeFreqTrace():        # Update the grid and trace
                 RelPhase = RelPhase - 360
             elif RelPhase < -180:
                 RelPhase = RelPhase + 360
-            RelPhase = RelPhase - 20.0
             ya = Yp - Yphconv * RelPhase
             T2Pline.append(int(ya + 0.5))
         if ShowMathSA.get() > 0:
@@ -11235,8 +11252,8 @@ def MakeBodeTrace():        # Update the grid and trace
         Yc = float(Y0TBP) + Yconv * (DBlevelBP.get())  # Yc is the 0 dBm position, can be outside the screen!
         Ymin = Y0TBP                  # Minimum position of screen grid (top)
         Ymax = Y0TBP + GRHBP            # Maximum position of screen grid (bottom)
-        Yphconv = float(GRHBP) / 360 # degrees per pixel
-        Yp = float(Y0TBP) + Yphconv + 180
+        Yphconv = float(GRHBP / 360) # degrees per pixel
+        Yp = float(Y0TBP + (Yphconv * 180))
         x1 = X0LBP + 14
         # Horizontal conversion factors (frequency Hz) and border limits
         Fpixel = (EndFreq - BeginFreq) / GRWBP    # Frequency step per screen pixel   
@@ -16152,7 +16169,7 @@ def XYcaresize(event):
 def MakeXYWindow():
     global logo, CANVASwidthXY, CANVASheightXY, Xsignal, EnableUserEntries
     global YsignalVA, YsignalVB, YsignalVC, YsignalVD, YsignalM, YsignalMX, YsignalMY
-    global XYRefAV, XYRefAI, XYRefBV, XYRefBI, XYRefM, XYRefMX, XYRefMY
+    global XYRefAV, XYRefCV, XYRefBV, XYRefDV, XYRefM, XYRefMX, XYRefMY
     global XYScreenStatus, MarkerXYScale, XYca, xywindow, RevDate, SWRev, XYDisp
     global CHAsbxy, CHBsbxy, CHCsbxy, CHDsbxy, CHAxylab, CHBxylab
     global CHAVPosEntryxy, CHBVPosEntryxy, CHCVPosEntryxy, CHDVPosEntryxy
@@ -16286,8 +16303,14 @@ def MakeXYWindow():
         XYrefmenu.menu = Menu(XYrefmenu, tearoff = 0 )
         XYrefmenu["menu"] = XYrefmenu.menu
         XYrefmenu.menu.add_command(label="Save SnapShot", command=BSnapShotXY)
-        XYrefmenu.menu.add_checkbutton(label="Ch A", variable=XYRefAV, command=UpdateXYTrace)
-        XYrefmenu.menu.add_checkbutton(label="Ch B", variable=XYRefBV, command=UpdateXYTrace)
+        if CHANNELS >= 1:
+            XYrefmenu.menu.add_checkbutton(label="Ch A", variable=XYRefAV, command=UpdateXYTrace)
+        if CHANNELS >= 2:
+            XYrefmenu.menu.add_checkbutton(label="Ch B", variable=XYRefBV, command=UpdateXYTrace)
+        if CHANNELS >= 3:
+            XYrefmenu.menu.add_checkbutton(label="Ch C", variable=XYRefCV, command=UpdateXYTrace)
+        if CHANNELS >= 4:
+            XYrefmenu.menu.add_checkbutton(label="Ch D", variable=XYRefDV, command=UpdateXYTrace)
         XYrefmenu.menu.add_checkbutton(label="Math", variable=XYRefM, command=UpdateXYTrace)
         XYrefmenu.menu.add_checkbutton(label="Math-X", variable=XYRefMX, command=UpdateXYTrace)
         XYrefmenu.menu.add_checkbutton(label="Math-Y", variable=XYRefMY, command=UpdateXYTrace)
@@ -19107,6 +19130,22 @@ elif GUITheme == "LtBlue":
     ButtonText = "#000040"
 EntryText = "#000000"
 BoxColor = "#0000ff" # 100% blue
+if GUITheme == "Sun Valley Dark":
+    if sv_ttk_found:
+        sv_ttk.use_dark_theme()
+        # sv_ttk.set_theme("dark") # ("light") or ("dark")
+        #print("Setting ttk theme as dark")
+        FrameBG = "#282828"
+        ButtonText = "#cccccc"
+        COLORwhite = "#000000" # 100% black
+        COLORblack = "#ffffff" # 100% white
+    # 
+elif GUITheme == "Sun Valley Light":
+    if sv_ttk_found:
+        sv_ttk.use_light_theme()
+        # sv_ttk.set_theme("light") # ("light") or ("dark")
+        #print("Setting ttk theme as dark")
+    # 
 root.style.configure("TFrame", background=FrameBG, borderwidth=BorderSize)
 root.style.configure("TLabelframe", background=FrameBG)
 root.style.configure("TLabel", foreground=ButtonText, background=FrameBG, relief=LabRelief)
@@ -19237,6 +19276,19 @@ root.style.configure('Left1.TButton',font=('',FontSize,'bold'), width=7, arrowco
 root.style.configure('Right1.TButton',font=('',FontSize,'bold'), width=7, arrowcolor='black', background='white', relief=LabRelief)
 root.style.configure('Left2.TButton',font=('',FontSize,'bold'), width=6, arrowcolor='black')
 root.style.configure('Right2.TButton',font=('',FontSize,'bold'), width=6, arrowcolor='black')
+#
+##if GUITheme == "Sun Valley Dark":
+##    if sv_ttk_found:
+##        sv_ttk.use_dark_theme()
+##        # sv_ttk.set_theme("dark") # ("light") or ("dark")
+##        #print("Setting ttk theme as dark")
+##    # 
+##elif GUITheme == "Sun Valley Light":
+##    if sv_ttk_found:
+##        sv_ttk.use_light_theme()
+##        # sv_ttk.set_theme("light") # ("light") or ("dark")
+##        #print("Setting ttk theme as dark")
+##    # 
 # Create frames
 frame2r = Frame(root, borderwidth=BorderSize, relief=FrameRelief)
 frame2r.pack(side=RIGHT, fill=BOTH, expand=NO)
@@ -19266,8 +19318,9 @@ if CHANNELS >= 3:
     Triggermenu.menu.add_radiobutton(label='CH C', background=COLORtrace3, variable=TgInput, value=3, command=BSetTriggerSource)
 if CHANNELS >= 4:
     Triggermenu.menu.add_radiobutton(label='CH D', background=COLORtrace4, variable=TgInput, value=4, command=BSetTriggerSource)
-Triggermenu.menu.add_radiobutton(label='Internal', variable=TgSource, value=0, command=BTrigIntExt)
-Triggermenu.menu.add_radiobutton(label='External', variable=TgSource, value=1, command=BTrigIntExt)
+if UseSoftwareTrigger == 0:
+    Triggermenu.menu.add_radiobutton(label='Internal', variable=TgSource, value=0, command=BTrigIntExt)
+    Triggermenu.menu.add_radiobutton(label='External', variable=TgSource, value=1, command=BTrigIntExt)
 Triggermenu.menu.add_checkbutton(label='Auto Level', variable=AutoLevel)
 Triggermenu.menu.add_checkbutton(label='Manual Trgger', variable=ManualTrigger)
 Triggermenu.menu.add_checkbutton(label='SingleShot', variable=SingleShot)

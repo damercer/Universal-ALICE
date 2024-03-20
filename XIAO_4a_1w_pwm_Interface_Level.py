@@ -1,6 +1,6 @@
 #
 # Hardware specific interface functions
-# For Arduino XIAO 4 analog + 1 AWG + 1 PWM scope (3-14-2024)
+# For Arduino XIAO 4 analog + 1 AWG + 1 PWM scope (3-19-2024)
 # Written using Python version 3.10, Windows OS 
 #
 try:
@@ -42,7 +42,7 @@ EnableInterpFilter.set(1)
 MaxSampleRate = SAMPLErate = 25000*InterpRate
 MaxAWGSampleRate = int(1.0/0.000014) # set to 14 uSec
 AWGSampleRate = MaxAWGSampleRate
-PhaseOffset = 12.5
+PhaseOffset = 0
 HardwareBuffer = 2048 # Max hardware waveform buffer size
 MinSamples = 2000 # capture sample buffer size
 AWGBuffLen = 2048 # Max DAC hardware waveform buffer size
