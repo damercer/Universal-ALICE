@@ -1,6 +1,6 @@
 #
 # Hardware specific interface functions
-# For Arduino XIAO 4 analog + 1 AWG + 1 PWM scope (4-15-2024)
+# For Bitys M0 Express 4 analog + 2 AWG + 6 digital channel scope (3-18-2024)
 # Written using Python version 3.10, Windows OS 
 #
 try:
@@ -16,31 +16,24 @@ except:
 CHANNELS = 4 # Number of supported Analog input channels
 AWGChannels = 2 # Number of supported Analog output channels
 PWMChannels = 1 # Number of supported PWM output channels
-DigChannels = 5 # Number of supported Dig channels
-LogicChannels = 5 # Number of supported Logic Analyzer channels
-EnablePGAGain = 0 # Number is number of ADC channels with a PGA
-ScopePGAGain = (1, 2, 4, 8, 16)
+DigChannels = 6 # Number of supported Dig channels
+LogicChannels = 6 # Number of supported Logic Analyzer channels
+EnablePGAGain = 0 #
 EnableAWGNoise = 0 #
-EnableLoopBack = 0
+EnableLoopBack = 1
 LBList = ("CH A", "CH B", "CH C", "CH D")
-EnableAnalogMux = 1
-AMuxList = ("A0", "A1", "A2", "A3", "A4", "A5", "A6", "A7", "A8")
-Ain1 = 4
-Ain2 = 18
-Ain3 = 19
-Ain4 = 16
 UseSoftwareTrigger = 1
 AllowFlashFirmware = 1
 Tdiv.set(10)
 AWG_Amp_Mode.set(0)
-AWGPeakToPeak = 3.30
-ADC_Cal = 3.299
+AWGPeakToPeak = 3.28
+ADC_Cal = 3.28
 ScopeRes = 4096.0
-LSBsizeA =  LSBsizeB = LSBsizeC = LSBsizeD = LSBsize = ADC_Cal/ScopeRes
+LSBsizeA = LSBsizeB = LSBsizeC = LSBsizeD = ADC_Cal/ScopeRes
 Rint = 2.0E7 # ~2 Meg Ohm internal resistor to ground
 AWGARes = 1023 # For 10 bits, 4095 for 12 bits, 255 for 8 bits
 AWGBRes = 511 # PWM AWG 9 bits at 94 KHz
-DevID = "XIAO 4"
+DevID = "BitsyM0 4"
 SerComPort = 'Auto'
 TimeSpan = 0.01
 InterpRate = 4
@@ -48,7 +41,7 @@ EnableInterpFilter.set(1)
 MaxSampleRate = SAMPLErate = 25000*InterpRate
 MaxAWGSampleRate = int(1.0/0.000014) # set to 14 uSec
 AWGSampleRate = MaxAWGSampleRate
-PhaseOffset = 0
+PhaseOffset = 12.5
 HardwareBuffer = 2048 # Max hardware waveform buffer size
 MinSamples = 2000 # capture sample buffer size
 AWGBuffLen = 2048 # Max DAC hardware waveform buffer size
@@ -91,10 +84,7 @@ def Bcloseexit():
             donothing()
     else:
         BSaveConfig("alice-last-config.cfg")
-        try:
-            ser.close()
-        except:
-            pass
+        ser.close() 
 #
     root.destroy()
     exit()
@@ -116,7 +106,7 @@ def SetSampleRate():
         elif TRACESread == 2:
             ser.write(b't13\n') # 62.5 KSPS
         else:
-            ser.write(b't20\n') # 40 KSPS
+            ser.write(b't200\n') # 40 KSPS
     elif TimeDiv > 0.000099 and TimeDiv < 0.000199:
         if TRACESread == 1:
             ser.write(b't8\n') # 100 KSPS
@@ -162,182 +152,6 @@ def SetSampleRate():
 def only_numerics(seq):
     seq_type= type(seq)
     return seq_type().join(filter(seq_type.isdigit, seq))
-#
-def MakeAMuxScreen():
-    global AMuxScreenStatus, win2a, CHAMux, CHBMux, CHCMux, CHDMux
-
-    if AMuxScreenStatus.get() == 0:
-        AMuxScreenStatus.set(1)
-        win2a = Toplevel()
-        win2a.title("Analog Multiplexer Controls")
-        win2a.resizable(FALSE,FALSE)
-        win2a.protocol("WM_DELETE_WINDOW", DestroyAMuxScreen)
-        win2a.configure(background=FrameBG, borderwidth=BorderSize)
-        
-        frame1a = LabelFrame(win2a, text="Analog Multiplexer Controls", borderwidth=BorderSize, relief=FrameRelief)
-        frame1a.grid(row=0, column=0, sticky=W)
-        RowNum = 1
-        
-        CHAMuxlab = Button(frame1a, text="Channnel A", style="T1W16.TButton", command=BCHAMux)
-        CHAMuxlab.grid(row=RowNum, column=0, sticky=W)
-        CHAMux = Spinbox(frame1a, cursor='double_arrow', width=6, values=AMuxList, command=BCHAMux)
-        CHAMux.grid(row=RowNum, column=1, sticky=W)
-        CHAMux.bind('<MouseWheel>', onSpinBoxScroll)
-        CHAMux.bind("<Button-4>", onSpinBoxScroll)# with Linux OS
-        CHAMux.bind("<Button-5>", onSpinBoxScroll)
-        CHAMux.delete(0,"end")
-        CHAMux.insert(0,"A1")
-        
-        RowNum = RowNum + 1
-        CHBMuxlab = Button(frame1a, text="Channnel B", style="T2W16.TButton", command=BCHBMux)
-        CHBMuxlab.grid(row=RowNum, column=0, sticky=W)
-        CHBMux = Spinbox(frame1a, cursor='double_arrow', width=6, values=AMuxList, command=BCHBMux)
-        CHBMux.grid(row=RowNum, column=1, sticky=W)
-        CHBMux.bind('<MouseWheel>', onSpinBoxScroll)
-        CHBMux.bind("<Button-4>", onSpinBoxScroll)# with Linux OS
-        CHBMux.bind("<Button-5>", onSpinBoxScroll)
-        CHBMux.delete(0,"end")
-        CHBMux.insert(0,"A2")
-
-        RowNum = RowNum + 1
-        CHCMuxlab = Button(frame1a, text="Channnel C", style="T3W16.TButton", command=BCHCMux)
-        CHCMuxlab.grid(row=RowNum, column=0, sticky=W)
-        CHCMux = Spinbox(frame1a, cursor='double_arrow', width=6, values=AMuxList, command=BCHCMux)
-        CHCMux.grid(row=RowNum, column=1, sticky=W)
-        CHCMux.bind('<MouseWheel>', onSpinBoxScroll)
-        CHCMux.bind("<Button-4>", onSpinBoxScroll)# with Linux OS
-        CHCMux.bind("<Button-5>", onSpinBoxScroll)
-        CHCMux.delete(0,"end")
-        CHCMux.insert(0,"A3")
-
-        RowNum = RowNum + 1
-        CHDMuxlab = Button(frame1a, text="Channnel D", style="T4W16.TButton", command=BCHDMux)
-        CHDMuxlab.grid(row=RowNum, column=0, sticky=W)
-        CHDMux = Spinbox(frame1a, cursor='double_arrow', width=6, values=AMuxList, command=BCHDMux)
-        CHDMux.grid(row=RowNum, column=1, sticky=W)
-        CHDMux.bind('<MouseWheel>', onSpinBoxScroll)
-        CHDMux.bind("<Button-4>", onSpinBoxScroll)# with Linux OS
-        CHDMux.bind("<Button-5>", onSpinBoxScroll)
-        CHDMux.delete(0,"end")
-        CHDMux.insert(0,"A4")
-        
-        RowNum = RowNum + 1
-        amuxdismissbutton = Button(frame1a, text="Dismiss", command=DestroyAMuxScreen)
-        amuxdismissbutton.grid(row=RowNum, column=0, columnspan=2, sticky=W)
-#
-## Destroy the Analog Mux controls Screen
-def DestroyAMuxScreen():
-    global win2a, AMuxScreenStatus
-    
-    AMuxScreenStatus.set(0)
-    win2a.destroy()
-# From XIAO SAMD21 schematic
-# A0/DAC = 0
-# A1 = 4
-# A2 = 18
-# A3 = 19
-# A4 = 16
-# A5 = 17
-# A6 = 18
-# A7 = 2
-# A8 = 7
-# A9 = 5
-# assign board pin number to Scope input channel A
-def BCHAMux():
-    global CHAMux, Ain1
-
-    if CHAMux.get() == "A0":
-        Ain1 = 0 # DAC output
-    elif CHAMux.get() == "A1":
-        Ain1 = 4 # Pin A1
-    elif CHAMux.get() == "A2":
-        Ain1 = 18 # Pin A2
-    elif CHAMux.get() == "A3":
-        Ain1 = 19 # Pin A3
-    elif CHAMux.get() == "A4":
-        Ain1 = 16 # Pin A4
-    elif CHAMux.get() == "A5":
-        Ain1 = 17 # Pin A5
-    elif CHAMux.get() == "A6":
-        Ain1 = 2 # Pin A6
-    elif CHAMux.get() == "A7":
-        Ain1 = 3 # Pin A7
-    elif CHAMux.get() == "A8":
-        Ain1 = 7 # Pin A8
-    else:
-        Ain1 = 4 # Pin A1
-#
-def BCHBMux():
-    global CHBMux, Ain2
-
-    if CHBMux.get() == "A0":
-        Ain2 = 0 # DAC output
-    elif CHBMux.get() == "A1":
-        Ain2 = 4 # Pin A1
-    elif CHBMux.get() == "A2":
-        Ain2 = 18 # Pin A2
-    elif CHBMux.get() == "A3":
-        Ain2 = 19 # Pin A3
-    elif CHBMux.get() == "A4":
-        Ain2 = 16 # Pin A4
-    elif CHBMux.get() == "A5":
-        Ain2 = 17 # Pin A5
-    elif CHBMux.get() == "A6":
-        Ain2 = 2 # Pin A6
-    elif CHBMux.get() == "A7":
-        Ain2 = 3 # Pin A7
-    elif CHBMux.get() == "A8":
-        Ain2 = 7 # Pin A8
-    else:
-        Ain2 = 4 # Pin A1
-#
-def BCHCMux():
-    global CHCMux, Ain3
-
-    if CHCMux.get() == "A0":
-        Ain3 = 0 # DAC output
-    elif CHCMux.get() == "A1":
-        Ain3 = 4 # Pin A1
-    elif CHCMux.get() == "A2":
-        Ain3 = 18 # Pin A2
-    elif CHCMux.get() == "A3":
-        Ain3 = 19 # Pin A3
-    elif CHCMux.get() == "A4":
-        Ain3 = 16 # Pin A4
-    elif CHCMux.get() == "A5":
-        Ain3 = 17 # Pin A5
-    elif CHCMux.get() == "A6":
-        Ain3 = 2 # Pin A6
-    elif CHCMux.get() == "A7":
-        Ain3 = 3 # Pin A7
-    elif CHCMux.get() == "A8":
-        Ain3 = 7 # Pin A8
-    else:
-        Ain3 = 4 # Pin A1
-#
-def BCHDMux():
-    global CHDMux, Ain4
-
-    if CHDMux.get() == "A0":
-        Ain4 = 0 # DAC output
-    elif CHDMux.get() == "A1":
-        Ain4 = 4 # Pin A1
-    elif CHDMux.get() == "A2":
-        Ain4 = 18 # Pin A2
-    elif CHDMux.get() == "A3":
-        Ain4 = 19 # Pin A3
-    elif CHDMux.get() == "A4":
-        Ain4 = 16 # Pin A4
-    elif CHDMux.get() == "A5":
-        Ain4 = 17 # Pin A5
-    elif CHDMux.get() == "A6":
-        Ain4 = 2 # Pin A6
-    elif CHDMux.get() == "A7":
-        Ain4 = 3 # Pin A7
-    elif CHDMux.get() == "A8":
-        Ain4 = 7 # Pin A8
-    else:
-        Ain4 = 4 # Pin A1
 #
 # Main function to request and receive a set of ADC samples
 #
@@ -447,7 +261,7 @@ def Get_Buffer():
     #StartTime = time.time()
     VBuffRaw = []
     ABuff = []
-    time.sleep(Wait*TRACESread)
+    time.sleep(Wait*(TRACESread+1))
     ### Wait to buffer enough samples to satisfy the entire frame
     # print("iterCount = ", iterCount)
     Count = 0
@@ -511,8 +325,8 @@ def Get_Buffer():
     #EndTime = time.time()
     #Elapsed = EndTime - StartTime
     #print("Elapsed Time = ", Elapsed)
-    # print("received Bytes = ", Count)
-    # print("Length: ", len(ABuff))
+    #print("received Bytes = ", Count)
+    #print("Length: ", len(ABuff))
 #
 def Get_Dig():
     global VBuffA, VBuffB, VBuffC, VBuffD
@@ -648,10 +462,10 @@ def Get_Dig():
 #
 def Get_Data_One():
     global VBuffA, VBuffB, VBuffC, VBuffD, VBuff1
+    global A2, A3, A4, A5
     global ShowC1_V, ShowC2_V, ShowC3_V, ShowC4_V
-    global Ain1, Ain2, Ain3, Ain4
     global LSBsizeA, LSBsizeB, LSBsizeC, LSBsizeD
-    global TRACESread, Wait, iterCount
+    global LoopBack, LBsb, TRACESread, Wait, iterCount
     global MaxSampleRate, SAMPLErate, EnableInterpFilter
     global ser, SHOWsamples, TRIGGERsample, TgInput, TimeSpan
     global TrigSource, TriggerEdge, TriggerInt, Is_Triggered
@@ -661,29 +475,38 @@ def Get_Data_One():
     global DBuff0, DBuff1, DBuff2, DBuff3, DBuff4, DBuff5, DBuff6, DBuff7
     global D0line, D1line, D2line, D3line, D4line, D5line, D6line, D7line
     
-    #
+    ## board analog channel names
+    # A2 = 2
+    # A3 = 3
+    # A4 = 4
+    # A5 = 6
     SetSampleRate()
     Wait = 0.02
     if SAMPLErate <= 4000:
         Wait = 0.08
     #
     if ShowC1_V.get() > 0:
-        SendStr = 'A' + str(Ain1) + '\n'
-        # print(SendStr)
+        if LoopBack.get() > 0 and LBsb.get() == "CH A":
+            ser.write(b'A0\n') # capture on DAC / A0
+        else:
+            ser.write(b'A2\n') # capture on A2
     elif ShowC2_V.get() > 0:
-        SendStr = 'A' + str(Ain2) + '\n'
-        # print(SendStr)
+        if LoopBack.get() > 0 and LBsb.get() == "CH B":
+            ser.write(b'A0\n') # capture on DAC / A0
+        else:
+            ser.write(b'A3\n') # capture on A3
     elif ShowC3_V.get() > 0:
-        SendStr = 'A' + str(Ain3) + '\n'
-        # print(SendStr)
+        if LoopBack.get() > 0 and LBsb.get() == "CH C":
+            ser.write(b'A0\n') # capture on DAC / A0
+        else:
+            ser.write(b'A4\n') # capture on A4
     elif ShowC4_V.get() > 0:
-        SendStr = 'A' + str(Ain4) + '\n'
-        # print(SendStr)
+        if LoopBack.get() > 0 and LBsb.get() == "CH D":
+            ser.write(b'A0\n') # capture on DAC / A0
+        else:
+            ser.write(b'A5\n') # capture on A5
     else:
         return
-    SendByt = SendStr.encode('utf-8')
-    ser.write(SendByt)
-    #
     ser.write(b'1') # capture one channel
     #
     iterCount = (MinSamples * 2) # 2 bytes for one channel
@@ -777,7 +600,6 @@ def Get_Data_One():
 def Get_Data_Two():
     global VBuffA, VBuffB, VBuffC, VBuffD, ABuff
     global ShowC1_V, ShowC2_V, ShowC3_V, ShowC4_V
-    global Ain1, Ain2, Ain3, Ain4
     global LSBsizeA, LSBsizeB, LSBsizeC,  LSBsizeD
     global LoopBack, LBsb, Wait, iterCount
     global MaxSampleRate, SAMPLErate, EnableInterpFilter
@@ -789,37 +611,72 @@ def Get_Data_Two():
     global DBuff0, DBuff1, DBuff2, DBuff3, DBuff4, DBuff5, DBuff6, DBuff7
     global D0line, D1line, D2line, D3line, D4line, D5line, D6line, D7line
     
-    #
+    ## board analog channel names
+    # A2 = 2
+    # A3 = 3
+    # A4 = 4
+    # A5 = 6
     SetSampleRate()
     Wait = 0.015
     if SAMPLErate <= 4000:
         Wait = 0.08
     ### send command to readout data
-    if ShowC1_V.get() > 0 and ShowC2_V.get() > 0: # capture on A1 and A2
-        SendStr1 = 'A' + str(Ain1) + '\n'
-        SendStr2 = 'B' + str(Ain2) + '\n'
-    elif ShowC1_V.get() > 0 and ShowC3_V.get() > 0: # capture on A1 and A3
-        SendStr1 = 'A' + str(Ain1) + '\n'
-        SendStr2 = 'B' + str(Ain3) + '\n'
-    elif ShowC1_V.get() > 0 and ShowC4_V.get() > 0: # capture on A1 and A4
-        SendStr1 = 'A' + str(Ain1) + '\n'
-        SendStr2 = 'B' + str(Ain4) + '\n'
-    elif ShowC2_V.get() > 0 and ShowC3_V.get() > 0: # capture on A2 and A3
-        SendStr1 = 'A' + str(Ain2) + '\n'
-        SendStr2 = 'B' + str(Ain3) + '\n'
-    elif ShowC2_V.get() > 0 and ShowC4_V.get() > 0: # capture on A2 and A4
-        SendStr1 = 'A' + str(Ain2) + '\n'
-        SendStr2 = 'B' + str(Ain4) + '\n'
-    elif ShowC3_V.get() > 0 and ShowC4_V.get() > 0: # capture on A3 and A4
-        SendStr1 = 'A' + str(Ain3) + '\n'
-        SendStr2 = 'B' + str(Ain4) + '\n'
+    if ShowC1_V.get() > 0 and ShowC2_V.get() > 0: # capture on A2 and A3
+        if LoopBack.get() > 0 and LBsb.get() == "CH A":
+            ser.write(b'A0\n') # capture on DAC / A0
+        else:
+            ser.write(b'A2\n') 
+        if LoopBack.get() > 0 and LBsb.get() == "CH B":
+            ser.write(b'B0\n') # capture on DAC / A0
+        else:
+            ser.write(b'B3\n')
+    elif ShowC1_V.get() > 0 and ShowC3_V.get() > 0: # capture on A2 and A4
+        if LoopBack.get() > 0 and LBsb.get() == "CH A":
+            ser.write(b'A0\n') # capture on DAC / A0
+        else:
+            ser.write(b'A2\n')
+        if LoopBack.get() > 0 and LBsb.get() == "CH C":
+            ser.write(b'B0\n') # capture on DAC / A0
+        else:
+            ser.write(b'B4\n')
+    elif ShowC1_V.get() > 0 and ShowC4_V.get() > 0: # capture on A2 and A5
+        if LoopBack.get() > 0 and LBsb.get() == "CH A":
+            ser.write(b'A0\n') # capture on DAC / A0
+        else:
+            ser.write(b'A2\n') 
+        if LoopBack.get() > 0 and LBsb.get() == "CH D":
+            ser.write(b'B0\n') # capture on DAC / A0
+        else:
+            ser.write(b'B5\n')
+    elif ShowC2_V.get() > 0 and ShowC3_V.get() > 0: # capture on A3 and A4
+        if LoopBack.get() > 0 and LBsb.get() == "CH B":
+            ser.write(b'A0\n') # capture on DAC / A0
+        else:
+            ser.write(b'A3\n') 
+        if LoopBack.get() > 0 and LBsb.get() == "CH C":
+            ser.write(b'B0\n') # capture on DAC / A0
+        else:
+            ser.write(b'B4\n')
+    elif ShowC2_V.get() > 0 and ShowC4_V.get() > 0: # capture on A3 and A5
+        if LoopBack.get() > 0 and LBsb.get() == "CH B":
+            ser.write(b'A0\n') # capture on DAC / A0
+        else:
+            ser.write(b'A3\n') 
+        if LoopBack.get() > 0 and LBsb.get() == "CH D":
+            ser.write(b'A0\n') # capture on DAC / A0
+        else:
+            ser.write(b'B5\n')
+    elif ShowC3_V.get() > 0 and ShowC4_V.get() > 0: # capture on A4 and A5
+        if LoopBack.get() > 0 and LBsb.get() == "CH C":
+            ser.write(b'A0\n') # capture on DAC / A0
+        else:
+            ser.write(b'A4\n') 
+        if LoopBack.get() > 0 and LBsb.get() == "CH D":
+            ser.write(b'B0\n') # capture on DAC / A0
+        else:
+            ser.write(b'B5\n')
     else:
         return
-    #
-    SendByt = SendStr1.encode('utf-8')
-    ser.write(SendByt)
-    SendByt = SendStr2.encode('utf-8')
-    ser.write(SendByt)
     ser.write(b'2') # capture two channels
     #
     iterCount = (MinSamples * 4) # 4 bytes for two channels
@@ -990,7 +847,6 @@ def Get_Data_Two():
 def Get_Data_Three():
     global VBuffA, VBuffB, VBuffC, VBuffD, ABuff
     global ShowC1_V, ShowC2_V, ShowC3_V, ShowC4_V
-    global Ain1, Ain2, Ain3, Ain4
     global LSBsizeA, LSBsizeB, LSBsizeC
     global LoopBack, LBsb, Wait, iterCount
     global MaxSampleRate, SAMPLErate, EnableInterpFilter
@@ -1002,38 +858,72 @@ def Get_Data_Three():
     global DBuff0, DBuff1, DBuff2, DBuff3, DBuff4, DBuff5, DBuff6, DBuff7
     global D0line, D1line, D2line, D3line, D4line, D5line, D6line, D7line
     
-    #
+    ## board analog channel names
+    # A2 = 2
+    # A3 = 3
+    # A4 = 4
+    # A5 = 6
     SetSampleRate()
     Wait = 0.015
     if SAMPLErate <= 4000:
         Wait = 0.08
     # 
     # send command to readout data
-    if ShowC1_V.get() > 0 and ShowC2_V.get() > 0 and ShowC3_V.get() > 0: # capture on A1 A2 and A3
-        SendStr1 = 'A' + str(Ain1) + '\n'
-        SendStr2 = 'B' + str(Ain2) + '\n'
-        SendStr3 = 'C' + str(Ain3) + '\n'
-    elif ShowC1_V.get() > 0 and ShowC2_V.get() > 0 and ShowC4_V.get() > 0: # capture on A1 A2 and A4
-        SendStr1 = 'A' + str(Ain1) + '\n'
-        SendStr2 = 'B' + str(Ain2) + '\n'
-        SendStr3 = 'C' + str(Ain4) + '\n'
-    elif ShowC2_V.get() > 0 and ShowC3_V.get() > 0 and ShowC4_V.get() > 0: # capture on A2 A3 and A4
-        SendStr1 = 'A' + str(Ain2) + '\n'
-        SendStr2 = 'B' + str(Ain3) + '\n'
-        SendStr3 = 'C' + str(Ain4) + '\n'
-    elif ShowC1_V.get() > 0 and ShowC3_V.get() > 0 and ShowC4_V.get() > 0: # capture on A1 A3 and A4
-        SendStr1 = 'A' + str(Ain1) + '\n'
-        SendStr2 = 'B' + str(Ain3) + '\n'
-        SendStr3 = 'C' + str(Ain4) + '\n'
+    if ShowC1_V.get() > 0 and ShowC2_V.get() > 0 and ShowC3_V.get() > 0: # capture on A2 A3 and A4
+        if LoopBack.get() > 0 and LBsb.get() == "CH A":
+            ser.write(b'A0\n') # capture on DAC / A0
+        else:
+            ser.write(b'A2\n') 
+        if LoopBack.get() > 0 and LBsb.get() == "CH B":
+            ser.write(b'B0\n') # capture on DAC / A0
+        else:
+            ser.write(b'B3\n')
+        if LoopBack.get() > 0 and LBsb.get() == "CH C":
+            ser.write(b'C0\n') # capture on DAC / A0
+        else:
+            ser.write(b'C4\n')
+    elif ShowC1_V.get() > 0 and ShowC2_V.get() > 0 and ShowC4_V.get() > 0: # capture on A2 A3 and A5
+        if LoopBack.get() > 0 and LBsb.get() == "CH A":
+            ser.write(b'A0\n') # capture on DAC / A0
+        else:
+            ser.write(b'A2\n') 
+        if LoopBack.get() > 0 and LBsb.get() == "CH B":
+            ser.write(b'B0\n') # capture on DAC / A0
+        else:
+            ser.write(b'B3\n')
+        if LoopBack.get() > 0 and LBsb.get() == "CH D":
+            ser.write(b'C0\n') # capture on DAC / A0
+        else:
+            ser.write(b'C5\n')
+    elif ShowC2_V.get() > 0 and ShowC3_V.get() > 0 and ShowC4_V.get() > 0: # capture on A3 A4 and A5
+        if LoopBack.get() > 0 and LBsb.get() == "CH B":
+            ser.write(b'A0\n') # capture on DAC / A0
+        else:
+            ser.write(b'A3\n') 
+        if LoopBack.get() > 0 and LBsb.get() == "CH C":
+            ser.write(b'B0\n') # capture on DAC / A0
+        else:
+            ser.write(b'B4\n')
+        if LoopBack.get() > 0 and LBsb.get() == "CH D":
+            ser.write(b'C0\n') # capture on DAC / A0
+        else:
+            ser.write(b'C5\n')
+    elif ShowC1_V.get() > 0 and ShowC3_V.get() > 0 and ShowC4_V.get() > 0: # capture on A2 A4 and A6
+        if LoopBack.get() > 0 and LBsb.get() == "CH A":
+            ser.write(b'A0\n') # capture on DAC / A0
+        else:
+            ser.write(b'A2\n') 
+        if LoopBack.get() > 0 and LBsb.get() == "CH C":
+            ser.write(b'B0\n') # capture on DAC / A0
+        else:
+            ser.write(b'B4\n')
+        if LoopBack.get() > 0 and LBsb.get() == "CH D":
+            ser.write(b'C0\n') # capture on DAC / A0
+        else:
+            ser.write(b'C5\n')
     else:
         #print("none of the cases found?")
         return
-    SendByt = SendStr1.encode('utf-8')
-    ser.write(SendByt)
-    SendByt = SendStr2.encode('utf-8')
-    ser.write(SendByt)
-    SendByt = SendStr3.encode('utf-8')
-    ser.write(SendByt)
     time.sleep(0.015)
     ser.write(b'3') # capture three channels
     #
@@ -1202,7 +1092,6 @@ def Get_Data_Three():
 def Get_Data_Four():
     global VBuffA, VBuffB, VBuffC, VBuffD, ABuff
     global ShowC1_V, ShowC2_V, ShowC3_V, ShowC4_V
-    global Ain1, Ain2, Ain3, Ain4
     global LSBsizeA, LSBsizeB, LSBsizeC, LSBsizeD
     global LoopBack, LBsb, Wait, iterCount
     global MaxSampleRate, SAMPLErate, EnableInterpFilter
@@ -1214,25 +1103,32 @@ def Get_Data_Four():
     global DBuff0, DBuff1, DBuff2, DBuff3, DBuff4, DBuff5, DBuff6, DBuff7
     global D0line, D1line, D2line, D3line, D4line, D5line, D6line, D7line
     
-    #
+    ## board analog channel names
+    # A2 = 2
+    # A3 = 3
+    # A4 = 4
+    # A5 = 6
     SetSampleRate()
     Wait = 0.015
     if SAMPLErate <= 4000:
         Wait = 0.08
-    # capture on A1 A2 A3 and A4
-    SendStr = 'A' + str(Ain1) + '\n'
-    SendByt = SendStr.encode('utf-8')
-    ser.write(SendByt)
-    SendStr = 'B' + str(Ain2) + '\n'
-    SendByt = SendStr.encode('utf-8')
-    ser.write(SendByt)
-    SendStr = 'C' + str(Ain3) + '\n'
-    SendByt = SendStr.encode('utf-8')
-    ser.write(SendByt)
-    SendStr = 'D' + str(Ain4) + '\n'
-    SendByt = SendStr.encode('utf-8')
-    ser.write(SendByt)
-    #
+    # capture on A2 A3 A4 and A5
+    if LoopBack.get() > 0 and LBsb.get() == "CH A":
+        ser.write(b'A0\n') # capture on DAC / A0
+    else:
+        ser.write(b'A2\n') 
+    if LoopBack.get() > 0 and LBsb.get() == "CH B":
+        ser.write(b'B0\n') # capture on DAC / A0
+    else:
+        ser.write(b'B3\n')
+    if LoopBack.get() > 0 and LBsb.get() == "CH C":
+        ser.write(b'C0\n') # capture on DAC / A0
+    else:
+        ser.write(b'C4\n')
+    if LoopBack.get() > 0 and LBsb.get() == "CH D":
+        ser.write(b'D0\n') # capture on DAC / A0
+    else:
+        ser.write(b'D5\n')
     ser.write(b'4') # capture Four channels
     #
     iterCount = (MinSamples * 8) # 8 bytes for Four channels
@@ -1338,24 +1234,41 @@ def PrintID():
         ID = ID.replace("'","")
         print("ID string ", ID)
 #
+def SetBufferLength(NewLength):
+    global ser, MinSamples, MaxSamples, InterpRate, HardwareBuffer
+
+    if NewLength > HardwareBuffer:
+        NewLength = HardwareBuffer
+    MinSamples = NewLength
+    MaxSamples = MinSamples * InterpRate
+    ## send Scope Buffer Length
+    SendStr = 'b' + str(MinSamples) + '\n'
+    # print(SendStr)
+    SendByt = SendStr.encode('utf-8')
+    ser.write(SendByt)
+    # ser.write(b'b1024\n')  
+    time.sleep(0.005)
+    #print("set Scope Samples: ", MinSamples)
+#
+# Hardware Help
+#
 ## try to connect to Arduino XIAO board
 #
 def ConnectDevice():
-    global SerComPort, DevID, MaxSamples, SAMPLErate, MinSamples
-    global MaxAWGSampleRate, AWGSampleRate
+    global SerComPort, DevID, MaxSamples, SAMPLErate, MinSamples, AWGSampleRate
     global bcon, FWRevOne, HWRevOne, MaxSampleRate, ser, SHOWsamples
-    global CH1Probe, CH2Probe, CH1VRange, CH2VRange, TimeDiv, InterpRate
+    global CH1Probe, CH2Probe, CH1VRange, CH2VRange, TimeDiv, MaxAWGSampleRate
     global CHAsb, CHBsb, TMsb, LSBsizeA, LSBsizeB, ADC_Cal, LSBsize
     global d0btn, d1btn, d2btn, d3btn, d4btn, d5btn, d6btn, d7btn
 
     # print("SerComPort: ", SerComPort)
-    if DevID == "No Device" or DevID == "XIAO 4":
+    if DevID == "No Device" or DevID == "BitsyM0 4":
         #
         if SerComPort == 'Auto':
             ports = serial.tools.list_ports.comports()
             for port in ports: # ports:
-                # looking for this ID: USB\VID:PID=2886:802F
-                if "VID:PID=2886:802F" in port[2]:
+                # looking for this ID: USB\VID:PID=239A:800F
+                if "VID:PID=239A:800F" in port[2]:
                     print("Found: ", port[0])
                     SerComPort = port[0]
         # Setup instrument connection
@@ -1363,10 +1276,10 @@ def ConnectDevice():
         try:
             ser = serial.Serial(SerComPort)  # open serial port
         except:
-            return(False)
+            return
         if ser is None:
             print('Device not found!')
-            return(False)
+            return
             # Bcloseexit()
             # exit()
         #
@@ -1385,13 +1298,13 @@ def ConnectDevice():
             ID = ID.replace("\\","")
             ID = ID.replace("'","")
             print("ID string ", ID)
-            if ID != "XIAO Scope 4.0":
+            if ID != "Bitsy M0 Scope 4.0":
                 showwarning("WARNING","Board firmware does match this interface. Switch boards or interface software.")
             #
-            ser.write(b't10\n') # send Scope sample time in uSec
+            ser.write(b't25\n') # send Scope sample time in uSec
             time.sleep(0.005)
-            print("set dt: 10 uSec")
-            MaxSampleRate = SAMPLErate = 100000*InterpRate
+            print("set dt: 25 uSec")
+            MaxSampleRate = SAMPLErate = 40000*InterpRate
             #
             ser.write(b'T14\n') # send AWG sample time in uSec
             time.sleep(0.005)
@@ -1405,32 +1318,25 @@ def ConnectDevice():
             # print(SendStr)
             SendByt = SendStr.encode('utf-8')
             ser.write(SendByt)
+            # ser.write(b'b1024\n')  
             time.sleep(0.005)
             print("set Scope Samples: ", MinSamples)
             # Set ADC settling delay to 4 (default is 1)
             ser.write(b'd4\n')
-            time.sleep(0.005)
-            # Set ADC PGA gain to 1 by default
-            ser.write(b'g15\n')
-            # Set ADC V Ref to 3.3 (2 * Vdd/2)
-            ser.write(b'v2\n')
             #
             ser.write(b'N1024\n') # send AWG A Buffer Length
             ser.write(b'M1024\n') # send AWG B Buffer Length
             time.sleep(0.005)
             print("set AWG Samples: 1024")
-            ser.write(b'p64000\n') # send PWM (AWG) frequency
-            print("send PWM (AWG) frequency")
+            # ser.write(b'p64000\n') # send PWM (AWG) frequency
+            
+            MaxSamples = MinSamples * InterpRate # 4096 assume 4X interpolation
             #
             ser.write(b'R0\n') # turn off AWG sync by default
-            print("turn off AWG sync by default")
             #
             ser.write(b'sx\n') # turn off PWM output by default
-            print("turn off PWM output by default")
             ser.write(b'Gx\n') # turn off AWG A by default
-            print("turn off AWG A by default")
             ser.write(b'Sx\n') # turn off PWM AWG by default
-            print("turn off PWM AWG by default")
     #
             print("Get a sample: ")
             Get_Data() # grap a check set of samples
@@ -1451,58 +1357,11 @@ def ConnectDevice():
                 time.sleep(1.0) # wait 1 sec
                 # attempt to copy .uf2 file to USB drive
                 if platform.system() == "Windows":
-                    try:
-                        os.system("copy XIAO_Scope_pwm_awg.uf2 E:") # change file name here
-                    except:
-                        pass
+                    os.system("copy XIAO_Scope_pwm_awg.uf2 E:")
 
             return(False)
     else:
         return(False)
-#
-# ADC Input Programable Gain Controls
-#
-def BCHAPGAgain():
-    global ser, CHApgasb, ScopePGAGain
-    global LSBsizeA, LSBsizeB, LSBsizeC, LSBsize
-
-    Gval = int(CHApgasb.get())
-    # LSBsize is V/LSB for 3.3 V FS.
-    # print("Gval = ", Gval)
-    if Gval == 1:
-        LSBsizeA = LSBsizeB = LSBsizeC = LSBsize 
-        ser.write(b'g15\n')
-    elif Gval == 2:
-        LSBsizeA = LSBsizeB = LSBsizeC = LSBsize / 2
-        ser.write(b'g0\n')
-    elif Gval == 4:
-        LSBsizeA = LSBsizeB = LSBsizeC = LSBsize / 4
-        ser.write(b'g1\n')
-    elif Gval == 8:
-        LSBsizeA = LSBsizeB = LSBsizeC = LSBsize / 8
-        ser.write(b'g2\n')
-    elif Gval == 16:
-        LSBsizeA = LSBsizeB = LSBsizeC = LSBsize / 16
-        ser.write(b'g3\n')
-    # print("LSBsizeA = ", LSBsizeA, "LSBsize = ", LSBsize)
-#
-#
-def SetBufferLength(NewLength):
-    global ser, MinSamples, MaxSamples, InterpRate, HardwareBuffer
-    global SMPfft
-    if NewLength > HardwareBuffer:
-        NewLength = HardwareBuffer
-    MinSamples = NewLength
-    MaxSamples = MinSamples * InterpRate
-    SMPfft = MaxSamples
-    ## send Scope Buffer Length
-    SendStr = 'b' + str(MinSamples) + '\n'
-    # print(SendStr)
-    SendByt = SendStr.encode('utf-8')
-    ser.write(SendByt)
-    # ser.write(b'b1024\n')  
-    time.sleep(0.005)
-    #print("set Scope Samples: ", MinSamples)
 #
 def UpdateFirmware():
     global ser, Sucess, bcon
@@ -1669,9 +1528,7 @@ def SetAwgSampleRate():
 
     MaxRepRate = numpy.ceil(MaxAWGSampleRate / AWGBuffLen)
     FreqA = UnitConvert(AWGAFreqEntry.get())
-##    FreqB = UnitConvert(AWGBFreqEntry.get())
-##    if FreqB < FreqA:
-##        FreqA = FreqB
+    #reqB = UnitConvert(AWGBFreqEntry.get())
     Cycles = 1
     #print("MaxRepRate = ", MaxRepRate)
     #print("FreqA = ", FreqA)
@@ -1731,7 +1588,7 @@ def SetAwgB_Ampl(Ampl): # used to toggle on / off AWG output
     if Ampl == 0:
         ser.write(b'Sx\n')
     else:
-        # ser.write(b'p64000\n') # send PWM (AWG) frequency
+        ser.write(b'p64000\n') # send PWM (AWG) frequency
         ser.write(b'So\n')
 #
 ## Make the current selected AWG waveform
@@ -1806,7 +1663,7 @@ def MakeAWGwaves(): # re make awg waveforms in case something changed
         AWGAShapeLabel.config(text = AwgString11) # change displayed value
     elif AWGAShape.get()==12:
         AWGAMakeFourier()
-        AWGAShapeLabel.config(text = AwgString12) # change displayed value
+        AWGAShapeLabel.config(text = AwgString13) # change displayed value
     elif AWGAShape.get()==13:
         SetAwgSampleRate()
         AWGAAmplvalue = float(eval(AWGAAmplEntry.get()))
@@ -1889,6 +1746,60 @@ def MakeAWGwaves(): # re make awg waveforms in case something changed
 #
     time.sleep(0.01)
 #
+def MakeAWG_internal_waves(): # re make awg waveforms in case something changed
+    global ser, AWGAShape, AWGAShapeLabel, AWGBShape, AWGBShapeLabel
+    global AWGAAmplEntry, AWGAOffsetEntry, AWGAFreqEntry, AWGASymmetryEntry, AWGADutyCycleEntry
+    global AWGAAmplvalue, AWGBOffsetvalue, AWGBAmplvalue, AWGBOffsetvalue
+    global AWGBAmplEntry, AWGBOffsetEntry, AWGBFreqEntry, AWGBSymmetryEntry, AWGBDutyCycleEntry
+    global FSweepMode, MaxSampleRate
+    global AwgString1, AwgString2, AwgString3, AwgString4, AwgString5, AwgString6
+    global AwgString7, AwgString8, AwgString9, AwgString10, AwgString11, AwgString12
+    global AwgString13, AwgString14, AwgString15, AwgString16
+    
+    #
+    time.sleep(0.01)
+    #
+    if AWGAShape.get()==0:
+        ser.write(b'W0\n')
+        AWGAShapeLabel.config(text = AwgString0) # change displayed value
+    elif AWGAShape.get()==1:
+        ser.write(b'W1\n')
+        AWGAShapeLabel.config(text = AwgString1) # change displayed value
+    elif AWGAShape.get()==2:
+        ser.write(b'W2\n')
+        AWGAShapeLabel.config(text = AwgString2) # change displayed value
+    elif AWGAShape.get()==3:
+        ser.write(b'W3\n')
+        AWGAShapeLabel.config(text = AwgString3) # change displayed value
+    elif AWGAShape.get()==4:
+        ser.write(b'W4\n')
+        AWGAShapeLabel.config(text = AwgString4) # change displayed value
+    elif AWGAShape.get()==5:
+        ser.write(b'W5\n')
+        AWGAShapeLabel.config(text = AwgString5) # change displayed value
+    elif AWGAShape.get()==6:
+        ser.write(b'W6\n')
+        AWGAShapeLabel.config(text = AwgString6) # change displayed value
+    elif AWGAShape.get()==7:
+        ser.write(b'W7\n')
+        AWGAShapeLabel.config(text = AwgString7) # change displayed value
+    #
+    if AWGBShape.get()==0:
+        ser.write(b'w0\n')
+        AWGBShapeLabel.config(text = AwgString0) # change displayed value
+    elif AWGBShape.get()==1:
+        ser.write(b'w1\n')
+        AWGBShapeLabel.config(text = AwgString1) # change displayed value
+    elif AWGBShape.get()==2:
+        ser.write(b'w2\n')
+        AWGBShapeLabel.config(text = AwgString2) # change displayed value
+    #SetAwgFrequency()
+    SetAWG_Ampla()
+    SetAWG_Offseta()
+    SetAWG_Amplb()
+    SetAWG_Offsetb()
+    time.sleep(0.1)
+#
 # Hardware Specific PWM control functions
 #
 def PWM_On_Off():
@@ -1909,20 +1820,17 @@ def UpdatePWM():
 
     FreqValue = int(UnitConvert(PWMDivEntry.get()))
     # print("FreqValue = ", FreqValue)
-    # ByteStr = 'p' + str(FreqValue) + "\n"
-    # SendByt = ByteStr.encode('utf-8')
     # PWM frequency = 48MHz / (1 * (95999 + 1)) = 500Hz
-    # Divider = int(48000000 / FreqValue) - 1
-    # print("FreqValue = ", FreqValue)
-    ByteStr = 'p' + str(FreqValue) + "\n"
+    Divider = int(48000000 / FreqValue) - 1
+    # print("Divider = ", Divider)
+    ByteStr = 'p' + str(Divider) + "\n"
     SendByt = ByteStr.encode('utf-8')
     ser.write(SendByt)
     time.sleep(0.1)
     
     DutyCycle = int(PWMWidthEntry.get())
-    DutyCycle = int((DutyCycle * 1024)/100) # value can be 0 to 1000
-    #DutyCycle = DutyCycle * 10 # value can be 0 to 1000
-    # print("DutyCycle = ",DutyCycle)
+    DutyCycle = int((DutyCycle * Divider)/100) # value can be 0 to 1000
+    # print("DutyCycle = ", DutyCycle)
     #
     ByteStr = 'm' + str(DutyCycle) + "\n"
     SendByt = ByteStr.encode('utf-8')

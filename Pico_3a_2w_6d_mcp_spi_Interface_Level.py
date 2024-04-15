@@ -1,6 +1,6 @@
 #
 # Hardware specific interface functions
-# For Arduino pi pico Three analog + 2 AWG + 6 digital channel scope (12-14-2023)
+# For Arduino pi pico Three analog + 2 AWG + 6 digital channel scope (12-2-2023)
 # Written using Python version 3.10, Windows OS 
 #
 try:
@@ -16,28 +16,30 @@ except:
 CHANNELS = 3 # Number of supported Analog input channels
 AWGChannels = 2 # Number of supported Analog output channels
 PWMChannels = 1 # Number of supported PWM output channels
-DigChannels = 8 # Number of supported Dig channels
-LogicChannels = 6 # Number of supported Logic Analyzer channels
+DigChannels = 0 # Number of supported Dig channels
+LogicChannels = 0 # Number of supported Logic Analyzer channels
 EnablePGAGain = 0 #
 EnableAWGNoise = 0 #
+UseSoftwareTrigger = 1
 AllowFlashFirmware = 1
 Tdiv.set(10)
 AWG_Amp_Mode.set(0)
 AWGPeakToPeak = 3.29
-DevID = "Pico MCP 3"
+DevID = "Pico 3 mcp"
 SerComPort = 'Auto'
 TimeSpan = 0.01
 ADC_Cal = 3.29
 AWGRes = 4095 # For 8 bits, 4095 for 12 bits, 1023 for 10 bits
 InterpRate = 4
 EnableInterpFilter.set(1)
-MaxSampleRate = SAMPLErate = 12500*InterpRate
-AWGSampleRate = 50000 # 20 uSec
+MaxSampleRate = SAMPLErate = 333333*InterpRate
+ATmin = 8 # set minimum DAC update rate to 8 uSec
+MaxAWGSampleRate = 1.0 / (ATmin / 1000000) # set to 1 / 8 uSec
+AWGSampleRate = MaxAWGSampleRate
 LSBsizeA =  LSBsizeB = LSBsizeC = LSBsize = ADC_Cal/4096.0
-PhaseOffset = 12.5
-HardwareBuffer = 4096 # Max hardware waveform buffer size
+HardwareBuffer = 2048 # Max hardware waveform buffer size
 MinSamples = 2048 # capture sample buffer size
-AWGBuffLen = 2048
+AWGBuffLen = 2048 # Max DAC hardware waveform buffer size
 Cycles = 1
 SMPfft = MinSamples*InterpRate # Set FFT size based on fixed acquisition record length
 #
@@ -54,6 +56,8 @@ VmemoryB = numpy.ones(MinSamples*InterpRate) # The memory for averaging
 VmemoryC = numpy.ones(MinSamples*InterpRate)
 VmemoryD = numpy.ones(MinSamples*InterpRate)
 #
+IACMString = "+1.65"
+IA_Mode.set(1)
 #
 ## hardware specific Fucntion to close and exit ALICE
 def Bcloseexit():
@@ -63,8 +67,7 @@ def Bcloseexit():
     Closed = 1
     # 
     try:
-        ser.write(b'Gx\n') # Turn off AWG A
-        ser.write(b'gx\n') # Turn off AWG B
+        ser.write(b'Gx\n') # Turn off AWG
         ser.write(b'sx\n') # turn off PWM
         # try to write last config file, Don't crash if running in Write protected space
         BSaveConfig("alice-last-config.cfg")
@@ -95,19 +98,19 @@ def SetSampleRate():
         pass
     #print("TimeDiv = ", TimeDiv)
     if TimeDiv < 0.000099:
-        ser.write(b't5\n') # 90.909 KSPS
+        ser.write(b't3\n') # 90.909 KSPS
     elif TimeDiv > 0.000099 and TimeDiv < 0.000199:
-        ser.write(b't6\n') # 90.909 KSPS
+        ser.write(b't3\n') # 90.909 KSPS
     elif TimeDiv > 0.000199 and TimeDiv < 0.0005:
-        ser.write(b't8\n') # 90.909KSPS
+        ser.write(b't3\n') # 90.909KSPS
     elif TimeDiv >= 0.0005 and TimeDiv < 0.001:
-        ser.write(b't12\n') # 90.909 KSPS
+        ser.write(b't3\n') # 90.909 KSPS
     elif TimeDiv >= 0.001 and TimeDiv < 0.002:
-        ser.write(b't16\n') # 62.5 KSPS
+        ser.write(b't8\n') # 62.5 KSPS
     elif TimeDiv >= 0.002 and TimeDiv < 0.005:
-        ser.write(b't32\n') # 31.250 KSPS
+        ser.write(b't16\n') # 31.250 KSPS
     elif TimeDiv >= 0.005 and TimeDiv < 0.01:
-        ser.write(b't64\n') # 15.625 KSPS
+        ser.write(b't32\n') # 15.625 KSPS
     elif TimeDiv >= 0.01 and TimeDiv < 0.02:
         ser.write(b't100\n') # 10 KSPS
     else:
@@ -124,35 +127,46 @@ def only_numerics(seq):
 #
 def Get_Data():
     global ShowC1_V, ShowC2_V, ShowC3_V, ShowC4_V
-    global TgInput, VBuffA, VBuffB, VBuffC, VBuffG
+    global TgInput, VBuffA, VBuffB, VBuffC, VBuffD, VBuffG
     global D0_is_on, D1_is_on, D2_is_on, D3_is_on
-    global D4_is_on, D5_is_on, D6_is_on, D7_is_on
+    global D4_is_on, D5_is_on, D6_is_on, D7_is_on, COLORtrace8
     global DBuff0, DBuff1, DBuff2, DBuff3, DBuff4, DBuff5, DBuff6, DBuff7
     global D0line, D1line, D2line, D3line, D4line, D5line, D6line, D7line
-    global TRIGGERentry, TRIGGERsample, SaveDig, CHANNELS, TRACESread, SAMPLErate
+    global TRIGGERentry, TRIGGERsample, SaveDig, CHANNELS, TRACESread
 
-    # Get data from pi pico
+    # Get data from Pi Pico + MCP
     #
     SaveDig = False
     if D0_is_on or D1_is_on or D2_is_on or D3_is_on or D4_is_on or D5_is_on or D6_is_on:
         SaveDig = True
+        Get_Dig()
+        COLORtrace8 = "#800000"   # 80% red
     else:
         SaveDig = False
     #
     if ShowC1_V.get() > 0 and ShowC2_V.get() > 0 and ShowC3_V.get() == 0:
+        TRACESread = 2 # A and B
         Get_Data_Two()
     elif ShowC1_V.get() > 0 and ShowC2_V.get() == 0 and ShowC3_V.get() > 0:
+        TRACESread = 2 # A and C
         Get_Data_Two()
     elif ShowC1_V.get() == 0 and ShowC2_V.get() > 0 and ShowC3_V.get() > 0:
+        TRACESread = 2 # B and C
         Get_Data_Two()
     elif ShowC1_V.get() > 0 and ShowC2_V.get() == 0 and ShowC3_V.get() == 0:
+        TRACESread = 1 # A
         Get_Data_One()
     elif ShowC1_V.get() == 0 and ShowC2_V.get() > 0 and ShowC3_V.get() == 0:
+        TRACESread = 1 # B
         Get_Data_One()
     elif ShowC1_V.get() == 0 and ShowC2_V.get() == 0 and ShowC3_V.get() > 0:
+        TRACESread = 1 # C
         Get_Data_One()
     elif ShowC1_V.get() > 0 and ShowC2_V.get() > 0 and ShowC3_V.get() > 0:
+        TRACESread = 3 # A and B and C
         Get_Data_Three()
+    elif SaveDig:
+        pass
     else:
         return
     # do external Gain / Offset calculations before software triggering
@@ -162,85 +176,108 @@ def Get_Data():
     if ShowC2_V.get() > 0 and CHANNELS >= 2:
         VBuffB = numpy.array(VBuffB)
         VBuffB = (VBuffB - InOffB) * InGainB
-        TRACESread = TRACESread + 1
     if ShowC3_V.get() > 0 and CHANNELS >= 3:
         VBuffC = numpy.array(VBuffC)
         VBuffC = (VBuffC - InOffC) * InGainC
-        TRACESread = TRACESread + 1
-    if ShowC4_V.get() > 0 and CHANNELS >= 4:
-        VBuffD = numpy.array(VBuffD)
-        VBuffD = (VBuffD - InOffD) * InGainD
-        TRACESread = TRACESread + 1
-    # Find trigger sample point if necessary
-    # print("Array Len ",len(VBuffA), "SHOWsamples ", SHOWsamples)
-    LShift = 0
-    if TgInput.get() == 1 and ShowC1_V.get() > 0:
-        FindTriggerSample(VBuffA)
-    if TgInput.get() == 2 and ShowC2_V.get() > 0:
-        FindTriggerSample(VBuffB)
-    if TgInput.get() == 3 and ShowC3_V.get() > 0:
-        FindTriggerSample(VBuffC)
-    if TgInput.get() > 4:
-        TRIGGERentry.delete(0,"end")
-        TRIGGERentry.insert(0,0.5)
-        if TgInput.get() == 5:
-            FindTriggerSample(DBuff0)
-        if TgInput.get() == 6:
-            FindTriggerSample(DBuff1)
-        if TgInput.get() == 7:
-            FindTriggerSample(DBuff2)
-        if TgInput.get() == 8:
-            FindTriggerSample(DBuff3)
-        if TgInput.get() == 9:
-            FindTriggerSample(DBuff4)
-        if TgInput.get() == 10:
-            FindTriggerSample(DBuff5)
-        if TgInput.get() == 11:
-            FindTriggerSample(DBuff6)
-    if TgInput.get() > 0: # if triggering left shift all arrays such that trigger point is at index 0
-        LShift = 0 - TRIGGERsample
-        if ShowC1_V.get() > 0:
-            VBuffA = numpy.roll(VBuffA, LShift)
-        if ShowC2_V.get() > 0:
-            VBuffB = numpy.roll(VBuffB, LShift+2)
-        if ShowC3_V.get() > 0:
-            VBuffC = numpy.roll(VBuffC, LShift+2)
-        if SaveDig:
-            VBuffG = numpy.roll(VBuffG, LShift)
-            if D0_is_on:
-                DBuff0 = numpy.roll(DBuff0, LShift)
-            if D1_is_on:
-                DBuff1 = numpy.roll(DBuff1, LShift)
-            if D2_is_on:
-                DBuff2 = numpy.roll(DBuff2, LShift)
-            if D3_is_on:
-                DBuff3 = numpy.roll(DBuff3, LShift)
-            if D4_is_on:
-                DBuff4 = numpy.roll(DBuff4, LShift)
-            if D5_is_on:
-                DBuff5 = numpy.roll(DBuff5, LShift)
-            if D6_is_on:
-                DBuff6 = numpy.roll(DBuff6, LShift)
-            if D7_is_on:
-                DBuff7 = numpy.roll(DBuff7, LShift)
-    else:
-        if SAMPLErate >= 125000:
-            VBuffA = numpy.roll(VBuffA, -2)
-            VBuffB = numpy.roll(VBuffB, -1)
-            VBuffC = numpy.roll(VBuffC, 0)
-        elif SAMPLErate < 125000 and SAMPLErate > 31250:
-            VBuffA = numpy.roll(VBuffA, 0)
-            VBuffB = numpy.roll(VBuffB, 0)
-            VBuffC = numpy.roll(VBuffC, 0)
-        else:
-            VBuffA = numpy.roll(VBuffA, 0)
-            VBuffB = numpy.roll(VBuffB, 0)
-            VBuffC = numpy.roll(VBuffC, 0)
 #
-def Get_Data_One():
-    global VBuffA, VBuffB, VBuffC, VBuffG
+def Get_Buffer():
+    global Wait, ser, MaxSampleRate, InterpRate, SAMPLErate
+    global ABuff, iterCount, SampleTime, MinSamples, TRACESread
+    
+    time.sleep(Wait)
+    ratestring = str(ser.readline())
+    # print("Raw string ", ratestring)
+    if "stReal=" in ratestring: #
+        DTime = ratestring.replace("b'stReal=","")
+        DTime = DTime.replace("\\\\","")
+        DTime = DTime.replace("r","")
+        DTime = DTime.replace("n","")
+        DTime = DTime.replace("\\","")
+        DTime = DTime.replace("'","")
+        # print(DTime, UnitConvert(DTime)/MinSamples)
+        SampleTime = (UnitConvert(DTime)/MinSamples) * 1.0e-6 # convert to uSec
+        # set actual samplerate from returned time per sample
+        MaxSampleRate = SAMPLErate = int((1.0/SampleTime)*InterpRate)
+        # print("Sample Time: ", SampleTime)
+        # print("Sample Rate = ", SAMPLErate )
+    #
+    #StartTime = time.time()
+    VBuffRaw = []
+    ABuff = []
+    time.sleep(Wait*TRACESread)
+    ### Wait to buffer enough samples to satisfy the entire frame
+    # print("iterCount = ", iterCount)
+    Count = 0
+    Chunk = TRACESread * MinSamples
+    ## 1 chan 324, 108, 36
+    ## 2 chan 640, 320, 160
+    ## 3,4 chan 500, 250
+    ByTwo = 500
+    ByFour = 250
+    ByEight = 160
+    if TRACESread == 2:
+        ByTwo = 640
+        ByFour = 320
+        ByEight = 160
+    if TRACESread > 1:
+        Chunk = Chunk + MinSamples
+    waiting0 = ser.in_waiting
+    #print("Serial Length:", waiting0)
+    while waiting0 >= 1:
+        # print("Number Bytes waiting = ", waiting0)
+        # read in chunks divisible by 3
+        # Read an integer as two bytes, big-endian
+        time.sleep(0.015)
+        waiting0 = ser.in_waiting
+        if waiting0 > Chunk:
+            VBuffRaw = ser.read(Chunk)
+            Count = Count + Chunk
+        elif waiting0 > MinSamples:
+            VBuffRaw = ser.read(MinSamples)
+            Count = Count + MinSamples
+        elif waiting0 > ByTwo:
+            VBuffRaw = ser.read(ByTwo)
+            Count = Count + ByTwo
+        elif waiting0 > ByFour:
+            VBuffRaw = ser.read(ByFour)
+            Count = Count + ByFour
+        elif waiting0 > ByEight:
+            if TRACESread == 2:
+                VBuffRaw = ser.read(ByEight)
+                Count = Count + ByEight
+            else:
+                VBuffRaw = ser.read(waiting0)
+                Count = Count + waiting0
+        else:
+            VBuffRaw = ser.read(waiting0)
+            Count = Count + waiting0
+        # if TRACESread == 4:
+            # print("Count = ", Count)
+        # print("Length AB: Raw: ", len(ABuff), len(VBuffRaw))
+        index = 0
+        while index < len(VBuffRaw):
+            ABuff.append(VBuffRaw[index])
+            index = index + 1
+        # Count = Count + waiting0
+        waiting0 = ser.in_waiting
+        #print("Serial Length:", waiting0)
+        # time.sleep(Wait)
+        if Count >= iterCount: # Sample Buffer now full
+            # print("Count = ", Count, "iterCount = ", iterCount)
+            break
+    #print("Frames = ", Frams)
+    #EndTime = time.time()
+    #Elapsed = EndTime - StartTime
+    #print("Elapsed Time = ", Elapsed)
+    # if TRACESread == 4:
+    # print("received Bytes = ", Count)
+    # print("Length: ", len(ABuff))
+#
+def Get_Dig():
+    global VBuffA, VBuffB, VBuffC, VBuffD
     global ShowC1_V, ShowC2_V, ShowC3_V, ShowC4_V
-    global LSBsizeA, LSBsizeB, LSBsizeC
+    global LSBsizeA, LSBsizeB, LSBsizeC, LSBsizeD
+    global LoopBack, LBsb, InterpRate
     global MaxSampleRate, SAMPLErate, EnableInterpFilter
     global ser, SHOWsamples, TRIGGERsample, TgInput, TimeSpan
     global TrigSource, TriggerEdge, TriggerInt, Is_Triggered
@@ -250,20 +287,10 @@ def Get_Data_One():
     global DBuff0, DBuff1, DBuff2, DBuff3, DBuff4, DBuff5, DBuff6, DBuff7
     global D0line, D1line, D2line, D3line, D4line, D5line, D6line, D7line
     
-    #
+    SetSampleRate()
     Wait = 0.02
-    if SAMPLErate <= 4000:
-        Wait = 0.08
-    # 
-    ## send command to readout data
-    if ShowC1_V.get() > 0:
-        ser.write(b'0') # capture on A and D4
-    elif ShowC2_V.get() > 0:
-        ser.write(b'5') # capture on B and D4
-    elif ShowC3_V.get() > 0:
-        ser.write(b'6') # capture on C and D4
-    else:
-        return
+    #
+    ser.write(b'0') # capture just dig channels
     #
     time.sleep(Wait)
     ratestring = str(ser.readline())
@@ -282,15 +309,11 @@ def Get_Data_One():
         # print("Sample Time: ", SampleTime)
         # print("Sample Rate = ", SAMPLErate )
     # 
-    iterCount = (MinSamples * 3) # 3 bytes for one channel plus digital byte
+    iterCount = (MinSamples * 2) # 2 bytes for one channel
     #
     #StartTime = time.time()
     VBuffRaw = []
     ABuff = []
-    VBuff1=[]
-    VBuff2=[]
-    VBuff3=[]
-    BuffD=[]
     time.sleep(Wait)
     ### Wait to buffer enough samples to satisfy the entire frame
     # print("iterCount = ", iterCount)
@@ -301,7 +324,7 @@ def Get_Data_One():
         # print("Number Bytes waiting = ", waiting0)
         # read in chunks divisible by 3
         # Read an integer as two bytes, big-endian
-        time.sleep(0.040)
+        time.sleep(0.010)
         waiting0 = ser.in_waiting
         if waiting0 > MinSamples:
             VBuffRaw = ser.read(MinSamples)
@@ -344,17 +367,93 @@ def Get_Data_One():
         dump = ser.read(waiting0)
     #Frams = 0
     index = 0
-    while index < len(ABuff):
-        inputHigh = ABuff[index]
+    VBuffG = []
+    # Interpolate 
+    while index < len(ABuff): # build array 
+        pointer = 0
+        while pointer < InterpRate:
+            VBuffG.append(ABuff[index])
+            pointer = pointer + 1
         index = index + 1
-        inputLow = ABuff[index]
+    # Extract Digital buffers if needed
+    VBuffG = numpy.array(VBuffG) * 1
+    if SaveDig:
+        VBuffG = VBuffG.astype(int)
+        if D0_is_on:
+            DBuff0 = VBuffG & 1
+        if D1_is_on:
+            DBuff1 = VBuffG & 2
+            DBuff1 = DBuff1 / 2
+        if D2_is_on:
+            DBuff2 = VBuffG & 4
+            DBuff2 = DBuff2 / 4
+        if D3_is_on:
+            DBuff3 = VBuffG & 8
+            DBuff3 = DBuff3 / 8
+        if D4_is_on:
+            DBuff4 = VBuffG & 16
+            DBuff4 = DBuff4 / 16
+        #
+    else:
+        SaveDig = False
+        DBuff0 = []
+        DBuff1 = []
+        DBuff2 = []
+        DBuff3 = []
+        DBuff4 = []
+        DBuff5 = []
+        DBuff6 = []
+        DBuff7 = []
+#
+def Get_Data_One():
+    global VBuffA, VBuffB, VBuffC, VBuffD, VBuff1
+    global ShowC1_V, ShowC2_V, ShowC3_V, ShowC4_V
+    global LSBsizeA, LSBsizeB, LSBsizeC, LSBsizeD
+    global LoopBack, LBsb, TRACESread, Wait, iterCount
+    global MaxSampleRate, SAMPLErate, EnableInterpFilter
+    global ser, SHOWsamples, TRIGGERsample, TgInput, TimeSpan
+    global TrigSource, TriggerEdge, TriggerInt, Is_Triggered
+    global vct_btn, vdt_btn, HoldOff, MinSamples, Interp4Filter
+    global SaveDig, D0_is_on, D1_is_on, D2_is_on, D3_is_on
+    global D4_is_on, D5_is_on, D6_is_on, D7_is_on
+    global DBuff0, DBuff1, DBuff2, DBuff3, DBuff4, DBuff5, DBuff6, DBuff7
+    global D0line, D1line, D2line, D3line, D4line, D5line, D6line, D7line
+    
+    #
+    SetSampleRate()
+    Wait = 0.02
+    if SAMPLErate <= 4000:
+        Wait = 0.08
+    #
+    if ShowC1_V.get() > 0:
+        ser.write(b'A0\n') # capture on A1
+    elif ShowC2_V.get() > 0:
+        ser.write(b'A1\n') # capture on A2
+    elif ShowC3_V.get() > 0:
+        ser.write(b'A2\n') # capture on A3
+    else:
+        return
+    ser.write(b'1') # capture one channel
+    #
+    iterCount = (MinSamples * 2) # 2 bytes for one channel
+    #
+    Get_Buffer()
+    #
+    VBuff1=[]
+    waiting0 = ser.in_waiting
+    if waiting0 > 0:
+        # print("Serial Length:", waiting0)
+        dump = ser.read(waiting0)
+    #Frams = 0
+    index = 0
+    while index < MinSamples: # len(ABuff)-2:
+        #Frams = Frams + 1
+        # Get CH 1 data
+        inputHigh = ABuff[index]
+        inputLow = ABuff[index+MinSamples]
         data = ((inputHigh*256)+inputLow)
         VBuff1.append(data)
         index = index + 1
-        BuffD.append(ABuff[index])
-        index = index + 1
-    #
-    #print("Frames = ", Frams)
     #
     VBuffG=[]
     #
@@ -368,8 +467,6 @@ def Get_Data_One():
             while pointer < 4:
                 samp = VBuff1[index]
                 VBuffA.append(float(samp) * LSBsizeA)
-                if SaveDig:
-                    VBuffG.append(BuffD[index])
                 pointer = pointer + 1
             index = index + 1
         SHOWsamples = len(VBuffA)
@@ -385,8 +482,6 @@ def Get_Data_One():
             while pointer < 4:
                 samp = VBuff1[index]
                 VBuffB.append(float(samp) * LSBsizeB)
-                if SaveDig:
-                    VBuffG.append(BuffD[index])
                 pointer = pointer + 1
             index = index + 1
         SHOWsamples = len(VBuffB)
@@ -402,61 +497,37 @@ def Get_Data_One():
             while pointer < 4:
                 samp = VBuff1[index]
                 VBuffC.append(float(samp) * LSBsizeC)
-                if SaveDig:
-                    VBuffG.append(BuffD[index])
                 pointer = pointer + 1
             index = index + 1
-        SHOWsamples = len(VBuffB)
+        SHOWsamples = len(VBuffC)
         if EnableInterpFilter.get() == 1:
             VBuffC = numpy.pad(VBuffC, (4, 0), "edge")
             VBuffC = numpy.convolve(VBuffC, Interp4Filter )
             VBuffC = VBuffC[4:SHOWsamples+4]
         #
-    else:
-        return
-    VBuffG = numpy.array(VBuffG) * 1
-    # Extract Digital buffers if needed
-    if SaveDig:
-        VBuffG = VBuffG.astype(int)
-        if D0_is_on:
-            DBuff0 = VBuffG & 1
-        if D1_is_on:
-            DBuff1 = VBuffG & 2
-            DBuff1 = DBuff1 / 2
-        if D2_is_on:
-            DBuff2 = VBuffG & 4
-            DBuff2 = DBuff2 / 4
-        if D3_is_on:
-            DBuff3 = VBuffG & 8
-            DBuff3 = DBuff3 / 8
-        if D4_is_on:
-            DBuff4 = VBuffG & 16
-            DBuff4 = DBuff4 / 16
-        if D5_is_on:
-            DBuff5 = VBuffG & 32
-            DBuff5 = DBuff5 / 32
-        if D6_is_on:
-            DBuff6 = VBuffG & 64
-            DBuff6 = DBuff6 / 64
-        if D7_is_on:
-            DBuff7 = VBuffG & 128
-            DBuff7 = DBuff7 / 128
+    elif ShowC4_V.get() > 0:
+        VBuffD=[]
+        while index < len(VBuff1): # build array 
+            pointer = 0
+            while pointer < 4:
+                samp = VBuff1[index]
+                VBuffD.append(float(samp) * LSBsizeD)
+                pointer = pointer + 1
+            index = index + 1
+        SHOWsamples = len(VBuffD)
+        if EnableInterpFilter.get() == 1:
+            VBuffD = numpy.pad(VBuffD, (4, 0), "edge")
+            VBuffD = numpy.convolve(VBuffD, Interp4Filter )
+            VBuffD = VBuffD[4:SHOWsamples+4]
         #
     else:
-        SaveDig = False
-        DBuff0 = []
-        DBuff1 = []
-        DBuff2 = []
-        DBuff3 = []
-        DBuff4 = []
-        DBuff5 = []
-        DBuff6 = []
-        DBuff7 = []
+        return
 #
 def Get_Data_Two():
-    global VBuffA, VBuffB, VBuffC, VBuffG
+    global VBuffA, VBuffB, VBuffC, VBuffD, ABuff
     global ShowC1_V, ShowC2_V, ShowC3_V, ShowC4_V
-    global LSBsizeA, LSBsizeB, LSBsizeC
+    global LSBsizeA, LSBsizeB, LSBsizeC,  LSBsizeD
+    global LoopBack, LBsb, Wait, iterCount
     global MaxSampleRate, SAMPLErate, EnableInterpFilter
     global ser, SHOWsamples, TRIGGERsample, TgInput, TimeSpan
     global TrigSource, TriggerEdge, TriggerInt, Is_Triggered
@@ -467,122 +538,60 @@ def Get_Data_Two():
     global D0line, D1line, D2line, D3line, D4line, D5line, D6line, D7line
     
     #
-    Wait = 0.02
+    SetSampleRate()
+    Wait = 0.015
     if SAMPLErate <= 4000:
         Wait = 0.08
-    # 
-    ## send command to readout data
-    if ShowC1_V.get() > 0 and ShowC2_V.get() > 0:
-        ser.write(b'1') # capture on A and B and D4
-    elif ShowC1_V.get() > 0 and ShowC3_V.get() > 0:
-        ser.write(b'2') # capture on A and C and D4
-    elif ShowC2_V.get() > 0 and ShowC3_V.get() > 0:
-        ser.write(b'3') # capture on B and C and D4
+    ### send command to readout data
+    if ShowC1_V.get() > 0 and ShowC2_V.get() > 0: # capture on A1 and A2
+        ser.write(b'A0\n') 
+        ser.write(b'B1\n')
+    elif ShowC1_V.get() > 0 and ShowC3_V.get() > 0: # capture on A1 and A3
+        ser.write(b'A0\n')
+        ser.write(b'B2\n')
+    elif ShowC1_V.get() > 0 and ShowC4_V.get() > 0: # capture on A1 and A4
+        ser.write(b'A0\n') 
+        ser.write(b'B3\n')
+    elif ShowC2_V.get() > 0 and ShowC3_V.get() > 0: # capture on A2 and A3
+        ser.write(b'A1\n') 
+        ser.write(b'B2\n')
+    elif ShowC2_V.get() > 0 and ShowC4_V.get() > 0: # capture on A2 and A4
+        ser.write(b'A1\n') 
+        ser.write(b'B3\n')
+    elif ShowC3_V.get() > 0 and ShowC4_V.get() > 0: # capture on A3 and A4
+        ser.write(b'A2\n') 
+        ser.write(b'B3\n')
     else:
         return
+    ser.write(b'2') # capture two channels
     #
-    time.sleep(0.010)
-    ratestring = str(ser.readline())
-    #print("Raw string ", ratestring)
-    if "stReal=" in ratestring: #
-        DTime = ratestring.replace("b'stReal=","")
-        DTime = DTime.replace("\\\\","")
-        DTime = DTime.replace("r","")
-        DTime = DTime.replace("n","")
-        DTime = DTime.replace("\\","")
-        DTime = DTime.replace("'","")
-        # print(DTime)
-        SampleTime = (UnitConvert(DTime)/MinSamples) * 1.0e-6 # convert to uSec
-        # SampleTime = UnitConvert(DTime) * 1.0e-6 # convert to uSec
-        # set actual samplerate from returned time per sample
-        MaxSampleRate = SAMPLErate = (1.0/SampleTime)*InterpRate
-        # print("Sample Time: ", SampleTime)
-        # print("Sample Rate = ", SAMPLErate )
-    # 
-    iterCount = (MinSamples * 5) # 5 bytes for two channels plus digital byte
+    iterCount = (MinSamples * 4) # 4 bytes for two channels
     #
-    #StartTime = time.time()
-    VBuffRaw = []
-    ABuff = []
+    Get_Buffer()
+    #
     VBuff1=[]
     VBuff2=[]
-    VBuff3=[]
-    BuffD=[]
-    Chunk = 2 * MinSamples
-    while ser.in_waiting < Chunk:
-        time.sleep(Wait)
-    ### Wait to buffer enough samples to satisfy the entire frame
-    # print("iterCount = ", iterCount)
-    Chunk = 3 * MinSamples
-    Count = 0
-    waiting0 = ser.in_waiting
-    while waiting0 >= 1:
-        # print("Number Bytes waiting = ", waiting0)
-        # read in chunks divisible by 5
-        # Read an integer as two bytes, big-endian
-        time.sleep(0.040)
-        waiting0 = ser.in_waiting
-        if waiting0 > Chunk:
-            VBuffRaw = ser.read(Chunk)
-            Count = Count + Chunk
-        elif waiting0 > MinSamples:
-            VBuffRaw = ser.read(MinSamples)
-            Count = Count + MinSamples
-        elif waiting0 > 1024:
-            VBuffRaw = ser.read(1024)
-            Count = Count + 1024
-        elif waiting0 > 512:
-            VBuffRaw = ser.read(512)
-            Count = Count + 512
-        elif waiting0 > 128:
-            VBuffRaw = ser.read(128)
-            Count = Count + 128
-        else:
-            time.sleep(0.04)
-            waiting0 = ser.in_waiting
-            VBuffRaw = ser.read(waiting0)
-            Count = Count + waiting0
-        #print("Count = ", Count)
-        #print("Length AB: Raw: ", len(ABuff), len(VBuffRaw))
-        index = 0
-        while index < len(VBuffRaw):
-            ABuff.append(VBuffRaw[index])
-            index = index + 1
-        # Count = Count + waiting0
-        waiting0 = ser.in_waiting
-        # print("Serial Length:", waiting0)
-        # time.sleep(Wait)
-        if Count >= iterCount: # Sample Buffer now full
-            # print("Count = ", Count, "iterCount = ", iterCount)
-            break
-    #
-    #EndTime = time.time()
-    #Elapsed = EndTime - StartTime
-    #print("Elapsed Time = ", Elapsed)
-    # print("Count = ", Count, "iterCount = ", iterCount)
-    # print("received Bytes = ", Count)
-    # print("Length: ", len(ABuff))
-    #
     waiting0 = ser.in_waiting
     if waiting0 > 0:
         # print("Serial Length:", waiting0)
         dump = ser.read(waiting0)
     #Frams = 0
     index = 0
-    while index < len(ABuff):
+    while index < MinSamples: # len(ABuff)-2:
+        #Frams = Frams + 1
+        # Get CH 1 data
         inputHigh = ABuff[index]
-        index = index + 1
-        inputLow = ABuff[index]
+        inputLow = ABuff[index+MinSamples]
         data = ((inputHigh*256)+inputLow)
         VBuff1.append(data)
         index = index + 1
+    index = index + MinSamples # skip ahead MinSamples
+    while index < 3 * MinSamples:
+        # Get CH 2 data
         inputHigh = ABuff[index]
-        index = index + 1
-        inputLow = ABuff[index]
+        inputLow = ABuff[index+MinSamples]
         data = ((inputHigh*256)+inputLow)
         VBuff2.append(data)
-        index = index + 1
-        BuffD.append(ABuff[index])
         index = index + 1
     #
     #print("Frames = ", Frams)
@@ -592,7 +601,7 @@ def Get_Data_Two():
     # Interpolate data samples by 4X
     #
     index = 0
-    if ShowC1_V.get() > 0 and ShowC2_V.get() > 0:
+    if ShowC1_V.get() > 0 and ShowC2_V.get() > 0: # capture on A and B
         VBuffA=[]
         VBuffB=[]
         while index < len(VBuff1): # build array 
@@ -602,8 +611,6 @@ def Get_Data_Two():
                 VBuffA.append(float(samp) * LSBsizeA)
                 samp = VBuff2[index]
                 VBuffB.append(float(samp) * LSBsizeB)
-                if SaveDig:
-                    VBuffG.append(BuffD[index])
                 pointer = pointer + 1
             index = index + 1
         SHOWsamples = len(VBuffA)
@@ -615,7 +622,7 @@ def Get_Data_Two():
             VBuffA = VBuffA[4:SHOWsamples+4]
             VBuffB = VBuffB[4:SHOWsamples+4]
         #
-    elif ShowC1_V.get() > 0 and ShowC3_V.get() > 0:
+    elif ShowC1_V.get() > 0 and ShowC3_V.get() > 0: # capture on A and C
         VBuffA=[]
         VBuffC=[]
         while index < len(VBuff1): # build array 
@@ -625,8 +632,6 @@ def Get_Data_Two():
                 VBuffA.append(float(samp) * LSBsizeA)
                 samp = VBuff2[index]
                 VBuffC.append(float(samp) * LSBsizeC)
-                if SaveDig:
-                    VBuffG.append(BuffD[index])
                 pointer = pointer + 1
             index = index + 1
         SHOWsamples = len(VBuffA)
@@ -638,7 +643,7 @@ def Get_Data_Two():
             VBuffA = VBuffA[4:SHOWsamples+4]
             VBuffC = VBuffC[4:SHOWsamples+4]
         #
-    elif ShowC2_V.get() > 0 and ShowC3_V.get() > 0:
+    elif ShowC2_V.get() > 0 and ShowC3_V.get() > 0: # capture on B and C
         VBuffB=[]
         VBuffC=[]
         while index < len(VBuff1): # build array 
@@ -648,8 +653,6 @@ def Get_Data_Two():
                 VBuffB.append(float(samp) * LSBsizeB)
                 samp = VBuff2[index]
                 VBuffC.append(float(samp) * LSBsizeC)
-                if SaveDig:
-                    VBuffG.append(BuffD[index])
                 pointer = pointer + 1
             index = index + 1
         SHOWsamples = len(VBuffB)
@@ -661,51 +664,77 @@ def Get_Data_Two():
             VBuffB = VBuffB[4:SHOWsamples+4]
             VBuffC = VBuffC[4:SHOWsamples+4]
         #
-    else:
-        return
-    VBuffG = numpy.array(VBuffG) * 1
-    # Extract Digital buffers if needed
-    if SaveDig:
-        VBuffG = VBuffG.astype(int)
-        if D0_is_on:
-            DBuff0 = VBuffG & 1
-        if D1_is_on:
-            DBuff1 = VBuffG & 2
-            DBuff1 = DBuff1 / 2
-        if D2_is_on:
-            DBuff2 = VBuffG & 4
-            DBuff2 = DBuff2 / 4
-        if D3_is_on:
-            DBuff3 = VBuffG & 8
-            DBuff3 = DBuff3 / 8
-        if D4_is_on:
-            DBuff4 = VBuffG & 16
-            DBuff4 = DBuff4 / 16
-        if D5_is_on:
-            DBuff5 = VBuffG & 32
-            DBuff5 = DBuff5 / 32
-        if D6_is_on:
-            DBuff6 = VBuffG & 64
-            DBuff6 = DBuff6 / 64
-        if D7_is_on:
-            DBuff7 = VBuffG & 128
-            DBuff7 = DBuff7 / 128
+    elif ShowC1_V.get() > 0 and ShowC4_V.get() > 0: # capture on A and D
+        VBuffA=[]
+        VBuffD=[]
+        while index < len(VBuff1): # build array 
+            pointer = 0
+            while pointer < 4:
+                samp = VBuff1[index]
+                VBuffA.append(float(samp) * LSBsizeA)
+                samp = VBuff2[index]
+                VBuffD.append(float(samp) * LSBsizeD)
+                pointer = pointer + 1
+            index = index + 1
+        SHOWsamples = len(VBuffA)
+        if EnableInterpFilter.get() == 1:
+            VBuffA = numpy.pad(VBuffA, (4, 0), "edge")
+            VBuffA = numpy.convolve(VBuffA, Interp4Filter )
+            VBuffD = numpy.pad(VBuffD, (4, 0), "edge")
+            VBuffD = numpy.convolve(VBuffD, Interp4Filter )
+            VBuffA = VBuffA[4:SHOWsamples+4]
+            VBuffD = VBuffD[4:SHOWsamples+4]
+        #
+    elif ShowC2_V.get() > 0 and ShowC4_V.get() > 0: # capture on B and D
+        VBuffB=[]
+        VBuffD=[]
+        while index < len(VBuff1): # build array 
+            pointer = 0
+            while pointer < 4:
+                samp = VBuff1[index]
+                VBuffB.append(float(samp) * LSBsizeB)
+                samp = VBuff2[index]
+                VBuffD.append(float(samp) * LSBsizeD)
+                pointer = pointer + 1
+            index = index + 1
+        SHOWsamples = len(VBuffB)
+        if EnableInterpFilter.get() == 1:
+            VBuffB = numpy.pad(VBuffB, (4, 0), "edge")
+            VBuffB = numpy.convolve(VBuffB, Interp4Filter )
+            VBuffD = numpy.pad(VBuffD, (4, 0), "edge")
+            VBuffD = numpy.convolve(VBuffD, Interp4Filter )
+            VBuffB = VBuffB[4:SHOWsamples+4]
+            VBuffD = VBuffD[4:SHOWsamples+4]
+        #
+    elif ShowC3_V.get() > 0 and ShowC4_V.get() > 0: # capture on C and D
+        VBuffC=[]
+        VBuffD=[]
+        while index < len(VBuff1): # build array 
+            pointer = 0
+            while pointer < 4:
+                samp = VBuff1[index]
+                VBuffC.append(float(samp) * LSBsizeC)
+                samp = VBuff2[index]
+                VBuffD.append(float(samp) * LSBsizeD)
+                pointer = pointer + 1
+            index = index + 1
+        SHOWsamples = len(VBuffC)
+        if EnableInterpFilter.get() == 1:
+            VBuffC = numpy.pad(VBuffC, (4, 0), "edge")
+            VBuffC = numpy.convolve(VBuffC, Interp4Filter )
+            VBuffD = numpy.pad(VBuffD, (4, 0), "edge")
+            VBuffD = numpy.convolve(VBuffD, Interp4Filter )
+            VBuffC = VBuffC[4:SHOWsamples+4]
+            VBuffD = VBuffD[4:SHOWsamples+4]
         #
     else:
-        SaveDig = False
-        DBuff0 = []
-        DBuff1 = []
-        DBuff2 = []
-        DBuff3 = []
-        DBuff4 = []
-        DBuff5 = []
-        DBuff6 = []
-        DBuff7 = []
-#
+        return
+#    
 def Get_Data_Three():
-    global VBuffA, VBuffB, VBuffC, VBuffG
+    global VBuffA, VBuffB, VBuffC, VBuffD, ABuff
     global ShowC1_V, ShowC2_V, ShowC3_V, ShowC4_V
     global LSBsizeA, LSBsizeB, LSBsizeC
+    global LoopBack, LBsb, Wait, iterCount
     global MaxSampleRate, SAMPLErate, EnableInterpFilter
     global ser, SHOWsamples, TRIGGERsample, TgInput, TimeSpan
     global TrigSource, TriggerEdge, TriggerInt, Is_Triggered
@@ -716,89 +745,41 @@ def Get_Data_Three():
     global D0line, D1line, D2line, D3line, D4line, D5line, D6line, D7line
     
     #
-    Wait = 0.02
+    SetSampleRate()
+    Wait = 0.015
     if SAMPLErate <= 4000:
         Wait = 0.08
     # 
-    ## send command to readout data
-    if ShowC1_V.get() > 0 and ShowC2_V.get() > 0 and ShowC3_V.get() > 0:
-        ser.write(b'4') # capture on A, B and C and D4
+    # send command to readout data
+    if ShowC1_V.get() > 0 and ShowC2_V.get() > 0 and ShowC3_V.get() > 0: # capture on A1 A2 and A3
+        ser.write(b'A0\n') 
+        ser.write(b'B1\n')
+        ser.write(b'C2\n')
+    elif ShowC1_V.get() > 0 and ShowC2_V.get() > 0 and ShowC4_V.get() > 0: # capture on A1 A2 and A4
+        ser.write(b'A0\n') 
+        ser.write(b'B1\n')
+        ser.write(b'C3\n')
+    elif ShowC2_V.get() > 0 and ShowC3_V.get() > 0 and ShowC4_V.get() > 0: # capture on A2 A3 and A4
+        ser.write(b'A1\n') 
+        ser.write(b'B2\n')
+        ser.write(b'C3\n')
+    elif ShowC1_V.get() > 0 and ShowC3_V.get() > 0 and ShowC4_V.get() > 0: # capture on A1 A3 and A4
+        ser.write(b'A0\n') 
+        ser.write(b'B2\n')
+        ser.write(b'C3\n')
     else:
+        #print("none of the cases found?")
         return
+    time.sleep(0.015)
+    ser.write(b'3') # capture three channels
     #
-    time.sleep(Wait)
-    ratestring = str(ser.readline())
-    # print("Raw string ", ratestring)
-    if "stReal=" in ratestring: #
-        DTime = ratestring.replace("b'stReal=","")
-        DTime = DTime.replace("\\\\","")
-        DTime = DTime.replace("r","")
-        DTime = DTime.replace("n","")
-        DTime = DTime.replace("\\","")
-        DTime = DTime.replace("'","")
-        # print(DTime)
-        # SampleTime = UnitConvert(DTime) * 1.0e-6 # convert to uSec
-        SampleTime = (UnitConvert(DTime)/MinSamples) * 1.0e-6 # convert to uSec
-        # set actual samplerate from returned time per sample
-        MaxSampleRate = SAMPLErate = (1.0/SampleTime)*InterpRate
-        # print("Sample Time: ", SampleTime)
-        # print("Sample Rate = ", SAMPLErate )
-    # 
-    iterCount = (MinSamples * 7) # 7 bytes for two channels plus digital byte
+    iterCount = (MinSamples * 6) # 6 bytes for three channels
     #
-    #StartTime = time.time()
-    VBuffRaw = []
-    ABuff = []
+    Get_Buffer()
+    #
     VBuff1=[]
     VBuff2=[]
     VBuff3=[]
-    BuffD=[]
-    time.sleep(Wait*3)
-    ### Wait to buffer enough samples to satisfy the entire frame
-    # print("iterCount = ", iterCount)
-    Count = 0
-    waiting0 = ser.in_waiting
-    while waiting0 >= 1:
-        # print("Number Bytes waiting = ", waiting0)
-        # read in chunks divisible by 7
-        # Read an integer as two bytes, big-endian
-        time.sleep(0.040)
-        waiting0 = ser.in_waiting
-        Chunk = 4 * MinSamples
-        if waiting0 > Chunk:
-            VBuffRaw = ser.read(Chunk)
-            Count = Count + Chunk
-        elif waiting0 > MinSamples:
-            VBuffRaw = ser.read(MinSamples)
-            Count = Count + MinSamples
-        elif waiting0 > 500:
-            VBuffRaw = ser.read(500)
-            Count = Count + 500
-        elif waiting0 > 250:
-            VBuffRaw = ser.read(250)
-            Count = Count + 250
-        else:
-            VBuffRaw = ser.read(waiting0)
-            Count = Count + waiting0
-        #print("Count = ", Count)
-        #print("Length AB: Raw: ", len(ABuff), len(VBuffRaw))
-        index = 0
-        while index < len(VBuffRaw):
-            ABuff.append(VBuffRaw[index])
-            index = index + 1
-        # Count = Count + waiting0
-        waiting0 = ser.in_waiting
-        # print("Serial Length:", waiting0)
-        # time.sleep(Wait)
-        if Count >= iterCount: # Sample Buffer now full
-            # print("Count = ", Count, "iterCount = ", iterCount)
-            break
-    #
-    #EndTime = time.time()
-    #Elapsed = EndTime - StartTime
-    #print("Elapsed Time = ", Elapsed)
-    #print("received Bytes = ", Count)
-    #print("Length: ", len(ABuff))
     #
     waiting0 = ser.in_waiting
     if waiting0 > 0:
@@ -806,106 +787,175 @@ def Get_Data_Three():
         dump = ser.read(waiting0)
     #Frams = 0
     index = 0
-    while index < len(ABuff):
+    while index < MinSamples: # len(ABuff)-2:
+        #Frams = Frams + 1
+        # Get CH 1 data
         inputHigh = ABuff[index]
-        index = index + 1
-        inputLow = ABuff[index]
+        inputLow = ABuff[index+MinSamples]
         data = ((inputHigh*256)+inputLow)
         VBuff1.append(data)
         index = index + 1
+    index = index + MinSamples # skip ahead MinSamples
+    while index < 3 * MinSamples:
+        # Get CH 2 data
         inputHigh = ABuff[index]
-        index = index + 1
-        inputLow = ABuff[index]
+        inputLow = ABuff[index+MinSamples]
         data = ((inputHigh*256)+inputLow)
         VBuff2.append(data)
         index = index + 1
+    index = index + MinSamples # skip ahead MinSamples
+    while index < 5 * MinSamples:
+        # Get CH 3 data
         inputHigh = ABuff[index]
-        index = index + 1
-        inputLow = ABuff[index]
+        inputLow = ABuff[index+ MinSamples]
         data = ((inputHigh*256)+inputLow)
         VBuff3.append(data)
         index = index + 1
-        BuffD.append(ABuff[index])
-        index = index + 1
     #
     #print("Frames = ", Frams)
     #
-    VBuffA=[]
-    VBuffB=[]
-    VBuffC=[]
-    VBuffG=[]
-    #
-    # Interpolate data samples by 4X
-    #
-    index = 0
-    while index < len(VBuff1): # build array 
-        pointer = 0
-        while pointer < 4:
-            samp = VBuff1[index]
-            VBuffA.append(float(samp) * LSBsizeA)
-            samp = VBuff2[index]
-            VBuffB.append(float(samp) * LSBsizeB)
-            samp = VBuff3[index]
-            VBuffC.append(float(samp) * LSBsizeC)
-            if SaveDig:
-                VBuffG.append(BuffD[index])
-            pointer = pointer + 1
-        index = index + 1
-    SHOWsamples = len(VBuffA)
-    if EnableInterpFilter.get() == 1:
-        VBuffA = numpy.pad(VBuffA, (4, 0), "edge")
-        VBuffA = numpy.convolve(VBuffA, Interp4Filter )
-        VBuffB = numpy.pad(VBuffB, (4, 0), "edge")
-        VBuffB = numpy.convolve(VBuffB, Interp4Filter )
-        VBuffC = numpy.pad(VBuffC, (4, 0), "edge")
-        VBuffC = numpy.convolve(VBuffC, Interp4Filter )
-        VBuffA = VBuffA[4:SHOWsamples+4]
-        VBuffB = VBuffB[4:SHOWsamples+4]
-        VBuffC = VBuffC[4:SHOWsamples+4]
-    #
-    VBuffG = numpy.array(VBuffG) * 1
-    # Extract Digital buffers if needed
-    if SaveDig:
-        VBuffG = VBuffG.astype(int)
-        if D0_is_on:
-            DBuff0 = VBuffG & 1
-        if D1_is_on:
-            DBuff1 = VBuffG & 2
-            DBuff1 = DBuff1 / 2
-        if D2_is_on:
-            DBuff2 = VBuffG & 4
-            DBuff2 = DBuff2 / 4
-        if D3_is_on:
-            DBuff3 = VBuffG & 8
-            DBuff3 = DBuff3 / 8
-        if D4_is_on:
-            DBuff4 = VBuffG & 16
-            DBuff4 = DBuff4 / 16
-        if D5_is_on:
-            DBuff5 = VBuffG & 32
-            DBuff5 = DBuff5 / 32
-        if D6_is_on:
-            DBuff6 = VBuffG & 64
-            DBuff6 = DBuff6 / 64
-        if D7_is_on:
-            DBuff7 = VBuffG & 128
-            DBuff7 = DBuff7 / 128
+    if ShowC1_V.get() > 0 and ShowC2_V.get() > 0 and ShowC3_V.get() > 0: # capture on A B and C
+        VBuffA=[]
+        VBuffB=[]
+        VBuffC=[]
         #
-    else:
-        SaveDig = False
-        DBuff0 = []
-        DBuff1 = []
-        DBuff2 = []
-        DBuff3 = []
-        DBuff4 = []
-        DBuff5 = []
-        DBuff6 = []
-        DBuff7 = []
+        # Interpolate data samples by 4X
+        #
+        index = 0
+        while index < len(VBuff1): # build array 
+            pointer = 0
+            while pointer < 4:
+                samp = VBuff1[index]
+                VBuffA.append(float(samp) * LSBsizeA)
+                samp = VBuff2[index]
+                VBuffB.append(float(samp) * LSBsizeB)
+                samp = VBuff3[index]
+                VBuffC.append(float(samp) * LSBsizeC)
+                pointer = pointer + 1
+            index = index + 1
+        SHOWsamples = len(VBuffA)
+        if EnableInterpFilter.get() == 1:
+            VBuffA = numpy.pad(VBuffA, (4, 0), "edge")
+            VBuffA = numpy.convolve(VBuffA, Interp4Filter )
+            VBuffB = numpy.pad(VBuffB, (4, 0), "edge")
+            VBuffB = numpy.convolve(VBuffB, Interp4Filter )
+            VBuffC = numpy.pad(VBuffC, (4, 0), "edge")
+            VBuffC = numpy.convolve(VBuffC, Interp4Filter )
+            VBuffA = VBuffA[4:SHOWsamples+4]
+            VBuffB = VBuffB[4:SHOWsamples+4]
+            VBuffC = VBuffC[4:SHOWsamples+4]
+    if ShowC1_V.get() > 0 and ShowC2_V.get() > 0 and ShowC4_V.get() > 0: # capture on A B and D
+        VBuffA=[]
+        VBuffB=[]
+        VBuffD=[]
+        #
+        # Interpolate data samples by 4X
+        #
+        index = 0
+        while index < len(VBuff1): # build array 
+            pointer = 0
+            while pointer < 4:
+                samp = VBuff1[index]
+                VBuffA.append(float(samp) * LSBsizeA)
+                samp = VBuff2[index]
+                VBuffB.append(float(samp) * LSBsizeB)
+                samp = VBuff3[index]
+                VBuffD.append(float(samp) * LSBsizeD)
+                pointer = pointer + 1
+            index = index + 1
+        SHOWsamples = len(VBuffA)
+        if EnableInterpFilter.get() == 1:
+            VBuffA = numpy.pad(VBuffA, (4, 0), "edge")
+            VBuffA = numpy.convolve(VBuffA, Interp4Filter )
+            VBuffB = numpy.pad(VBuffB, (4, 0), "edge")
+            VBuffB = numpy.convolve(VBuffB, Interp4Filter )
+            VBuffD = numpy.pad(VBuffD, (4, 0), "edge")
+            VBuffD = numpy.convolve(VBuffD, Interp4Filter )
+            VBuffA = VBuffA[4:SHOWsamples+4]
+            VBuffB = VBuffB[4:SHOWsamples+4]
+            VBuffD = VBuffD[4:SHOWsamples+4]
+    if ShowC2_V.get() > 0 and ShowC3_V.get() > 0 and ShowC4_V.get() > 0: # capture on B C and D
+        VBuffB=[]
+        VBuffC=[]
+        VBuffD=[]
+        #
+        # Interpolate data samples by 4X
+        #
+        index = 0
+        while index < len(VBuff1): # build array 
+            pointer = 0
+            while pointer < 4:
+                samp = VBuff1[index]
+                VBuffB.append(float(samp) * LSBsizeB)
+                samp = VBuff2[index]
+                VBuffC.append(float(samp) * LSBsizeC)
+                samp = VBuff3[index]
+                VBuffD.append(float(samp) * LSBsizeD)
+                pointer = pointer + 1
+            index = index + 1
+        SHOWsamples = len(VBuffB)
+        if EnableInterpFilter.get() == 1:
+            VBuffB = numpy.pad(VBuffB, (4, 0), "edge")
+            VBuffB = numpy.convolve(VBuffB, Interp4Filter )
+            VBuffC = numpy.pad(VBuffC, (4, 0), "edge")
+            VBuffC = numpy.convolve(VBuffC, Interp4Filter )
+            VBuffD = numpy.pad(VBuffD, (4, 0), "edge")
+            VBuffD = numpy.convolve(VBuffD, Interp4Filter )
+            VBuffB = VBuffB[4:SHOWsamples+4]
+            VBuffC = VBuffC[4:SHOWsamples+4]
+            VBuffD = VBuffD[4:SHOWsamples+4]
+    if ShowC1_V.get() > 0 and ShowC3_V.get() > 0 and ShowC4_V.get() > 0: # capture on A B and D
+        VBuffA=[]
+        VBuffC=[]
+        VBuffD=[]
+        #
+        # Interpolate data samples by 4X
+        #
+        index = 0
+        while index < len(VBuff1): # build array 
+            pointer = 0
+            while pointer < 4:
+                samp = VBuff1[index]
+                VBuffA.append(float(samp) * LSBsizeA)
+                samp = VBuff2[index]
+                VBuffC.append(float(samp) * LSBsizeC)
+                samp = VBuff3[index]
+                VBuffD.append(float(samp) * LSBsizeD)
+                pointer = pointer + 1
+            index = index + 1
+        SHOWsamples = len(VBuffA)
+        if EnableInterpFilter.get() == 1:
+            VBuffA = numpy.pad(VBuffA, (4, 0), "edge")
+            VBuffA = numpy.convolve(VBuffA, Interp4Filter )
+            VBuffC = numpy.pad(VBuffC, (4, 0), "edge")
+            VBuffC = numpy.convolve(VBuffC, Interp4Filter )
+            VBuffD = numpy.pad(VBuffD, (4, 0), "edge")
+            VBuffD = numpy.convolve(VBuffD, Interp4Filter )
+            VBuffA = VBuffA[4:SHOWsamples+4]
+            VBuffC = VBuffC[4:SHOWsamples+4]
+            VBuffD = VBuffD[4:SHOWsamples+4]
+#
+# Hardware Help
+#
+def PrintID():
+    global ser
+    
+    ser.write(b'I\n') # request board ID
+    time.sleep(0.05)
+    #print("sent I, wating for response")
+    if ser.in_waiting > 0:
+        IDstring = str(ser.readline())
+        ID = IDstring.replace("b'","")
+        ID = ID.replace("\\\\","")
+        ID = ID.replace("r","")
+        ID = ID.replace("n","")
+        ID = ID.replace("\\","")
+        ID = ID.replace("'","")
+        print("ID string ", ID)
 #
 def SetBufferLength(NewLength):
     global ser, MinSamples, MaxSamples, InterpRate, HardwareBuffer
 
-    # BStop()
     if NewLength > HardwareBuffer:
         NewLength = HardwareBuffer
     MinSamples = NewLength
@@ -916,30 +966,25 @@ def SetBufferLength(NewLength):
     SendByt = SendStr.encode('utf-8')
     ser.write(SendByt)
     # ser.write(b'b1024\n')  
-    time.sleep(0.1)
+    time.sleep(0.005)
     #print("set Scope Samples: ", MinSamples)
 #
-# Hardware Help
-#
-## try to connect to Arduino Pi Pico board
+# try to connect to Arduino Pi Pico board
 #
 def ConnectDevice():
     global SerComPort, DevID, MaxSamples, SAMPLErate, MinSamples, AWGSampleRate
-    global bcon, FWRevOne, HWRevOne, MaxSampleRate, ser, SHOWsamples
-    global CH1Probe, CH2Probe, CH1VRange, CH2VRange, TimeDiv
+    global bcon, FWRevOne, HWRevOne, MaxSampleRate, MaxAWGSampleRate, ser, SHOWsamples
+    global CH1Probe, CH2Probe, CH1VRange, CH2VRange, TimeDiv, ATmin
     global CHAsb, CHBsb, TMsb, LSBsizeA, LSBsizeB, ADC_Cal, LSBsize
     global d0btn, d1btn, d2btn, d3btn, d4btn, d5btn, d6btn, d7btn
 
     # print("SerComPort: ", SerComPort)
-    if DevID == "No Device" or DevID == "Pico MCP 3":
+    if DevID == "No Device" or DevID == "Pico 3 mcp":
         #
         if SerComPort == 'Auto':
             ports = serial.tools.list_ports.comports()
             for port in ports: # ports:
                 # looking for this ID: USB\VID_2E8A&PID_000A
-                # Tiny USB USB\VID_239A&PID_CAFE&MI_00
-                # print("Port 2 ", port[2])
-                # if "VID:PID=239A:CAFE" in port[2]: # for Tiny USB
                 if "VID:PID=2E8A:000A" in port[2]:
                     print("Found: ", port[0])
                     SerComPort = port[0]
@@ -978,17 +1023,21 @@ def ConnectDevice():
             Vsys = (int(VDD) * LSBsize) * 3.0 # 1/3 voltage divider
             print("Board Vsys = ", Vsys)
         #
-        ser.write(b't50\n') # send Scope sample time in uSec
+        ser.write(b't3\n') # send Scope sample time in uSec
         time.sleep(0.005)
-        print("set dt: 50 uSec")
-        MaxSampleRate = SAMPLErate = 20000*InterpRate
+        print("set dt: 3 uSec")
+        MaxSampleRate = SAMPLErate = 333333*InterpRate
         #
-        ser.write(b'T15\n') # send AWG sample time in uSec
+        SendStr = 'T' + str(ATmin) + '\n'
+        # print(SendStr)
+        SendByt = SendStr.encode('utf-8')
+        # ser.write(b'T8\n') # send AWG sample time in uSec
         time.sleep(0.005)
-        print("set at: 15 uSec")
-        AWGSampleRate = 1.0 / 0.000015
+        print("set at: ", ATmin , " uSec")
+        AWGSampleRate = MaxAWGSampleRate = 1.0 / (ATmin / 1000000)
+        #
         ser.write(b'Gx\n') # default with both AWG off
-        ser.write(b'gx\n')
+        ser.write(b'gx\n') 
         ## send Scope Buffer Length
         SendStr = 'b' + str(MinSamples) + '\n'
         # print(SendStr)
@@ -998,16 +1047,17 @@ def ConnectDevice():
         time.sleep(0.005)
         print("set Scope Samples: ", MinSamples)
         #
+        #
         ser.write(b'N1024\n') # send AWG A Buffer Length
         ser.write(b'M1024\n') # send AWG B Buffer Length 
         time.sleep(0.005)
         print("set AWG Samples: 1024")
         #
         # ser.write(b'p500000\n')
-        ser.write(b'Rx\n') # default with AWG reset off
+        ser.write(b'R0\n') # default with AWG reset off
+        ser.write(b'r0\n') # default with AWG pointer at loc 0
         #
         ser.write(b'Sx\n') # turn off AWG A by default
-        # ser.write(b'Sz\n') # turn off AWG B by default
         MaxSamples = 4096 # assume 4X interpolation
 #
         print("Get a sample: ")
@@ -1096,26 +1146,11 @@ def AWGASendWave(AWG3):
 ##    
 def AWGBSendWave(AWG3):
     global ser, AWGBLastWave, AWGBRecLength, AWGBuffLen, AWGRes
-    global AWGBAmplvalue, AWGBOffsetvalue, AWGPeakToPeak, AWGSampleRate
-    global AWGBFreqvalue, AWGBFreqEntry, AWGBPhaseEntry
-    global AWGBdelayvalue, AWGBPhaseDelay, AWGBperiodvalue, AWGBPhasevalue
+    global AWGBAmplvalue, AWGBOffsetvalue, AWGPeakToPeak
     # Expect array values normalized from -1 to 1
-    # 
+    # AWG3 = numpy.roll(AWG3, -68)
     AWGBLastWave = numpy.array(AWG3)
     AWG3 = numpy.array(AWG3) * 0.5 # scale by 1/2
-    # shift waveform array left or right based on phase / delay entry
-    AWGBFreqvalue = UnitConvert(AWGBFreqEntry.get())
-    AWGBPhasevalue = float(eval(AWGBPhaseEntry.get()))
-    AWGBperiodvalue = AWGSampleRate/AWGBFreqvalue
-    if AWGBPhaseDelay.get() == 0:
-        if AWGBPhasevalue > 0:
-            AWGBdelayvalue = AWGBperiodvalue * AWGBPhasevalue / 360.0
-        else:
-            AWGBdelayvalue = 0.0
-    elif AWGBPhaseDelay.get() == 1:
-        AWGBdelayvalue = AWGBPhasevalue * AWGSAMPLErate / 1000
-    AWG3 = numpy.roll(AWG3, int(AWGBdelayvalue))
-    #
     # Get Low and High voltage levels
     MinCode = int((AWGBAmplvalue / AWGPeakToPeak) * AWGRes)
     if MinCode < 0:
@@ -1168,73 +1203,66 @@ def BAWGSync():
     global AWGSync
 
     if AWGSync.get() > 0:
-        ser.write(b'Ro\n') # turn on sync
+        ser.write(b'R1\n') # turn on sync
     else:
-        ser.write(b'Rx\n') # turn off sync
+        ser.write(b'R0\n') # turn off sync
 #
 def SetAwgSampleRate():
-    global AWGAFreqEntry, AWGBFreqEntry, FSweepMode
-    global AWGBuffLen, AWGSampleRate, AWGBuffLen
+    global AWGAFreqEntry, AWGBFreqEntry, FSweepMode, MaxAWGSampleRate
+    global AWGBuffLen, AWGSampleRate, AWGBuffLen, MaxRepRate
 
     BAWGAFreq()
-    BAWGBFreq()
+    # BAWGBFreq()
 
-    MaxRepRate = numpy.ceil(AWGSampleRate / AWGBuffLen)
+    MaxRepRate = numpy.ceil(MaxAWGSampleRate / AWGBuffLen)
     FreqA = UnitConvert(AWGAFreqEntry.get())
-    FreqB = UnitConvert(AWGBFreqEntry.get())
+##    FreqB = UnitConvert(AWGBFreqEntry.get())
+##    if FreqB < FreqA:
+##        FreqA = FreqB
     Cycles = 1
-    if FSweepMode.get() == 1: # If doing a frequency sweep only make new AWG A sine wave
-        if FreqA > MaxRepRate:
-            Cycles = numpy.ceil(FreqA/MaxRepRate)
-            if Cycles <= 0: # check if divide by zero
-                Cycles = 1
-            FreqA = FreqA/Cycles
-    # Set the AWG buffer Rep rate (Freq for one cycle of buffer)
-        SetAwgSampleFrequency(FreqA)
-        AWGRepRate = FreqA
-        # AWGSampleRate = FreqA * AWGBuffLen
-    else:
-        if FreqA <= FreqB:
-            
-            if FreqA > MaxRepRate:
-                Cycles = numpy.ceil(FreqA/MaxRepRate)
-                if Cycles <= 0: # check if divide by zero
-                    Cycles = 1
-                FreqA = FreqA/Cycles
-        # Set the AWG buffer Rep rate (Freq for one cycle of buffer)
-            SetAwgSampleFrequency(FreqA)
-            AWGRepRate = FreqA
-            # AWGSampleRate = FreqA * MaxSamples
-        else:
-            if FreqB > MaxRepRate:
-                
-                Cycles = numpy.ceil(FreqB/MaxRepRate)
-                if Cycles <= 0: # check if divide by zero
-                    Cycles = 1
-                FreqB = FreqB/Cycles
-        # Set the AWG buffer Rep rate (Freq for one cycle of buffer)
-            AWGRepRate = FreqB
-            SetAwgSampleFrequency(FreqB)
-            # AWGSampleRate = FreqB * MaxSamples
-    # print("AWGSampleRate = ", AWGSampleRate)
+    #print("MaxRepRate = ", MaxRepRate)
+    #print("FreqA = ", FreqA)
+    # if FSweepMode.get() == 1: # If doing a frequency sweep only make new AWG A sine wave
+    if FreqA < MaxRepRate:
+        CycFrac = FreqA/MaxRepRate
+        #print("Cycles = ", CycFrac)
+        if CycFrac > 0.9:
+            CycFrac = 0.9
+        FreqA = FreqA * CycFrac
+# Set the AWG buffer Rep rate (Freq for one cycle of buffer)
+    SetAwgSampleFrequency(FreqA)
+    AWGRepRate = FreqA
+    # AWGSampleRate = FreqA * AWGBuffLen
+        # AWGSampleRate = FreqB * MaxSamples
+    # 
 #
 def SetAwgSampleFrequency(FreqANum):
-    global AWGBuffLen, AWGSampleRate
+    global AWGBuffLen, AWGSampleRate, MaxAWGSampleRate, ATmin
     #
     NewSampleRate = FreqANum * AWGBuffLen # Samples per second
+    if NewSampleRate > MaxAWGSampleRate:
+        NewSampleRate = MaxAWGSampleRate
     NewAT = int(1000000/NewSampleRate) # in uSec
+    if NewAT < ATmin:
+        NewAT = ATmin
+    if NewAT > 500:
+        NewAT = 500
     SendStr = 'T' + str(NewAT) + '\n'
     # print(SendStr)
     SendByt = SendStr.encode('utf-8')
     # print(SendByt)
     ser.write(SendByt) #
+    AWGSampleRate = int(1000000/NewAT)
+    # print("AWGSampleRate = ", AWGSampleRate)
 #
 # for built in firmware waveforms...
 #
 def SetAwgA_Ampl(Ampl): # used to toggle on / off AWG output
     global ser, AwgBOnOffBt, AwgaOnOffLb, AwgbOnOffLb
-    global AWGSampleRate
-    
+
+    #AwgBOnOffBt.config(state=DISABLED)
+    #AwgaOnOffLb.config(text="AWG Output ")
+    #AwgbOnOffLb.config(text=" ")
     if Ampl == 0:
         ser.write(b'Gx\n')
     else:
@@ -1242,63 +1270,15 @@ def SetAwgA_Ampl(Ampl): # used to toggle on / off AWG output
 #
 def SetAwgB_Ampl(Ampl): # used to toggle on / off AWG output
     global ser, AwgBOnOffBt, AwgAOnOffBt, AwgaOnOffLb, AwgbOnOffLb
-    global AWGSampleRate
 
+    #AwgBOnOffBt.config(state=DISABLED)
+    #AwgaOnOffLb.config(text="AWG Output ")
+    #AwgbOnOffLb.config(text=" ")
     if Ampl == 0:
         ser.write(b'gx\n')
     else:
+        AwgAOnOffBt.config(text='ON', style="Run.TButton")
         ser.write(b'go\n')
-#
-def SetAWG_Ampla():
-    global AWGAAmplEntry, ADC_Cal, ser, AWGRes
-
-    MaxLimit = int(AWGRes/2)
-    Vampl = float(AWGAAmplEntry.get())
-    Bampl = int((Vampl/ADC_Cal)*MaxLimit)
-    if Bampl > MaxLimit:
-        Bampl = MaxLimit
-    if Bampl < 0:
-        Bampl = 0
-    # print("Bampl = ", Bampl)
-    ByteStr = 'A' + str(Bampl) + "\n"
-    SendByt = ByteStr.encode('utf-8')
-    ser.write(SendByt) #
-#
-def SetAWG_Amplb():
-    global AWGBAmplEntry, ADC_Cal, ser, AWGRes
-
-    MaxLimit = int(AWGRes/2)
-    Vampl = float(AWGBAmplEntry.get())
-    Bampl = int((Vampl/ADC_Cal)*MaxLimit)
-    if Bampl > MaxLimit:
-        Bampl = MaxLimit
-    if Bampl < 0:
-        Bampl = 0
-    # print("Bampl = ", Bampl)
-    ByteStr = 'a' + str(Bampl) + "\n"
-    SendByt = ByteStr.encode('utf-8')
-    ser.write(SendByt) #
-#
-def SetAWG_Offseta():
-    global AWGAOffsetEntry, ADC_Cal, ser, AWGRes
-
-    Voffset = float(AWGAOffsetEntry.get())
-    Boffset = int((Voffset/ADC_Cal)*(AWGRes+1))
-    # print("Boffset = ", Boffset)
-    ByteStr = 'O' + str(Boffset) + "\n"
-    SendByt = ByteStr.encode('utf-8')
-    ser.write(SendByt) #
-#
-def SetAWG_Offsetb():
-    global AWGBOffsetEntry, ADC_Cal, ser, AWGRes
-
-    Voffset = float(AWGBOffsetEntry.get())
-    Boffset = int((Voffset/ADC_Cal)*(AWGRes+1))
-    # print("Boffset = ", Boffset)
-    ByteStr = 'o' + str(Boffset) + "\n"
-    SendByt = ByteStr.encode('utf-8')
-    ser.write(SendByt) #
-#
 #
 ## Make the current selected AWG waveform
 #
@@ -1314,8 +1294,8 @@ AwgString10 = "Full Wave Sine"
 AwgString11 = "Half Wave Sine"
 AwgString12 = "Fourier Series"
 AwgString13 = "Schroeder Chirp"
-AwgString14 = "Uniform Noise"
-AwgString15 = "Gaussian Noise"
+AwgString14 = "Sine Power Pulse"
+
 #
 ## Make or update the current selected AWG waveform
 def MakeAWGwaves(): # re make awg waveforms in case something changed
@@ -1385,11 +1365,15 @@ def MakeAWGwaves(): # re make awg waveforms in case something changed
         AWGASendWave(SchroederPhase(MaxSamples, NrTones, ampl))
         AWGAShapeLabel.config(text = AwgString13) # change displayed value
     elif AWGAShape.get()==14:
-        AWGAMakeUUNoise()
+        SetAwgSampleRate()
+        AWGAAmplvalue = float(eval(AWGAAmplEntry.get()))
+        AWGAOffsetvalue = float(eval(AWGAOffsetEntry.get()))
+        AWGAFreqvalue = UnitConvert(AWGAFreqEntry.get())
+        Power = int(eval(AWGADutyCycleEntry.get()))
+        Power = Power / 100.0
+        ampl = 1
+        AWGASendWave(SinePower(100, Power, 180, ampl))
         AWGAShapeLabel.config(text = AwgString14) # change displayed value
-    elif AWGAShape.get()==15:
-        AWGAMakeUGNoise()
-        AWGAShapeLabel.config(text = AwgString15) # change displayed value
     else:
         AWGAShapeLabel.config(text = "Other Shape") # change displayed value
 #
@@ -1446,70 +1430,10 @@ def MakeAWGwaves(): # re make awg waveforms in case something changed
             ampl = 0.25
         AWGBSendWave(SchroederPhase(MaxSamples, NrTones, ampl))
         AWGBShapeLabel.config(text = AwgString13) # change displayed value
-    elif AWGBShape.get()==14:
-        AWGBMakeUUNoise()
-        AWGBShapeLabel.config(text = AwgString14) # change displayed value
-    elif AWGBShape.get()==15:
-        AWGBMakeUGNoise()
-        AWGBShapeLabel.config(text = AwgString15) # change displayed value
     else:
         AWGBShapeLabel.config(text = "Other Shape") # change displayed value
 #
     time.sleep(0.01)
-#
-def MakeAWG_internal_waves(): # re make awg waveforms in case something changed
-    global ser, AWGAShape, AWGAShapeLabel, AWGBShape, AWGBShapeLabel
-    global AWGAAmplEntry, AWGAOffsetEntry, AWGAFreqEntry, AWGASymmetryEntry, AWGADutyCycleEntry
-    global AWGAAmplvalue, AWGBOffsetvalue, AWGBAmplvalue, AWGBOffsetvalue
-    global AWGBAmplEntry, AWGBOffsetEntry, AWGBFreqEntry, AWGBSymmetryEntry, AWGBDutyCycleEntry
-    global FSweepMode, MaxSampleRate
-    global AwgString1, AwgString2, AwgString3, AwgString4, AwgString5, AwgString6
-    global AwgString7, AwgString8, AwgString9, AwgString10, AwgString11, AwgString12
-    global AwgString13, AwgString14, AwgString15, AwgString16
-    
-    #
-    time.sleep(0.01)
-    #
-    if AWGAShape.get()==0:
-        ser.write(b'W0\n')
-        AWGAShapeLabel.config(text = AwgString0) # change displayed value
-    elif AWGAShape.get()==1:
-        ser.write(b'W1\n')
-        AWGAShapeLabel.config(text = AwgString1) # change displayed value
-    elif AWGAShape.get()==2:
-        ser.write(b'W2\n')
-        AWGAShapeLabel.config(text = AwgString2) # change displayed value
-    elif AWGAShape.get()==3:
-        ser.write(b'W3\n')
-        AWGAShapeLabel.config(text = AwgString3) # change displayed value
-    elif AWGAShape.get()==4:
-        ser.write(b'W4\n')
-        AWGAShapeLabel.config(text = AwgString4) # change displayed value
-    elif AWGAShape.get()==5:
-        ser.write(b'W5\n')
-        AWGAShapeLabel.config(text = AwgString5) # change displayed value
-    elif AWGAShape.get()==6:
-        ser.write(b'W6\n')
-        AWGAShapeLabel.config(text = AwgString6) # change displayed value
-    elif AWGAShape.get()==7:
-        ser.write(b'W7\n')
-        AWGAShapeLabel.config(text = AwgString7) # change displayed value
-    #
-    if AWGBShape.get()==0:
-        ser.write(b'w0\n')
-        AWGBShapeLabel.config(text = AwgString0) # change displayed value
-    elif AWGBShape.get()==1:
-        ser.write(b'w1\n')
-        AWGBShapeLabel.config(text = AwgString1) # change displayed value
-    elif AWGBShape.get()==2:
-        ser.write(b'w2\n')
-        AWGBShapeLabel.config(text = AwgString2) # change displayed value
-    #SetAwgFrequency()
-    SetAWG_Ampla()
-    SetAWG_Offseta()
-    SetAWG_Amplb()
-    SetAWG_Offsetb()
-    time.sleep(0.1)
 #
 # Hardware Specific PWM control functions
 #

@@ -1,7 +1,7 @@
 #!/usr/bin/python
 # -*- coding: cp1252 -*-
 #
-# Alice-universal-alpha.py(w) (3-19-2024)
+# Alice-universal-alpha.py(w) (4-15-2024)
 # Written using Python version 3.10, Windows OS 
 # Requires a hardware interface level functions add-on file
 # Created by D Mercer ()
@@ -74,7 +74,7 @@ import webbrowser
 # check which operating system
 import platform
 #
-RevDate = "19 March 2024"
+RevDate = "15 April 2024"
 SWRev = "1.0 "
 #
 # small bit map of triangle logo for window icon
@@ -373,11 +373,14 @@ EnableDigIO = 1
 EnableCommandInterface = 0
 EnablePGAGain = 1
 EnableLoopBack = 0
+EnableAnalogMux = 0
 LoopBack = IntVar()
 LoopBack.set(0)
 LBList = ("CH A", "CH B", "CH C", "CH D")
 EnableAWGNoise = 0 #
 EnableDigitalFilter = 0
+AMuxScreenStatus = IntVar()
+AMuxScreenStatus.set(0)
 EnableInterpFilter = IntVar()
 EnableInterpFilter.set(0)
 EnableMeasureScreen = 0
@@ -2504,7 +2507,7 @@ def AWGAMakeSinc():
         index = index + 1
     #
     AWGALength.config(text = "L = " + str(int(len(AWG3)))) # change displayed value
-    duty1lab.config(text="Percent")
+    duty1lab.config(text="Cycles")
     AWGASendWave(AWG3)
 #
 def AWGAMakeStair():
@@ -2932,11 +2935,11 @@ def AWGBMakeSinc():
     AWGBAmplvalue = float(eval(AWGBAmplEntry.get()))
     AWGBOffsetvalue = float(eval(AWGBOffsetEntry.get()))
     AWGBFreqvalue = UnitConvert(AWGBFreqEntry.get())
+    AWGBperiodvalue = AWGSampleRate/AWGBFreqvalue
     if AWGBFreqvalue == 0.0:
         AWGBFreqvalue = 10.0
         AWGBFreqEntry.delete(0,"end")
         AWGBFreqEntry.insert(0,AWGBFreqvalue)
-    AWGBperiodvalue = AWGSampleRate/AWGBFreqvalue
     AWGBDutyCyclevalue = float(eval(AWGBDutyCycleEntry.get()))
     # Cycles = int(MaxSamples/AWGBperiodvalue)
     Cycles = numpy.floor(AWGBFreqvalue/MaxRepRate)
@@ -2949,14 +2952,14 @@ def AWGBMakeSinc():
     MNumCy = 0 - NumCy
     # numpy.sinc(numpy.linspace(-4, 4, 400))
     # will produce 4 “cycles” 400 samples long. 
-    AWG0 = numpy.sinc(numpy.linspace(MNumCy, NumCy, RecLength))
+    AWG0 = numpy.sinc(numpy.linspace(MNumCy, NumCy, CycleLen))
     AWG3 = AWG0
     # print( index , len(AWG3) )
     while len(AWG3) < AWGBuffLen-CycleLen:
         AWG3 = numpy.concatenate((AWG3, AWG0))
     #
     AWGBLength.config(text = "L = " + str(int(len(AWG3)))) # change displayed value
-    duty2lab.config(text="Percent")
+    duty2lab.config(text="Cycles")
     AWGBSendWave(AWG3)
 ##
 def AWGBMakeStair():
@@ -5790,10 +5793,10 @@ def Analog_Freq_In():
     index = hldn # skip first hldn samples
     #
 # check if digital filter box checked
-    if DigFiltA.get() == 1:
-        VBuffA = numpy.convolve(VBuffA, DFiltACoef)
-    if DigFiltB.get() == 1:
-        VBuffB = numpy.convolve(VBuffB, DFiltBCoef)
+##    if DigFiltA.get() == 1:
+##        VBuffA = numpy.convolve(VBuffA, DFiltACoef)
+##    if DigFiltB.get() == 1:
+##        VBuffB = numpy.convolve(VBuffB, DFiltBCoef)
     DoFFT()
     if SpectrumScreenStatus.get() > 0 and FreqDisp.get() > 0:
         UpdateFreqAll()                         # Update spectrum Data, trace and screen
@@ -10353,6 +10356,7 @@ def DoCZT():
 ## calculate some FFTs
 def DoFFT():
     global VBuffA, VBuffB, SHOWsamples, xscalem, SMPfft
+    global ShowC1_VdB, ShowC1_P, ShowC2_VdB, ShowC2_P, ShowC1_V, ShowC2_V
     global TRACEresetFreq, TRACEaverage, FreqTraceMode
     global FFTmemoryA, FFTresultA, FFTresultAB, PhaseAB
     global FFTmemoryB, FFTresultB, FFTwindowshape, StopFreqEntry, StartFreqEntry
@@ -10364,9 +10368,15 @@ def DoFFT():
     PhaseB = []
     fs = SAMPLErate
     SAfreq_max = fs/2.0
-    if len(VBuffA) != len(VBuffB):
-        return
+    # Save previous trace in memory for max or average trace
+    FFTmemoryA = FFTresultA
+    FFTmemoryB = FFTresultB
+    if FreqTraceMode.get() == 3:
+        PhaseMemoryA = PhaseA
+        PhaseMemoryB = PhaseB
     FFTsamples = SMPfft # len(VBuffA)
+    CALCFFTwindowshape(SMPfft)
+    # print("SMPfft = ", SMPfft, "len(VBuffA) = ", len(VBuffA))
     try:
         if float(StopFreqEntry.get()) <= SAfreq_max:
             SAfreq_max = float(StopFreqEntry.get())
@@ -10382,52 +10392,46 @@ def DoFFT():
     RMScorr = 1.0 / FFTsamples # For VOLTAGE!
     Powcorr = 50*(RMScorr **2) # vpktage squared For POWER!
     #
-    CALCFFTwindowshape(SMPfft)
-    if len(VBuffA) >= SMPfft:
-        WData1 = VBuffA[0:SMPfft] - DCV1
-    else:
+    WData1 = []
+    WData2 = []
+    WData3 = []
+    # CALCFFTwindowshape(SMPfft)
+    if ShowC1_V.get() > 0: # Calculate only if data is being aquired on channel
         WData1 = VBuffA - DCV1
-        CALCFFTwindowshape(len(VBuffA))
-    if len(VBuffB) >= SMPfft:
-        WData2 = VBuffB[0:SMPfft] - DCV2
-    else:
+        CALCFFTwindowshape(len(WData1))
+        WData1 = WData1 * FFTwindowshape # numpy.kaiser(SHOWsamples, 14) * 3
+        WData1 = WData1 / 5.0
+        # VA array
+        fft_1 = czt_range(WData1, SAnum_bins, SAfreq_min, SAfreq_max, fs)
+        PhaseA = numpy.angle(fft_1, deg=True)     # calculate angle
+        FFTresultA = numpy.absolute(fft_1)        # Make absolute SQR(REX*REX + IMX*IMX) for VOLTAGE!
+        FFTresultA = FFTresultA * FFTresultA
+        FFTresultA = FFTresultA * Powcorr
+        TRACEsize = int(len(FFTresultA))
+    #
+    if ShowC2_V.get() > 0:
         WData2 = VBuffB - DCV2
-        CALCFFTwindowshape(len(VBuffB))
-    WData3 = (WData1-WData2) * FFTwindowshape # numpy.kaiser(SHOWsamples, 14) * 3
-    WData1 = WData1 * FFTwindowshape # numpy.kaiser(SHOWsamples, 14) * 3
-    WData2 = WData2 * FFTwindowshape # numpy.kaiser(SHOWsamples, 14) * 3
-#
-    WData1 = WData1 / 5.0
-    WData2 = WData2 / 5.0
-    WData3 = WData3 / 5.0
-
-    # Save previous trace in memory for max or average trace
-    FFTmemoryA = FFTresultA
-    FFTmemoryB = FFTresultB
-    if FreqTraceMode.get() == 3:
-        PhaseMemoryA = PhaseA
-        PhaseMemoryB = PhaseB
-    
-    # VA array
-    fft_1 = czt_range(WData1, SAnum_bins, SAfreq_min, SAfreq_max, fs)
-    PhaseA = numpy.angle(fft_1, deg=True)     # calculate angle
-    FFTresultA = numpy.absolute(fft_1)        # Make absolute SQR(REX*REX + IMX*IMX) for VOLTAGE!
-    FFTresultA = FFTresultA * FFTresultA
-    FFTresultA = FFTresultA * Powcorr
-    # VB array
-    fft_2 = czt_range(WData2, SAnum_bins, SAfreq_min, SAfreq_max, fs)
-    PhaseB = numpy.angle(fft_2, deg=True)     # calculate angle
-    FFTresultB = numpy.absolute(fft_2)        # Make absolute SQR(REX*REX + IMX*IMX) for VOLTAGE!
-    FFTresultB = FFTresultB * FFTresultB
-    FFTresultB = FFTresultB * Powcorr
-    # VA-VB array
-    fft_3 = czt_range(WData3, SAnum_bins, SAfreq_min, SAfreq_max, fs)
-    PhaseAB = numpy.angle(fft_3, deg=True)     # calculate angle
-    FFTresultAB = numpy.absolute(fft_3)       # Make absolute SQR(REX*REX + IMX*IMX) for VOLTAGE!
-    FFTresultAB = FFTresultAB * FFTresultAB
-    FFTresultAB = FFTresultAB * Powcorr
-#
-    TRACEsize = int(len(FFTresultB))
+        CALCFFTwindowshape(len(WData2))
+        WData2 = WData2 * FFTwindowshape # numpy.kaiser(SHOWsamples, 14) * 3
+        WData2 = WData2 / 5.0
+        # VB array
+        fft_2 = czt_range(WData2, SAnum_bins, SAfreq_min, SAfreq_max, fs)
+        PhaseB = numpy.angle(fft_2, deg=True)     # calculate angle
+        FFTresultB = numpy.absolute(fft_2)        # Make absolute SQR(REX*REX + IMX*IMX) for VOLTAGE!
+        FFTresultB = FFTresultB * FFTresultB
+        FFTresultB = FFTresultB * Powcorr
+    #
+    if (len(WData1) == len(WData2)) and len(WData1) == SMPfft:
+        WData3 = (WData1-WData2) * FFTwindowshape # numpy.kaiser(SHOWsamples, 14) * 3
+        WData3 = WData3 / 5.0
+        # VA-VB array
+        fft_3 = czt_range(WData3, SAnum_bins, SAfreq_min, SAfreq_max, fs)
+        PhaseAB = numpy.angle(fft_3, deg=True)     # calculate angle
+        FFTresultAB = numpy.absolute(fft_3)       # Make absolute SQR(REX*REX + IMX*IMX) for VOLTAGE!
+        FFTresultAB = FFTresultAB * FFTresultAB
+        FFTresultAB = FFTresultAB * Powcorr
+        TRACEsize = int(len(FFTresultB))
+    #
     Fsample = float(SAMPLErate / 2) / (TRACEsize - 1)
     if SpectrumScreenStatus.get() > 0:
         try:
@@ -10500,7 +10504,7 @@ def DoFFT():
             FFTmemoryB = FFTresultB
             PhaseMemoryB = PhaseB
 # 
-    TRACEsize = int(len(FFTresultA))
+    # TRACEsize = int(len(FFTresultA))
     Fsample = float(SAMPLErate / 2) / (TRACEsize - 1)
     if SpectrumScreenStatus.get() > 0:
         STARTsample = int(StartFrequency / Fsample)
@@ -11047,7 +11051,7 @@ def MakeFreqTrace():        # Update the grid and trace
     PeakIndexA = PeakIndexB = n
     PeakdbA = PeakdbB = PeakMdb = -200 # PeakdbB
     while n < STOPsample:
-        F = (n * Fsample) + SAfreq_min
+        F = (n * Fsample) # + SAfreq_min
         if HScale.get() == 1:
             try:
                 LogF = math.log10(F) # convet to log Freq
@@ -15853,6 +15857,8 @@ def MakeSpectrumWindow():
     global FrameRelief, BorderSize, LocalLanguage, SAVScale, SAVPSD, SAvertmaxEntry, SAvertminEntry
     global sb_tip, rb_tip, bless_tip, bmore_tip, b3_tip, b4_tip, b5_tip, b6_tip, b7_tip, b8_tip, sadismiss1button_tip
     global SAMagdiv, SAVScale, SAvertmaxEntry, SAvertminEntry, SAVPSD
+    global COLORtrace1, COLORtrace2, COLORtrace3, COLORtrace4, COLORtrace5
+    global COLORtraceR1, COLORtraceR2, COLORtraceR3, COLORtraceR4, COLORtraceR5
     
     if SpectrumScreenStatus.get() == 0:
         SpectrumScreenStatus.set(1)
@@ -15963,32 +15969,32 @@ def MakeSpectrumWindow():
         SAShowmenu = Menubutton(MarkersMenu, text="Curves", style="W7.TButton")
         SAShowmenu.menu = Menu(SAShowmenu, tearoff = 0 )
         SAShowmenu["menu"] = SAShowmenu.menu
-        SAShowmenu.menu.add_command(label="-Show-", command=donothing)
+        SAShowmenu.menu.add_command(label="-Show-", foreground="blue", command=donothing)
         SAShowmenu.menu.add_command(label="All", command=BShowCurvesAllSA)
         SAShowmenu.menu.add_command(label="None", command=BShowCurvesNoneSA)
-        SAShowmenu.menu.add_checkbutton(label='A-dBV   [1]', variable=ShowC1_VdB, command=UpdateFreqAll)
-        SAShowmenu.menu.add_checkbutton(label='B-dBV   [2]', variable=ShowC2_VdB, command=UpdateFreqAll)
-        SAShowmenu.menu.add_checkbutton(label='Phase A-B [3]', variable=ShowC1_P, command=UpdateFreqAll)
-        SAShowmenu.menu.add_checkbutton(label='Phase B-A [4]', variable=ShowC2_P, command=UpdateFreqAll)
-        SAShowmenu.menu.add_command(label="-Math-", command=donothing)
+        SAShowmenu.menu.add_checkbutton(label='A-dBV   [1]', background=COLORtrace1, variable=ShowC1_VdB, command=UpdateFreqAll)
+        SAShowmenu.menu.add_checkbutton(label='B-dBV   [2]', background=COLORtrace2, variable=ShowC2_VdB, command=UpdateFreqAll)
+        SAShowmenu.menu.add_checkbutton(label='Phase A-B [3]', background=COLORtrace3, variable=ShowC1_P, command=UpdateFreqAll)
+        SAShowmenu.menu.add_checkbutton(label='Phase B-A [4]', background=COLORtrace4, variable=ShowC2_P, command=UpdateFreqAll)
+        SAShowmenu.menu.add_command(label="-Math-", foreground="blue", command=donothing)
         SAShowmenu.menu.add_radiobutton(label='None  [0]', variable=ShowMathSA, value=0, command=UpdateFreqAll)
-        SAShowmenu.menu.add_radiobutton(label='A-dB - B-dB [9]', variable=ShowMathSA, value=1, command=UpdateFreqAll)
-        SAShowmenu.menu.add_radiobutton(label='B-dB - A-dB [8]', variable=ShowMathSA, value=2, command=UpdateFreqAll)
-        SAShowmenu.menu.add_command(label="-Ref Trace-", command=donothing)
-        SAShowmenu.menu.add_checkbutton(label='RA-dBV  [6]', variable=ShowRA_VdB, command=UpdateFreqAll)
-        SAShowmenu.menu.add_checkbutton(label='RB-dBV  [7]', variable=ShowRB_VdB, command=UpdateFreqAll)
-        SAShowmenu.menu.add_checkbutton(label='RPhase A-B', variable=ShowRA_P, command=UpdateFreqAll)
-        SAShowmenu.menu.add_checkbutton(label='RPhase B-A', variable=ShowRB_P, command=UpdateFreqAll)
-        SAShowmenu.menu.add_checkbutton(label='Ref Math', variable=ShowRMath, command=UpdateFreqAll)
+        SAShowmenu.menu.add_radiobutton(label='A-dB - B-dB [9]', background=COLORtrace5, variable=ShowMathSA, value=1, command=UpdateFreqAll)
+        SAShowmenu.menu.add_radiobutton(label='B-dB - A-dB [8]', background=COLORtrace5, variable=ShowMathSA, value=2, command=UpdateFreqAll)
+        SAShowmenu.menu.add_command(label="-Ref Trace-", foreground="blue", command=donothing)
+        SAShowmenu.menu.add_checkbutton(label='RA-dBV  [6]', background=COLORtraceR1, variable=ShowRA_VdB, command=UpdateFreqAll)
+        SAShowmenu.menu.add_checkbutton(label='RB-dBV  [7]', background=COLORtraceR2, variable=ShowRB_VdB, command=UpdateFreqAll)
+        SAShowmenu.menu.add_checkbutton(label='RPhase A-B', background=COLORtraceR3, variable=ShowRA_P, command=UpdateFreqAll)
+        SAShowmenu.menu.add_checkbutton(label='RPhase B-A', background=COLORtraceR4, variable=ShowRB_P, command=UpdateFreqAll)
+        SAShowmenu.menu.add_checkbutton(label='Ref Math', background=COLORtraceR5, variable=ShowRMath, command=UpdateFreqAll)
         SAShowmenu.pack(side=LEFT)
         SACursormenu = Menubutton(MarkersMenu, text="Cursors", style="W7.TButton")
         SACursormenu.menu = Menu(SACursormenu, tearoff = 0 )
         SACursormenu["menu"] = SACursormenu.menu
-        SACursormenu.menu.add_command(label="-Marker-", command=donothing)
+        SACursormenu.menu.add_command(label="-Marker-", foreground="blue", command=donothing)
         SACursormenu.menu.add_radiobutton(label='Markers  Off', variable=ShowMarker, value=0, command=UpdateFreqAll)
         SACursormenu.menu.add_radiobutton(label='Markers  [5]', variable=ShowMarker, value=1, command=UpdateFreqAll)
         SACursormenu.menu.add_radiobutton(label='Delta Markers', variable=ShowMarker, value=2, command=UpdateFreqAll)
-        SACursormenu.menu.add_command(label="-Cursors-", command=donothing)
+        SACursormenu.menu.add_command(label="-Cursors-", foreground="blue", command=donothing)
         SACursormenu.menu.add_radiobutton(label='Cursor Off', variable=ShowdBCur, value=0)
         SACursormenu.menu.add_radiobutton(label='dB Cursor   [d]', variable=ShowdBCur, value=1)
         #SACursormenu.menu.add_radiobutton(label='Phase Cursor [h]', variable=ShowdBCur, value=2)
@@ -18159,21 +18165,21 @@ def BuffSZTextKey(event):
     BuffSZUpdate()
 #
 def BuffSZUpdate():
-    global BuffSZ
+    global BuffSZ, HardwareBuffer
     
-    try:
-        NewLength = int(eval(BuffSZ.get()))
-        if NewLength > HardwareBuffer:
-            NewLength = HardwareBuffer
-            BuffSZ.delete(0,END)
-            BuffSZ.insert(0, int(NewLength))
-        if NewLength <= 1:
-            NewLength = HardwareBuffer
-            BuffSZ.delete(0,END)
-            BuffSZ.insert(0, int(NewLength))
-        SetBufferLength(NewLength)
-    except:
-        pass
+    ##try:
+    NewLength = int(eval(BuffSZ.get()))
+    if NewLength > HardwareBuffer:
+        NewLength = HardwareBuffer
+        BuffSZ.delete(0,END)
+        BuffSZ.insert(0, int(NewLength))
+    if NewLength <= 1:
+        NewLength = HardwareBuffer
+        BuffSZ.delete(0,END)
+        BuffSZ.insert(0, int(NewLength))
+    SetBufferLength(NewLength)
+    ##except:
+        ##pass
 ##
 def MakeSettingsMenu():
     global GridWidth, TRACEwidth, TRACEaverage, Vdiv, HarmonicMarkers, ZEROstuffing, RevDate
@@ -19117,6 +19123,11 @@ if GUITheme == "Light": # Can be Light or Dark or Blue or LtBlue
     ButtonText = "#000000"
     COLORwhite = "#ffffff" # 100% white
     COLORblack = "#000000" # 100% black
+if GUITheme == "Medium": #
+    FrameBG = "#a8a8a8" #
+    ButtonText = "#000000"
+    COLORwhite = "#eeeeee" # white
+    COLORblack = "#000000" # 100% black
 elif GUITheme == "Dark":
     FrameBG = "#484848"
     ButtonText = "#ffffff"
@@ -19138,7 +19149,7 @@ if GUITheme == "Sun Valley Dark":
         FrameBG = "#282828"
         ButtonText = "#cccccc"
         COLORwhite = "#000000" # 100% black
-        COLORblack = "#ffffff" # 100% white
+        COLORblack = "#d7d7d7" # Gray
     # 
 elif GUITheme == "Sun Valley Light":
     if sv_ttk_found:
@@ -19166,49 +19177,49 @@ root.style.configure("W10.TButton", width=10, relief=ButRelief)
 root.style.configure("W11.TButton", width=11, relief=ButRelief)
 root.style.configure("W16.TButton", width=16, relief=ButRelief)
 root.style.configure("W17.TButton", width=17, relief=ButRelief)
-root.style.configure("Stop.TButton", background=ButtonRed, foreground="#000000", width=4, relief=ButRelief)
-root.style.configure("Run.TButton", background=ButtonGreen, foreground="#000000", width=4, relief=ButRelief)
-root.style.configure("Pwr.TButton", background=ButtonGreen, foreground="#000000", width=8, relief=ButRelief)
-root.style.configure("PwrOff.TButton", background=ButtonRed, foreground="#000000", width=8, relief=ButRelief)
-root.style.configure("Roll.TButton", background=ButtonGreen, foreground="#000000", width=7, relief=ButRelief)
-root.style.configure("RollOff.TButton", background=ButtonRed, foreground="#000000", width=8, relief=ButRelief)
-root.style.configure("RConn.TButton", background=ButtonRed, foreground="#000000", width=5, relief=ButRelief)
-root.style.configure("GConn.TButton", background=ButtonGreen, foreground="#000000", width=5, relief=ButRelief)
-root.style.configure("Rtrace1.TButton", background=COLORtrace1, foreground="#000000", width=7, relief=RAISED)
-root.style.configure("Strace1.TButton", background=COLORtrace1, foreground="#000000", width=7, relief=SUNKEN)
-root.style.configure("Ctrace1.TButton", background=COLORtrace1, foreground="#000000", relief=ButRelief)
-root.style.configure("Rtrace2.TButton", background=COLORtrace2, foreground="#000000", width=7, relief=RAISED)
-root.style.configure("Strace2.TButton", background=COLORtrace2, foreground="#000000", width=7, relief=SUNKEN)
-root.style.configure("Ctrace2.TButton", background=COLORtrace2, foreground="#000000", relief=ButRelief)
-root.style.configure("Rtrace3.TButton", background=COLORtrace3, foreground="#000000", width=7, relief=RAISED)
-root.style.configure("Strace3.TButton", background=COLORtrace3, foreground="#000000", width=7, relief=SUNKEN)
-root.style.configure("Ctrace3.TButton", background=COLORtrace3, foreground="#000000", relief=ButRelief)
-root.style.configure("Rtrace4.TButton", background=COLORtrace4, foreground="#000000", width=7, relief=RAISED)
-root.style.configure("Strace4.TButton", background=COLORtrace4, foreground="#000000", width=7, relief=SUNKEN)
-root.style.configure("Ctrace4.TButton", background=COLORtrace4, foreground="#000000", relief=ButRelief)
-root.style.configure("Rtrace5.TButton", background=COLORtrace5, foreground="#000000", width=7, relief=RAISED)
-root.style.configure("Rtrace6.TButton", background=COLORtrace6, foreground="#000000", width=7, relief=RAISED)
-root.style.configure("Rtrace6.TButton", background=COLORtrace6, foreground="#000000", width=7, relief=RAISED)
-root.style.configure("Rtrace7.TButton", background=COLORtrace7, foreground="#000000", width=7, relief=RAISED)
-root.style.configure("Strace7.TButton", background=COLORtrace7, foreground="#000000", width=7, relief=SUNKEN)
-root.style.configure("T1W16.TButton", background=COLORtrace1, width=16, relief=ButRelief)
-root.style.configure("T2W16.TButton", background=COLORtrace2, width=16, relief=ButRelief)
-root.style.configure("T3W16.TButton", background=COLORtrace3, width=16, relief=ButRelief)
-root.style.configure("T4W16.TButton", background=COLORtrace4, width=16, relief=ButRelief)
-root.style.configure("T5W16.TButton", background=COLORtrace5, width=16, relief=ButRelief)
-root.style.configure("T6W16.TButton", background=COLORtrace6, width=16, relief=ButRelief)
-root.style.configure("T7W16.TButton", background=COLORtrace7, width=16, relief=ButRelief)
-root.style.configure("TR1W16.TButton", background=COLORtraceR1, width=16, relief=ButRelief)
-root.style.configure("TR2W16.TButton", background=COLORtraceR2, width=16, relief=ButRelief)
-root.style.configure("TR3W16.TButton", background=COLORtraceR3, width=16, relief=ButRelief)
-root.style.configure("TR4W16.TButton", background=COLORtraceR4, width=16, relief=ButRelief)
-root.style.configure("TR5W16.TButton", background=COLORtraceR5, width=16, relief=ButRelief)
-root.style.configure("TR6W16.TButton", background=COLORtraceR6, width=16, relief=ButRelief)
-root.style.configure("TR7W16.TButton", background=COLORtraceR7, width=16, relief=ButRelief)
-root.style.configure("TGW16.TButton", background=COLORtrigger, width=16, relief=ButRelief)
-root.style.configure("ZLW16.TButton", background=COLORzeroline, width=16, relief=ButRelief)
-root.style.configure("RGray.TButton", background="#808080", width=7, relief=RAISED)
-root.style.configure("SGray.TButton", background="#808080", width=7, relief=SUNKEN)
+root.style.configure("Stop.TButton", background=ButtonRed, foreground=COLORblack, width=4, relief=ButRelief)
+root.style.configure("Run.TButton", background=ButtonGreen, foreground=COLORblack, width=4, relief=ButRelief)
+root.style.configure("Pwr.TButton", background=ButtonGreen, foreground=COLORblack, width=8, relief=ButRelief)
+root.style.configure("PwrOff.TButton", background=ButtonRed, foreground=COLORblack, width=8, relief=ButRelief)
+root.style.configure("Roll.TButton", background=ButtonGreen, foreground=COLORblack, width=7, relief=ButRelief)
+root.style.configure("RollOff.TButton", background=ButtonRed, foreground=COLORblack, width=8, relief=ButRelief)
+root.style.configure("RConn.TButton", background=ButtonRed, foreground=COLORblack, width=5, relief=ButRelief)
+root.style.configure("GConn.TButton", background=ButtonGreen, foreground=COLORblack, width=5, relief=ButRelief)
+root.style.configure("Rtrace1.TButton", background=COLORtrace1, foreground=COLORblack, width=7, relief=RAISED)
+root.style.configure("Strace1.TButton", background=COLORtrace1, foreground=COLORblack, width=7, relief=SUNKEN)
+root.style.configure("Ctrace1.TButton", background=COLORtrace1, foreground=COLORblack, relief=ButRelief)
+root.style.configure("Rtrace2.TButton", background=COLORtrace2, foreground=COLORblack, width=7, relief=RAISED)
+root.style.configure("Strace2.TButton", background=COLORtrace2, foreground=COLORblack, width=7, relief=SUNKEN)
+root.style.configure("Ctrace2.TButton", background=COLORtrace2, foreground=COLORblack, relief=ButRelief)
+root.style.configure("Rtrace3.TButton", background=COLORtrace3, foreground=COLORblack, width=7, relief=RAISED)
+root.style.configure("Strace3.TButton", background=COLORtrace3, foreground=COLORblack, width=7, relief=SUNKEN)
+root.style.configure("Ctrace3.TButton", background=COLORtrace3, foreground=COLORblack, relief=ButRelief)
+root.style.configure("Rtrace4.TButton", background=COLORtrace4, foreground=COLORblack, width=7, relief=RAISED)
+root.style.configure("Strace4.TButton", background=COLORtrace4, foreground=COLORblack, width=7, relief=SUNKEN)
+root.style.configure("Ctrace4.TButton", background=COLORtrace4, foreground=COLORblack, relief=ButRelief)
+root.style.configure("Rtrace5.TButton", background=COLORtrace5, foreground=COLORblack, width=7, relief=RAISED)
+root.style.configure("Rtrace6.TButton", background=COLORtrace6, foreground=COLORblack, width=7, relief=RAISED)
+root.style.configure("Rtrace6.TButton", background=COLORtrace6, foreground=COLORblack, width=7, relief=RAISED)
+root.style.configure("Rtrace7.TButton", background=COLORtrace7, foreground=COLORblack, width=7, relief=RAISED)
+root.style.configure("Strace7.TButton", background=COLORtrace7, foreground=COLORblack, width=7, relief=SUNKEN)
+root.style.configure("T1W16.TButton", background=COLORtrace1, foreground=COLORblack, width=16, relief=ButRelief)
+root.style.configure("T2W16.TButton", background=COLORtrace2, foreground=COLORblack, width=16, relief=ButRelief)
+root.style.configure("T3W16.TButton", background=COLORtrace3, foreground=COLORblack, width=16, relief=ButRelief)
+root.style.configure("T4W16.TButton", background=COLORtrace4, foreground=COLORblack, width=16, relief=ButRelief)
+root.style.configure("T5W16.TButton", background=COLORtrace5, foreground=COLORblack, width=16, relief=ButRelief)
+root.style.configure("T6W16.TButton", background=COLORtrace6, foreground=COLORblack, width=16, relief=ButRelief)
+root.style.configure("T7W16.TButton", background=COLORtrace7, foreground=COLORblack, width=16, relief=ButRelief)
+root.style.configure("TR1W16.TButton", background=COLORtraceR1, foreground=COLORblack, width=16, relief=ButRelief)
+root.style.configure("TR2W16.TButton", background=COLORtraceR2, foreground=COLORblack, width=16, relief=ButRelief)
+root.style.configure("TR3W16.TButton", background=COLORtraceR3, foreground=COLORblack, width=16, relief=ButRelief)
+root.style.configure("TR4W16.TButton", background=COLORtraceR4, foreground=COLORblack, width=16, relief=ButRelief)
+root.style.configure("TR5W16.TButton", background=COLORtraceR5, foreground=COLORblack, width=16, relief=ButRelief)
+root.style.configure("TR6W16.TButton", background=COLORtraceR6, foreground=COLORblack, width=16, relief=ButRelief)
+root.style.configure("TR7W16.TButton", background=COLORtraceR7, foreground=COLORblack, width=16, relief=ButRelief)
+root.style.configure("TGW16.TButton", background=COLORtrigger, foreground=COLORblack, width=16, relief=ButRelief)
+root.style.configure("ZLW16.TButton", background=COLORzeroline, foreground=COLORblack, width=16, relief=ButRelief)
+root.style.configure("RGray.TButton", background="#808080", foreground=COLORblack, width=7, relief=RAISED)
+root.style.configure("SGray.TButton", background="#808080", foreground=COLORblack, width=7, relief=SUNKEN)
 #
 root.style.configure("A10T5.TLabelframe.Label", background=FrameBG, foreground=COLORtraceR5, font=('Arial', 10, 'bold'))
 root.style.configure("A10T5.TLabelframe", borderwidth=BorderSize, relief=FrameRelief)
@@ -19234,15 +19245,15 @@ root.style.configure("Stop.TRadiobutton", background=ButtonRed, indicatorcolor=F
 root.style.configure("Run.TRadiobutton", background=ButtonGreen, indicatorcolor=FrameBG)
 root.style.configure("Disab.TCheckbutton", foreground=ButtonText, background=FrameBG, indicatorcolor=ButtonRed)
 root.style.configure("Enab.TCheckbutton", foreground=ButtonText, background=FrameBG, indicatorcolor=ButtonGreen)
-root.style.configure("Strace1.TCheckbutton", background=COLORtrace1, foreground="#000000", indicatorcolor="#ffffff")
-root.style.configure("Strace2.TCheckbutton", background=COLORtrace2, foreground="#000000", indicatorcolor="#ffffff")
-root.style.configure("Strace3.TCheckbutton", background=COLORtrace3, foreground="#000000", indicatorcolor="#ffffff")
-root.style.configure("Strace4.TCheckbutton", background=COLORtrace4, foreground="#000000", indicatorcolor="#ffffff")
-root.style.configure("Strace5.TCheckbutton", background=COLORtrace5, foreground="#000000", indicatorcolor="#ffffff")
-root.style.configure("Strace6.TCheckbutton", background=COLORtrace6, foreground="#000000", indicatorcolor="#ffffff")
-root.style.configure("Strace7.TCheckbutton", background=COLORtrace7, foreground="#000000", indicatorcolor="#ffffff")
-root.style.configure("WPhase.TRadiobutton", width=5, foreground="#000000", background="white", indicatorcolor=("red", "green"))
-root.style.configure("GPhase.TRadiobutton", width=5, foreground="#000000", background="gray", indicatorcolor=("red", "green"))
+root.style.configure("Strace1.TCheckbutton", background=COLORtrace1, foreground=COLORblack, indicatorcolor=COLORwhite)
+root.style.configure("Strace2.TCheckbutton", background=COLORtrace2, foreground=COLORblack, indicatorcolor=COLORwhite)
+root.style.configure("Strace3.TCheckbutton", background=COLORtrace3, foreground=COLORblack, indicatorcolor=COLORwhite)
+root.style.configure("Strace4.TCheckbutton", background=COLORtrace4, foreground=COLORblack, indicatorcolor=COLORwhite)
+root.style.configure("Strace5.TCheckbutton", background=COLORtrace5, foreground=COLORblack, indicatorcolor=COLORwhite)
+root.style.configure("Strace6.TCheckbutton", background=COLORtrace6, foreground=COLORblack, indicatorcolor=COLORwhite)
+root.style.configure("Strace7.TCheckbutton", background=COLORtrace7, foreground=COLORblack, indicatorcolor=COLORwhite)
+root.style.configure("WPhase.TRadiobutton", width=5, foreground=COLORblack, background="white", indicatorcolor=("red", "green"))
+root.style.configure("GPhase.TRadiobutton", width=5, foreground=COLORblack, background="gray", indicatorcolor=("red", "green"))
 # Custom left and right arrows
 root.style.layout('Left1.TButton',[
                 ('Button.focus', {'children': [
@@ -19276,19 +19287,7 @@ root.style.configure('Left1.TButton',font=('',FontSize,'bold'), width=7, arrowco
 root.style.configure('Right1.TButton',font=('',FontSize,'bold'), width=7, arrowcolor='black', background='white', relief=LabRelief)
 root.style.configure('Left2.TButton',font=('',FontSize,'bold'), width=6, arrowcolor='black')
 root.style.configure('Right2.TButton',font=('',FontSize,'bold'), width=6, arrowcolor='black')
-#
-##if GUITheme == "Sun Valley Dark":
-##    if sv_ttk_found:
-##        sv_ttk.use_dark_theme()
-##        # sv_ttk.set_theme("dark") # ("light") or ("dark")
-##        #print("Setting ttk theme as dark")
-##    # 
-##elif GUITheme == "Sun Valley Light":
-##    if sv_ttk_found:
-##        sv_ttk.use_light_theme()
-##        # sv_ttk.set_theme("light") # ("light") or ("dark")
-##        #print("Setting ttk theme as dark")
-##    # 
+# 
 # Create frames
 frame2r = Frame(root, borderwidth=BorderSize, relief=FrameRelief)
 frame2r.pack(side=RIGHT, fill=BOTH, expand=NO)
@@ -19712,7 +19711,11 @@ if ShowTraceControls > 0:
         if ShowBallonHelp > 0:
             loopback_tip = CreateToolTip(lbckb, 'Enable / Disable loopback to AWG output')
             lbselect_tip = CreateToolTip(LBsb, 'Select which scope channel to loopback to AWG output')
-
+    if EnableAnalogMux > 0:
+        trctramux = Frame( frame2r )
+        trctramux.pack(side=TOP)
+        BuildAMuxScreen = Button(trctramux, text="Analog Mux Selector", style="W17.TButton", command=MakeAMuxScreen)
+        BuildAMuxScreen.pack(side=TOP)
 #
 if ShowBallonHelp > 0:
     try:
