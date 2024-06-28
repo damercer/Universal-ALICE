@@ -31,6 +31,7 @@ Currently available hardware interfaces (some are works in progress):
   + CY8CKIT-044
 * Bench Instruments:
   + Multicomp pro MP720781
+  + Owon SDS1104 (VEVOR DS1104)
 
 If you are not a technical individual or highly familiar with computer operating systems and you have your choice of computers, a Windows computer is highly recommended. You will usually run into fewer issues, if any, with that operating system.
 

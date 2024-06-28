@@ -1,6 +1,6 @@
 #
 # Hardware specific interface functions
-# For Arduino XIAO 4 analog + 1 AWG + 1 PWM scope (4-15-2024)
+# For Arduino XIAO 4 analog + 1 AWG + 1 PWM scope (6-9-2024)
 # Written using Python version 3.10, Windows OS 
 #
 try:
@@ -15,9 +15,9 @@ except:
 # adjust for your specific hardware by changing these values in the alice.init file
 CHANNELS = 4 # Number of supported Analog input channels
 AWGChannels = 2 # Number of supported Analog output channels
-PWMChannels = 1 # Number of supported PWM output channels
-DigChannels = 5 # Number of supported Dig channels
-LogicChannels = 5 # Number of supported Logic Analyzer channels
+PWMChannels = 2 # Number of supported PWM output channels
+DigChannels = 0 # Number of supported Dig channels
+LogicChannels = 0 # Number of supported Logic Analyzer channels
 EnablePGAGain = 0 # Number is number of ADC channels with a PGA
 ScopePGAGain = (1, 2, 4, 8, 16)
 EnableAWGNoise = 0 #
@@ -40,7 +40,7 @@ LSBsizeA =  LSBsizeB = LSBsizeC = LSBsizeD = LSBsize = ADC_Cal/ScopeRes
 Rint = 2.0E7 # ~2 Meg Ohm internal resistor to ground
 AWGARes = 1023 # For 10 bits, 4095 for 12 bits, 255 for 8 bits
 AWGBRes = 511 # PWM AWG 9 bits at 94 KHz
-DevID = "XIAO 4"
+DevID = "XIAO SAMD21 4"
 SerComPort = 'Auto'
 TimeSpan = 0.01
 InterpRate = 4
@@ -81,7 +81,8 @@ def Bcloseexit():
     if Sucess:
         try:
             ser.write(b'Gx\n') # Turn off AWG
-            ser.write(b'sx\n') # turn off PWM
+            ser.write(b'sx\n') # turn off PWM 1
+            ser.write(b'sy\n') # turn off PWM 2
             # try to write last config file, Don't crash if running in Write protected space
             BSaveConfig("alice-last-config.cfg")
             # May need to be changed for specific hardware port
@@ -178,7 +179,7 @@ def MakeAMuxScreen():
         frame1a.grid(row=0, column=0, sticky=W)
         RowNum = 1
         
-        CHAMuxlab = Button(frame1a, text="Channnel A", style="T1W16.TButton", command=BCHAMux)
+        CHAMuxlab = Button(frame1a, text="Channel A", style="T1W16.TButton", command=BCHAMux)
         CHAMuxlab.grid(row=RowNum, column=0, sticky=W)
         CHAMux = Spinbox(frame1a, cursor='double_arrow', width=6, values=AMuxList, command=BCHAMux)
         CHAMux.grid(row=RowNum, column=1, sticky=W)
@@ -189,7 +190,7 @@ def MakeAMuxScreen():
         CHAMux.insert(0,"A1")
         
         RowNum = RowNum + 1
-        CHBMuxlab = Button(frame1a, text="Channnel B", style="T2W16.TButton", command=BCHBMux)
+        CHBMuxlab = Button(frame1a, text="Channel B", style="T2W16.TButton", command=BCHBMux)
         CHBMuxlab.grid(row=RowNum, column=0, sticky=W)
         CHBMux = Spinbox(frame1a, cursor='double_arrow', width=6, values=AMuxList, command=BCHBMux)
         CHBMux.grid(row=RowNum, column=1, sticky=W)
@@ -200,7 +201,7 @@ def MakeAMuxScreen():
         CHBMux.insert(0,"A2")
 
         RowNum = RowNum + 1
-        CHCMuxlab = Button(frame1a, text="Channnel C", style="T3W16.TButton", command=BCHCMux)
+        CHCMuxlab = Button(frame1a, text="Channel C", style="T3W16.TButton", command=BCHCMux)
         CHCMuxlab.grid(row=RowNum, column=0, sticky=W)
         CHCMux = Spinbox(frame1a, cursor='double_arrow', width=6, values=AMuxList, command=BCHCMux)
         CHCMux.grid(row=RowNum, column=1, sticky=W)
@@ -211,7 +212,7 @@ def MakeAMuxScreen():
         CHCMux.insert(0,"A3")
 
         RowNum = RowNum + 1
-        CHDMuxlab = Button(frame1a, text="Channnel D", style="T4W16.TButton", command=BCHDMux)
+        CHDMuxlab = Button(frame1a, text="Channel D", style="T4W16.TButton", command=BCHDMux)
         CHDMuxlab.grid(row=RowNum, column=0, sticky=W)
         CHDMux = Spinbox(frame1a, cursor='double_arrow', width=6, values=AMuxList, command=BCHDMux)
         CHDMux.grid(row=RowNum, column=1, sticky=W)
@@ -1349,7 +1350,7 @@ def ConnectDevice():
     global d0btn, d1btn, d2btn, d3btn, d4btn, d5btn, d6btn, d7btn
 
     # print("SerComPort: ", SerComPort)
-    if DevID == "No Device" or DevID == "XIAO 4":
+    if DevID == "No Device" or DevID == "XIAO SAMD21 4":
         #
         if SerComPort == 'Auto':
             ports = serial.tools.list_ports.comports()
@@ -1359,18 +1360,60 @@ def ConnectDevice():
                     print("Found: ", port[0])
                     SerComPort = port[0]
         # Setup instrument connection
-        print("Trying to open ", SerComPort)
-        try:
-            ser = serial.Serial(SerComPort)  # open serial port
-        except:
-            return(False)
+                    print("Trying to open ", SerComPort)
+                    try:
+                        ser = serial.Serial(SerComPort)  # open serial port
+                        ser.baudrate = 2000000 # Dummy number USB runs at max supported speed
+        # Check if hardware ID string matched target?
+                        ser.write(b'I\n') # request board ID
+                        time.sleep(0.005)
+                        IDstring = str(ser.readline())
+                        ID = IDstring.replace("b'","")
+                        ID = ID.replace("\\\\","")
+                        ID = ID.replace("r","")
+                        ID = ID.replace("n","")
+                        ID = ID.replace("\\","")
+                        ID = ID.replace("'","")
+                        print("ID string ", ID)
+                        if ID == "XIAO Scope 4.0" :
+                            break
+                    except:
+                        print("Port already in use?", SerComPort)
+                        try:
+                            ser.close()
+                        except:
+                            pass
+        else:
+            print("Trying to open ", SerComPort)
+            try:
+                ser = serial.Serial(SerComPort)  # open serial port
+                ser.baudrate = 2000000 # Dummy number USB runs at max supported speed
+# Check if hardware ID string matched target?
+                ser.write(b'I\n') # request board ID
+                time.sleep(0.005)
+                IDstring = str(ser.readline())
+                ID = IDstring.replace("b'","")
+                ID = ID.replace("\\\\","")
+                ID = ID.replace("r","")
+                ID = ID.replace("n","")
+                ID = ID.replace("\\","")
+                ID = ID.replace("'","")
+                print("ID string ", ID)
+                # if ID == "XIAO Scope 4.0" :
+                    # break
+            except:
+                print("Port already in use?", SerComPort)
+                try:
+                    ser.close()
+                except:
+                    pass
         if ser is None:
             print('Device not found!')
             return(False)
             # Bcloseexit()
             # exit()
         #
-        ser.baudrate = 2000000 # Dummy number USB runs at max supported speed
+        # ser.baudrate = 2000000 # Dummy number USB runs at max supported speed
 #
         #print("sending I")
         ser.write(b'I\n') # request board ID
@@ -1528,7 +1571,7 @@ def AWGASendWave(AWG3): # Analog DAC on A0
     global ser, AWGARecLength, AWGBuffLen, AWGARes
     global AWGAAmplvalue, AWGAOffsetvalue, AWGPeakToPeak
     # Expect array values normalized from -1 to 1
-    # scale values to send to 0 to 255 8 bits
+    # scale values DAC resolution AWGARes
     AWG3 = AWG3 * 0.5 # scale by 1/2
     # Get Low and High voltage levels
     MinCode = int((AWGAAmplvalue / AWGPeakToPeak) * AWGARes)
@@ -1750,6 +1793,7 @@ AwgString12 = "Fourier Series"
 AwgString13 = "Schroeder Chirp"
 AwgString14 = "Uniform Noise"
 AwgString15 = "Gaussian Noise"
+AwgString16 = "Read From CSV"
 #
 ## Make or update the current selected AWG waveform
 def MakeAWGwaves(): # re make awg waveforms in case something changed
@@ -1824,8 +1868,14 @@ def MakeAWGwaves(): # re make awg waveforms in case something changed
     elif AWGAShape.get()==15:
         AWGAMakeUGNoise()
         AWGAShapeLabel.config(text = AwgString15) # change displayed value
+    elif AWGAShape.get()==16:
+        AWGAReadFile()
+        AWGAShapeLabel.config(text = AwgString16) # change displayed value
     else:
         AWGAShapeLabel.config(text = "Other Shape") # change displayed value
+#
+    if BisCompA.get() == 1:
+        SetBCompA()
 #
     if AWGBShape.get()== 0:
         AWGBMakeDC()
@@ -1891,23 +1941,34 @@ def MakeAWGwaves(): # re make awg waveforms in case something changed
 #
 # Hardware Specific PWM control functions
 #
-def PWM_On_Off():
-    global PWM_is_on, ser
+def PWM1_On_Off():
+    global PWM1_is_on, ser
 
-    if PWM_is_on:
+    if PWM1_is_on:
         #print("Set pwm on")
-        UpdatePWM()
-        ser.write(b'so\n')
+        UpdatePWM1()
+        ser.write(b's1\n')
     else:
         #print("Set pwm off")
         ser.write(b'sx\n')
 #
-def UpdatePWM():
-    global PWMDivEntry, PWMWidthEntry, PWMLabel, ser
+def PWM2_On_Off():
+    global PWM2_is_on, ser
 
-    PWMLabel.config(text = "PWM Frequency")
+    if PWM2_is_on:
+        #print("Set pwm on")
+        UpdatePWM2()
+        ser.write(b's2\n')
+    else:
+        #print("Set pwm off")
+        ser.write(b'sy\n')
+#
+def UpdatePWM1():
+    global PWMDivEntry1, PWMWidthEntry1, PWMLabel1, ser
 
-    FreqValue = int(UnitConvert(PWMDivEntry.get()))
+    PWMLabel1.config(text = "PWM Frequency")
+
+    FreqValue = int(UnitConvert(PWMDivEntry1.get()))
     # print("FreqValue = ", FreqValue)
     # ByteStr = 'p' + str(FreqValue) + "\n"
     # SendByt = ByteStr.encode('utf-8')
@@ -1919,12 +1980,39 @@ def UpdatePWM():
     ser.write(SendByt)
     time.sleep(0.1)
     
-    DutyCycle = int(PWMWidthEntry.get())
+    DutyCycle = float(PWMWidthEntry1.get())
     DutyCycle = int((DutyCycle * 1024)/100) # value can be 0 to 1000
     #DutyCycle = DutyCycle * 10 # value can be 0 to 1000
     # print("DutyCycle = ",DutyCycle)
     #
     ByteStr = 'm' + str(DutyCycle) + "\n"
+    SendByt = ByteStr.encode('utf-8')
+    ser.write(SendByt)
+    time.sleep(0.1)
+#
+def UpdatePWM2():
+    global PWMDivEntry2, PWMWidthEntry2, PWMLabel2, ser
+
+    PWMLabel2.config(text = "PWM Frequency")
+
+    FreqValue = int(UnitConvert(PWMDivEntry2.get()))
+    # print("FreqValue = ", FreqValue)
+    # ByteStr = 'p' + str(FreqValue) + "\n"
+    # SendByt = ByteStr.encode('utf-8')
+    # PWM frequency = 48MHz / (1 * (95999 + 1)) = 500Hz
+    # Divider = int(48000000 / FreqValue) - 1
+    # print("FreqValue = ", FreqValue)
+    ByteStr = 'q' + str(FreqValue) + "\n"
+    SendByt = ByteStr.encode('utf-8')
+    ser.write(SendByt)
+    time.sleep(0.1)
+    
+    DutyCycle = float(PWMWidthEntry2.get())
+    DutyCycle = int((DutyCycle * 1024)/100) # value can be 0 to 1000
+    #DutyCycle = DutyCycle * 10 # value can be 0 to 1000
+    # print("DutyCycle = ",DutyCycle)
+    #
+    ByteStr = 'n' + str(DutyCycle) + "\n"
     SendByt = ByteStr.encode('utf-8')
     ser.write(SendByt)
     time.sleep(0.1)

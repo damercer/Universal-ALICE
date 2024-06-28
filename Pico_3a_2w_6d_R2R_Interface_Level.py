@@ -1,6 +1,6 @@
 #
 # Hardware specific interface functions
-# For Arduino pi pico Three analog + 2 R2R AWG + 6 digital channel scope (3-31-2024)
+# For Arduino pi pico Three analog + 2 R2R AWG + 6 digital channel scope (5-10-2024)
 # Written using Python version 3.10, Windows OS 
 #
 try:
@@ -24,11 +24,11 @@ UseSoftwareTrigger = 1
 AllowFlashFirmware = 1
 Tdiv.set(10)
 AWG_Amp_Mode.set(0)
-AWGPeakToPeak = 3.29
+AWGPeakToPeak = 3.26
 DevID = "Pico R2R 3"
 SerComPort = 'Auto'
 TimeSpan = 0.01
-ADC_Cal = 3.29
+ADC_Cal = 3.26
 AWGRes = 255 # For 8 bits, 4095 for 12 bits, 1023 for 10 bits
 InterpRate = 4
 EnableInterpFilter.set(1)
@@ -1225,6 +1225,7 @@ def BAWGSync():
 
     if AWGSync.get() > 0:
         ser.write(b'R10\n') # turn on sync
+        ser.write(b'r0\n') # Set address pointer to 0
     else:
         ser.write(b'R0\n') # turn off sync
 #
@@ -1312,6 +1313,7 @@ AwgString12 = "Fourier Series"
 AwgString13 = "Schroeder Chirp"
 AwgString14 = "Uniform Noise"
 AwgString15 = "Gaussian Noise"
+AwgString16 = "Read From CSV"
 #
 ## Make or update the current selected AWG waveform
 def MakeAWGwaves(): # re make awg waveforms in case something changed
@@ -1386,6 +1388,9 @@ def MakeAWGwaves(): # re make awg waveforms in case something changed
     elif AWGAShape.get()==15:
         AWGAMakeUGNoise()
         AWGAShapeLabel.config(text = AwgString15) # change displayed value
+    elif AWGAShape.get()==16:
+        AWGAReadFile()
+        AWGAShapeLabel.config(text = AwgString16) # change displayed value
     else:
         AWGAShapeLabel.config(text = "Other Shape") # change displayed value
 #
@@ -1448,64 +1453,13 @@ def MakeAWGwaves(): # re make awg waveforms in case something changed
     elif AWGBShape.get()==15:
         AWGBMakeUGNoise()
         AWGBShapeLabel.config(text = AwgString15) # change displayed value
+    elif AWGBShape.get()==16:
+        AWGBReadFile()
+        AWGBShapeLabel.config(text = AwgString16) # change displayed value
     else:
         AWGBShapeLabel.config(text = "Other Shape") # change displayed value
 #
     time.sleep(0.01)
-#
-def MakeAWG_internal_waves(): # re make awg waveforms in case something changed
-    global ser, AWGAShape, AWGAShapeLabel, AWGBShape, AWGBShapeLabel
-    global AWGAAmplEntry, AWGAOffsetEntry, AWGAFreqEntry, AWGASymmetryEntry, AWGADutyCycleEntry
-    global AWGAAmplvalue, AWGBOffsetvalue, AWGBAmplvalue, AWGBOffsetvalue
-    global AWGBAmplEntry, AWGBOffsetEntry, AWGBFreqEntry, AWGBSymmetryEntry, AWGBDutyCycleEntry
-    global FSweepMode, MaxSampleRate
-    global AwgString1, AwgString2, AwgString3, AwgString4, AwgString5, AwgString6
-    global AwgString7, AwgString8, AwgString9, AwgString10, AwgString11, AwgString12
-    global AwgString13, AwgString14, AwgString15, AwgString16
-    
-    #
-    time.sleep(0.01)
-    #
-    if AWGAShape.get()==0:
-        ser.write(b'W0\n')
-        AWGAShapeLabel.config(text = AwgString0) # change displayed value
-    elif AWGAShape.get()==1:
-        ser.write(b'W1\n')
-        AWGAShapeLabel.config(text = AwgString1) # change displayed value
-    elif AWGAShape.get()==2:
-        ser.write(b'W2\n')
-        AWGAShapeLabel.config(text = AwgString2) # change displayed value
-    elif AWGAShape.get()==3:
-        ser.write(b'W3\n')
-        AWGAShapeLabel.config(text = AwgString3) # change displayed value
-    elif AWGAShape.get()==4:
-        ser.write(b'W4\n')
-        AWGAShapeLabel.config(text = AwgString4) # change displayed value
-    elif AWGAShape.get()==5:
-        ser.write(b'W5\n')
-        AWGAShapeLabel.config(text = AwgString5) # change displayed value
-    elif AWGAShape.get()==6:
-        ser.write(b'W6\n')
-        AWGAShapeLabel.config(text = AwgString6) # change displayed value
-    elif AWGAShape.get()==7:
-        ser.write(b'W7\n')
-        AWGAShapeLabel.config(text = AwgString7) # change displayed value
-    #
-    if AWGBShape.get()==0:
-        ser.write(b'w0\n')
-        AWGBShapeLabel.config(text = AwgString0) # change displayed value
-    elif AWGBShape.get()==1:
-        ser.write(b'w1\n')
-        AWGBShapeLabel.config(text = AwgString1) # change displayed value
-    elif AWGBShape.get()==2:
-        ser.write(b'w2\n')
-        AWGBShapeLabel.config(text = AwgString2) # change displayed value
-    #SetAwgFrequency()
-    SetAWG_Ampla()
-    SetAWG_Offseta()
-    SetAWG_Amplb()
-    SetAWG_Offsetb()
-    time.sleep(0.1)
 #
 # Hardware Specific PWM control functions
 #
@@ -1520,7 +1474,7 @@ def PWM_On_Off():
         ser.write(b'sx\n')
 #
 def UpdatePWM():
-    global PWMDivEntry, PWMWidthEntry, PWMLabel, ser
+    global PWMDivEntry, PWMWidthEntry, PWMLabel, ser, PWM_is_on
 
     PWMLabel.config(text = "PWM Frequency")
 
@@ -1531,14 +1485,22 @@ def UpdatePWM():
     SendByt = ByteStr.encode('utf-8')
     ser.write(SendByt)
     time.sleep(0.1)
-    
-    DutyCycle = int(PWMWidthEntry.get())
+    Width = float(PWMWidthEntry.get())
+    DutyCycle = int(Width*20)
     #WidthFraction = float((DutyCycle/100.0))
     #Width = int(PeriodValue * WidthFraction)
     ByteStr = 'm' + str(DutyCycle) + "\n"
     SendByt = ByteStr.encode('utf-8')
     ser.write(SendByt)
     time.sleep(0.1)
+    ser.write(b'sx\n')
+    time.sleep(0.1)
+    if PWM_is_on:
+        #print("Set pwm on")
+        ser.write(b'so\n')
+    else:
+        #print("Set pwm off")
+        ser.write(b'sx\n')
 #
 # Hardware Specific Trigger functions
 #

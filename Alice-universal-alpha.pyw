@@ -1,7 +1,7 @@
 #!/usr/bin/python
 # -*- coding: cp1252 -*-
 #
-# Alice-universal-alpha.py(w) (4-15-2024)
+# Alice-universal-alpha.py(w) (6-14-2024)
 # Written using Python version 3.10, Windows OS 
 # Requires a hardware interface level functions add-on file
 # Created by D Mercer ()
@@ -74,7 +74,7 @@ import webbrowser
 # check which operating system
 import platform
 #
-RevDate = "15 April 2024"
+RevDate = "14 June 2024"
 SWRev = "1.0 "
 #
 # small bit map of triangle logo for window icon
@@ -307,9 +307,11 @@ TRACEaverage = IntVar() # Number of average sweeps for average mode
 TRACEaverage.set(8)
 Vdiv = IntVar()
 Vdiv.set(10)            # Number of vertical divisions for spectrum / Bode
+Voltdiv = IntVar()
+Voltdiv.set(10)         # Number of vertical divisions for voltge scale
 Tdiv = IntVar()
 Tdiv.set(10)            # Number of Horz Time divisions for scope
-ZeroGrid = IntVar() # set which horizontal grid is time zero
+ZeroGrid = DoubleVar() # set which horizontal grid is time zero
 ZeroGrid.set(0)
 LPFTrigger = IntVar() # software triggering trigger lpf on/off
 LPFTrigger.set(0)
@@ -565,7 +567,7 @@ CHCVOffset = CHDVOffset = 0.0
 CHCpdvRange = CHDpdvRange = 0.500
 # Initialisation of general variables
 CHAOffset = CHBOffset = CHCOffset = CHDOffset = 2.5
-InOffA = InOffB = InOffC = InoffD = 0.0
+InOffA = InOffB = InOffC = InOffD = 0.0
 # Other global variables required in various routines
 CANVASwidth = GRW + 2 * X0L # The canvas width
 CANVASheight = GRH + Y0T + (FontSize * 7)     # The canvas height
@@ -865,7 +867,8 @@ D4_is_on = False
 D5_is_on = False
 D6_is_on = False
 D7_is_on = False
-PWM_is_on = False
+PWM1_is_on = False
+PWM2_is_on = False
 # Digital waveform buffers
 DBuff0 = []
 DBuff1 = []
@@ -1118,6 +1121,7 @@ def BSaveConfig(filename):
     global COLORtext, COLORcanvas, COLORtrigger, COLORsignalband, COLORframes, COLORgrid, COLORzeroline
     global COLORtrace1, COLORtraceR1, COLORtrace2, COLORtraceR2, COLORtrace3, COLORtraceR3, COLORtrace4, COLORtraceR4
     global COLORtrace5, COLORtraceR5, COLORtrace6, COLORtraceR6, COLORtrace7, COLORtraceR7, COLORtrace8, COLORtraceR8
+    global AMuxScreenStatus, win2a, CHAMux, CHBMux, CHCMux, CHDMux
     # open Config file for Write?
     try:
         ConfgFile = open(filename, "w")
@@ -1361,6 +1365,24 @@ def BSaveConfig(filename):
         ConfgFile.write("measurewindow.geometry('+" + str(measurewindow.winfo_x()) + '+' + str(measurewindow.winfo_y()) + "')\n")
     else:
         ConfgFile.write('DestroyMeasuewScreen()\n')
+    #
+    if AMuxScreenStatus.get() > 0:
+        ConfgFile.write('MakeAMuxScreen()\n')
+        ConfgFile.write("win2a.geometry('+" + str(win2a.winfo_x()) + '+' + str(win2a.winfo_y()) + "')\n")
+        ConfgFile.write('CHAMux.delete(0,END)\n')
+        ConfgFile.write('CHAMux.insert(0, "' + CHAMux.get() + '")\n')
+        ConfgFile.write('CHBMux.delete(0,END)\n')
+        ConfgFile.write('CHBMux.insert(0, "' + CHBMux.get() + '")\n')
+        ConfgFile.write('CHCMux.delete(0,END)\n')
+        ConfgFile.write('CHCMux.insert(0, "' + CHCMux.get() + '")\n')
+        ConfgFile.write('CHDMux.delete(0,END)\n')
+        ConfgFile.write('CHDMux.insert(0, "' + CHDMux.get() + '")\n')
+        ConfgFile.write('BCHAMux()\n')
+        ConfgFile.write('BCHBMux()\n')
+        ConfgFile.write('BCHCMux()\n')
+        ConfgFile.write('BCHDMux()\n')
+    else:
+        ConfgFile.write('DestroyAMuxScreen()\n')
     #
     ConfgFile.write('TRIGGERentry.delete(0,END)\n')
     ConfgFile.write('TRIGGERentry.insert(4, ' + TRIGGERentry.get() + ')\n')
@@ -1618,6 +1640,7 @@ def BLoadConfig(filename):
     global COLORtext, COLORcanvas, COLORtrigger, COLORsignalband, COLORframes, COLORgrid, COLORzeroline
     global COLORtrace1, COLORtraceR1, COLORtrace2, COLORtraceR2, COLORtrace3, COLORtraceR3, COLORtrace4, COLORtraceR4
     global COLORtrace5, COLORtraceR5, COLORtrace6, COLORtraceR6, COLORtrace7, COLORtraceR7, COLORtrace8, COLORtraceR8
+    global AMuxScreenStatus, win2a, CHAMux, CHBMux, CHCMux, CHDMux
     # Read configuration values from file
     try:
         ConfgFile = open(filename)
@@ -1762,9 +1785,14 @@ def AWGAReadFile():
     AWGALoadCSV()
 #
 def AWGALoadCSV():
-    global AWGALength, awgwindow, AWGAcsvFile, AWGAOffsetvalue, AWGAShapeLabel
+    global AWGALength, awgwindow, AWGAcsvFile, AWGAAmplvalue, AWGAOffsetvalue, AWGAShapeLabel
+    global MaxRepRate, AWGBuffLen, AWGSampleRate, AWGAAmplEntry, AWGAOffsetEntry
 
-    BAWGAOffset(0)
+    #BAWGAOffset()
+    SetAwgSampleRate()
+    MaxRepRate = numpy.ceil(AWGSampleRate / AWGBuffLen)
+    AWGAAmplvalue = float(eval(AWGAAmplEntry.get()))
+    AWGAOffsetvalue = float(eval(AWGAOffsetEntry.get()))
     try:
         CSVFile = open(AWGAcsvFile)
         # dialect = csv.Sniffer().sniff(CSVFile.read(128))
@@ -1809,9 +1837,14 @@ def AWGBReadFile():
     AWGBLoadCSV()
 #
 def AWGBLoadCSV():
-    global AWGBLength, awgwindow, AWGBcsvFile, AWGBOffsetvalue, AWGBShapeLabel
-
-    BAWGBOffset(0)
+    global AWGBLength, awgwindow, AWGBcsvFile, AWGBAmplvalue, AWGBOffsetvalue, AWGBShapeLabel
+    global MaxRepRate, AWGBuffLen, AWGSampleRate, AWGBAmplEntry, AWGBOffsetEntry
+    
+    # BAWGBOffset(0)
+    SetAwgSampleRate()
+    MaxRepRate = numpy.ceil(AWGSampleRate / AWGBuffLen)
+    AWGBAmplvalue = float(eval(AWGBAmplEntry.get()))
+    AWGBOffsetvalue = float(eval(AWGBOffsetEntry.get()))
     try:
         CSVFile = open(AWGBcsvFile)
         # dialect = csv.Sniffer().sniff(CSVFile.read(128))
@@ -3947,24 +3980,37 @@ def BSnapShotXY():
 ## Save gain, offset and filter variables for external dividers
 def BSaveCal():
     global CHAVGainEntry, CHBVGainEntry, CHAVOffsetEntry, CHBVOffsetEntry
-    global DevID
+    global CHCVGainEntry, CHDVGainEntry, CHCVOffsetEntry, CHDVOffsetEntry
+    global DevID, CHANNELS
     global CHA_RC_HP, CHB_RC_HP, CHA_TC1, CHA_TC2, CHB_TC1, CHB_TC2
     global CHA_A1, CHA_A2, CHB_A1, CHB_A2
     global cha_TC1Entry, cha_TC2Entry, chb_TC1Entry, chb_TC2Entry
     global cha_A1Entry, cha_A2Entry, chb_A1Entry, chb_A2Entry
 
-    devidstr = DevID[17:31]
+    devidstr = DevID
     filename = devidstr + "_O.cal"
     CalFile = open(filename, "w")
     #
-    CalFile.write('CHAVGainEntry.delete(0,END)\n')
-    CalFile.write('CHAVGainEntry.insert(4, ' + CHAVGainEntry.get() + ')\n')
-    CalFile.write('CHBVGainEntry.delete(0,END)\n')
-    CalFile.write('CHBVGainEntry.insert(4, ' + CHBVGainEntry.get() + ')\n')
-    CalFile.write('CHAVOffsetEntry.delete(0,END)\n')
-    CalFile.write('CHAVOffsetEntry.insert(4, ' + CHAVOffsetEntry.get() + ')\n')
-    CalFile.write('CHBVOffsetEntry.delete(0,END)\n')
-    CalFile.write('CHBVOffsetEntry.insert(4, ' + CHBVOffsetEntry.get() + ')\n')
+    if CHANNELS >= 1:
+        CalFile.write('CHAVGainEntry.delete(0,END)\n')
+        CalFile.write('CHAVGainEntry.insert(4, ' + CHAVGainEntry.get() + ')\n')
+        CalFile.write('CHAVOffsetEntry.delete(0,END)\n')
+        CalFile.write('CHAVOffsetEntry.insert(4, ' + CHAVOffsetEntry.get() + ')\n')
+    if CHANNELS >= 2:
+        CalFile.write('CHBVGainEntry.delete(0,END)\n')
+        CalFile.write('CHBVGainEntry.insert(4, ' + CHBVGainEntry.get() + ')\n')
+        CalFile.write('CHBVOffsetEntry.delete(0,END)\n')
+        CalFile.write('CHBVOffsetEntry.insert(4, ' + CHBVOffsetEntry.get() + ')\n')
+    if CHANNELS >= 3:
+        CalFile.write('CHCVGainEntry.delete(0,END)\n')
+        CalFile.write('CHCVGainEntry.insert(4, ' + CHCVGainEntry.get() + ')\n')
+        CalFile.write('CHCVOffsetEntry.delete(0,END)\n')
+        CalFile.write('CHCVOffsetEntry.insert(4, ' + CHCVOffsetEntry.get() + ')\n')
+    if CHANNELS >= 4:
+        CalFile.write('CHDVGainEntry.delete(0,END)\n')
+        CalFile.write('CHDVGainEntry.insert(4, ' + CHDVGainEntry.get() + ')\n')
+        CalFile.write('CHDVOffsetEntry.delete(0,END)\n')
+        CalFile.write('CHDVOffsetEntry.insert(4, ' + CHDVOffsetEntry.get() + ')\n')
     #
     # save channel AC frequency compensation settings
     try:
@@ -4009,13 +4055,14 @@ def BSaveCal():
 ## Load gain, offset and filter variables for external dividers
 def BLoadCal():
     global CHAVGainEntry, CHBVGainEntry, CHAVOffsetEntry, CHBVOffsetEntry
-    global DevID
+    global CHCVGainEntry, CHDVGainEntry, CHCVOffsetEntry, CHDVOffsetEntry
+    global DevID, CHANNELS
     global CHA_RC_HP, CHB_RC_HP, CHA_TC1, CHA_TC2, CHB_TC1, CHB_TC2
     global CHA_A1, CHA_A2, CHB_A1, CHB_A2
     global cha_TC1Entry, cha_TC2Entry, chb_TC1Entry, chb_TC2Entry
     global cha_A1Entry, cha_A2Entry, chb_A1Entry, chb_A2Entry
 
-    devidstr = DevID[17:31]
+    devidstr = DevID
     filename = devidstr + "_O.cal"
     try:
         CalFile = open(filename)
@@ -4394,6 +4441,7 @@ def BTrigger50p():
 def BTriglevel():
     global TRIGGERlevel, TRIGGERentry, RUNstatus
     global InGainA, InGainB, InOffA, InOffB
+    global InGainC, InGainD, InOffC, InOffD
     global TgInput, TrigSource
 
     ## evalute entry string to a numerical value
@@ -4488,7 +4536,7 @@ def BStart():
     global RUNstatus, devx, PwrBt, DevID, FWRevOne, session, AWGSync
     global contloop, discontloop, TimeDiv, First_Slow_sweep, OhmDisp, DMMDisp
     global TimeDisp, XYDisp, PhADisp, FreqDisp, BodeDisp, IADisp
-    global Dlog_open, dlog, Ztime
+    global Dlog_open, dlog, Ztime, Header
 
     # Check if User wants data loging on or off
     if Dlog_open.get() == 1 and dlog.get() > 0:
@@ -4499,6 +4547,10 @@ def BStart():
     else:
         Dlog_open.set(0)
     #
+    try:
+        Header = yaml.safe_load(get_header())
+    except:
+        pass
     if DevID == "No Device":
         showwarning("WARNING","No Device Plugged In!")
     elif TimeDisp.get() == 0 and XYDisp.get() == 0 and PhADisp.get() == 0 and FreqDisp.get() == 0 and BodeDisp.get() == 0 and IADisp.get() == 0 and OhmDisp.get() == 0 and DMMDisp.get() == 0:
@@ -4600,9 +4652,9 @@ def BCHBlevel():
         UpdateTimeTrace()           # if not running Update   
 #
 def BCHClevel():
-    global CHCsb, RUNstatus, CHCvpdvLevel
+    global CHCsb, RUNstatus, CH3vpdvLevel
     
-    CHCvpdvLevel = UnitConvert(CHCsb.get())
+    CH3vpdvLevel = UnitConvert(CHCsb.get())
     try:
         HCHClevel()
     except:
@@ -4611,9 +4663,9 @@ def BCHClevel():
         UpdateTimeTrace()           # if not running Update
 
 def BCHDlevel():
-    global CHDsb, RUNstatus, CHDvpdvLevel
+    global CHDsb, RUNstatus, CH4vpdvLevel
     
-    CHDvpdvLevel = UnitConvert(CHDsb.get())
+    CH4vpdvLevel = UnitConvert(CHDsb.get())
     try:
         HCHDlevel()
     except:
@@ -4621,9 +4673,30 @@ def BCHDlevel():
     if RUNstatus.get() == 0:
         UpdateTimeTrace()           # if not running Update
 #
-def BOffsetA(event):
-    global CHAOffset, CHAVPosEntry, CH1vpdvLevel, RUNstatus
+def onPosAScroll(event):
 
+    onTextScroll(event)
+    BOffsetA(event)
+#
+def onPosBScroll(event):
+
+    onTextScroll(event)
+    BOffsetB(event)
+#
+def onPosCScroll(event):
+
+    onTextScroll(event)
+    BOffsetC(event)
+#
+def onPosDScroll(event):
+
+    onTextScroll(event)
+    BOffsetD(event)
+#
+def BOffsetA(event):
+    global CHAOffset, CHAVPosEntry, CH1vpdvLevel, CHAsb, RUNstatus
+
+    CH1vpdvLevel = UnitConvert(CHAsb.get())
     try:
         CHAOffset = float(eval(CHAVPosEntry.get())) # evalute entry string to a numerical value
     except:
@@ -4639,8 +4712,9 @@ def BOffsetA(event):
         UpdateTimeTrace()           # if not running Update
 
 def BOffsetB(event):
-    global CHBOffset, CHBVPosEntry, CH2vpdvLevel, RUNstatus
+    global CHBOffset, CHBVPosEntry, CH2vpdvLevel, CHBsb, RUNstatus
 
+    CH2vpdvLevel = UnitConvert(CHBsb.get())
     try:
         CHBOffset = float(eval(CHBVPosEntry.get())) # evalute entry string to a numerical value
     except:
@@ -4656,14 +4730,15 @@ def BOffsetB(event):
         UpdateTimeTrace()           # if not running Update
 #
 def BOffsetC(event):
-    global CHCOffset, CHCVPosEntry, CHCvpdvLevel, RUNstatus
+    global CHCOffset, CHCVPosEntry, CH3vpdvLevel, CHCsb, RUNstatus
 
+    CH3vpdvLevel = UnitConvert(CHCsb.get())
     try:
         CHCOffset = float(eval(CHCVPosEntry.get())) # evalute entry string to a numerical value
     except:
         CHCVPosEntry.delete(0,END)
         CHCVPosEntry.insert(0, CHCOffset)
-    NumberOfDiv = int(CHCOffset/CHCvpdvLevel)
+    NumberOfDiv = int(CHCOffset/CH3vpdvLevel)
     # set new offset level
     try:
         HOffsetC()
@@ -4673,14 +4748,15 @@ def BOffsetC(event):
         UpdateTimeTrace()           # if not running Update
 
 def BOffsetD(event):
-    global CHDOffset, CHDVPosEntry, CHDvpdvLevel, RUNstatus
+    global CHDOffset, CHDVPosEntry, CH4vpdvLevel, CHDsb, RUNstatus
 
+    CH4vpdvLevel = UnitConvert(CHDsb.get())
     try:
         CHDOffset = float(eval(CHDVPosEntry.get())) # evalute entry string to a numerical value
     except:
         CHDVPosEntry.delete(0,END)
         CHDVPosEntry.insert(0, CHDOffset)
-    NumberOfDiv = int(CHDOffset/CHDvpdvLevel)
+    NumberOfDiv = int(CHDOffset/CH4vpdvLevel)
     # set new offset level
     try:
         HOffsetD()
@@ -4893,7 +4969,7 @@ def DMM_Analog_In():
     global VBuffA, VBuffB, VBuffC, VBuffD, MBuff, MBuffX, MBuffY
     global DmmLabel1, DmmLabel2, DmmLabel3, DmmLabel4
     global ShowC1_V, ShowC2_V, ShowC3_V, ShowC4_V, CHANNELS
-    global MathTrace, Show_MathX, Show_MathY, YsignalMX, YsignalMY
+    global MathTrace, Show_MathX, Show_MathY, YsignalMX, YsignalMY, XYDisp
     global Ztime, dlog
     #
     DCVA0 = DCVB0 = DCVC0 = DCVD0 = DCMath = DCMathX = DCMathY = 0.0 # initalize measurment variable
@@ -4904,11 +4980,12 @@ def DMM_Analog_In():
     DmmLabel2.config(text = " " ) # Reset display
     DmmLabel3.config(text = " " ) # Reset display
     DmmLabel4.config(text = " " ) # Reset display
-    VString1 = "A = "
-    VString2 = "C = "
+    VString1 = ""
+    VString2 = ""
     VString3 = "Math = "
-    VString4 = "MathX = "
+    VString4 = ""
     if ShowC1_V.get() > 0 and CHANNELS >= 1:
+        VString1 = "A = "
         DCVA0 = numpy.mean(VBuffA) # calculate average
         VString1 = VString1 + ' {0:.4f} '.format(DCVA0) # format with 4 decimal places
         DmmLabel1.config(text = VString1) # change displayed values
@@ -4917,6 +4994,7 @@ def DMM_Analog_In():
         VString1 = VString1 + " B = " + ' {0:.4f} '.format(DCVB0) # format with 4 decimal places
         DmmLabel1.config(text = VString1) # change displayed values
     if ShowC3_V.get() > 0 and CHANNELS >= 3:
+        VString2 = "C = "
         DCVC0 = numpy.mean(VBuffC) # calculate average
         VString2 = VString2 + ' {0:.4f} '.format(DCVC0) # format with 4 decimal places
         DmmLabel2.config(text = VString2) # change displayed values
@@ -4928,11 +5006,12 @@ def DMM_Analog_In():
         DCMath = numpy.mean(MBuff) # calculate average
         VString3 = VString3 + ' {0:.4f} '.format(DCMath) # format with 4 decimal places
         DmmLabel3.config(text = VString3) # change displayed values
-    if Show_MathX.get() > 0 or YsignalMX.get() == 1:
+    if Show_MathX.get() > 0 or (YsignalMX.get() == 1 and XYDisp.get() == 1):
+        VString4 = "MathX = "
         DCMathX = numpy.mean(MBuffX) # calculate average
         VString4 = VString4 + ' {0:.4f} '.format(DCMathX) # format with 4 decimal places
         DmmLabel4.config(text = VString4) # change displayed values
-    if Show_MathY.get() > 0 or YsignalMY.get() == 1:
+    if Show_MathY.get() > 0 or (YsignalMY.get() == 1 and XYDisp.get() == 1):
         DCMathY = numpy.mean(MBuffY) # calculate average
         VString4 = VString4 + " MathY = " + ' {0:.4f} '.format(DCMathY) # format with 4 decimal places
         DmmLabel4.config(text = VString4) # change displayed values
@@ -5291,7 +5370,7 @@ def Analog_Fast_time():
     global MeasGateLeft, MeasGateRight, MeasGateNum, MeasGateStatus
     global ShowC1_V, ShowC2_V, ShowC3_V, ShowC4_V, Interp4Filter
     global CH1vpdvLevel, CH2vpdvLevel, CHAOffset, CHBOffset
-    global CHCvpdvLevel, CHDvpdvLevel, CHCOffset, CHDOffset
+    global CH3vpdvLevel, CH4vpdvLevel, CHCOffset, CHDOffset
     global BCVASkewEntry, BCVBSkewEntry, BCVCSkewEntry, BCVDSkewEntry
     global DigDeSkewVA, DigDeSkewVB, DigDeSkewVC, DigDeSkewVD
     global CHA_RC_HP, CHB_RC_HP, CHA_TC1, CHA_TC2, CHB_TC1, CHB_TC2, CHC_RC_HP, CHD_RC_HP
@@ -6045,7 +6124,11 @@ def FindTriggerSample(TrgBuff): # find trigger time sample point of passed wavef
         for n in range(Trigger_LPF_length.get()):
             TFiltCoef.append(float(1.0/Trigger_LPF_length.get()))
         TFiltCoef = numpy.array(TFiltCoef)
+        TrgLen = len(TrgBuff)
+        PadBy = int(Trigger_LPF_length.get()/2)
+        TrgBuff = numpy.pad(TrgBuff, (PadBy, 0), "edge")
         TrgBuff = numpy.convolve(TrgBuff, TFiltCoef)
+        TrgBuff = TrgBuff[PadBy:TrgLen+PadBy]
 #
     try:
         TrgMin = numpy.amin(TrgBuff)
@@ -6077,6 +6160,10 @@ def FindTriggerSample(TrgBuff): # find trigger time sample point of passed wavef
         
     hldn = int(HoldOff * SAMPLErate/1000)
     hozpos = int(HozPoss * SAMPLErate/1000)
+    if hozpos >= TRACEsize:
+        hozpos = 0
+    if hldn >= TRACEsize:
+        hldn = 0
     if hozpos >= 0:
         TRIGGERsample = hldn
     else:
@@ -6296,6 +6383,7 @@ def MakeDigitalTrace():
     global X0L, Y0T, GRW, GRH, SHOWsamples, TgInput
     global TMpdiv       # Array with time / div values in ms
     global TMsb, Tdiv   # Time per div spin box variable
+    global Voltdiv      # number of grids for Volt scale 
     global TimeDiv      # current spin box value
     global SAMPLErate, SCstart, DISsamples, RUNstatus, TRACEsize, TRIGGERsample
     
@@ -6309,7 +6397,7 @@ def MakeDigitalTrace():
     Xmin = X0L                  # Minimum position of time grid (left)
     Xmax = X0L + GRW            # Maximum position of time grid (right)
 
-    Yconv = float(GRH/10.0) # pixels per vertical grid
+    Yconv = float(GRH/Voltdiv.get()) # pixels per vertical grid
     Xconv = float(GRW/Tdiv.get()) # pixels per horizontal grid
 
     c0 = GRH + Y0T    # vert possition fixed on grids
@@ -6615,6 +6703,7 @@ def MakeTimeTrace():
     global TMpdiv       # Array with time / div values in ms
     global TMsb         # Time per div spin box variable
     global TimeDiv      # current spin box value
+    global Voltdiv
     global SAMPLErate, SCstart, DISsamples, First_Slow_sweep
     global TRIGGERsample, TRACEsize, DX
     global TRIGGERlevel, TRIGGERentry, AutoLevel
@@ -6759,7 +6848,7 @@ def MakeTimeTrace():
         SCstart = SCmax
 
     # Make Trace lines etc.
-    mg_siz = float(GRH/10.0)
+    mg_siz = float(GRH/Voltdiv.get())
     if CHANNELS >= 1:
         Yconv1 = mg_siz / CH1pdvRange    # Vertical Conversion factors from samples to screen points
         Xconv1 = float(GRW/Tdiv.get()) / CH1pdvRange    # Horizontal Conversion factors from samples to screen points
@@ -7295,6 +7384,7 @@ def MakeXYTrace():
     global TMpdiv       # Array with time / div values in ms
     global TMsb         # Time per div spin box variable
     global TimeDiv      # current spin box value
+    global Voltdiv
     global SAMPLErate
     global SCstart, MathString
     global TRIGGERsample, TRACEsize, DX
@@ -7542,6 +7632,7 @@ def MakeTimeScreen():
     global CHBOffset, CHDOffset    # Position value for channel 2 V    
     global TMpdiv       # Array with time / div values in ms
     global TMsb         # Time per div spin box variable
+    global Voltdiv
     global TimeDiv, Mulx, DISsamples      # current spin box value
     global SAMPLErate, contloop, discontloop, HtMulEntry
     global TRIGGERsample, TRIGGERlevel, HoldOff, HoldOffentry, TgInput
@@ -7656,14 +7747,20 @@ def MakeTimeScreen():
             ca.create_text(x2+RightOffset+4, 12, text="CHD", fill=COLORtrace4, anchor="w", font=("arial", FontSize-1 )) #28
         elif MathTrace.get() > 0:
             ca.create_text(x2+RightOffset+20, 12, text="Math", fill=COLORtrace5, anchor="e", font=("arial", FontSize-1 )) #26
-        #
-        while (i < 11):
-            y = Y0T + i * GRH/10.0
+        # Draw hor grid lines
+        hvdiv = int(Voltdiv.get() / 2)
+        while (i < (Voltdiv.get()+1)):
+            y = Y0T + i * GRH/Voltdiv.get()
             Dline = [x1,y,x2,y]
-            if i == 5:
+            if i == Voltdiv.get()/2:
                 ca.create_line(Dline, fill=COLORzeroline, width=GridWidth.get())   # Blue line at center of grid
-                k = 0
-                while (k < Tdiv.get()):
+                if (Tdiv.get() % 2) == 0:
+                    k = 0
+                    hg = Tdiv.get()
+                else:
+                    k = 0.5
+                    hg = Tdiv.get()-1
+                while (k < hg):
                     l = 1
                     while (l < 5):
                         Dline = [x1+k*mg_siz+l*mg_inc,y-5,x1+k*mg_siz+l*mg_inc,y+5]
@@ -7674,47 +7771,55 @@ def MakeTimeScreen():
                 ca.create_line(Dline, fill=COLORgrid, width=GridWidth.get())
 
             if (ShowC1_V.get() == 1 or MathTrace.get() == 1 or MathTrace.get() == 2 or MathFlag1):
-                Vaxis_value = (((5-i) * CH1pdvRange ) + CHAOffset)
+                Vaxis_value = (((hvdiv-i) * CH1pdvRange ) + CHAOffset)
                 # Vaxis_label = ' {0:.2f} '.format(Vaxis_value)
                 Vaxis_label = str(round(Vaxis_value,3 ))
                 ca.create_text(x1-LeftOffset, y, text=Vaxis_label, fill=COLORtrace1, anchor="e", font=("arial", FontSize ))
             if CHANNELS >= 2:
                 if (ShowC2_V.get() == 1 or MathTrace.get() == 3 or MathTrace.get() == 10 or MathFlag2):
-                    Vaxis_value = (((5-i) * CH2pdvRange ) + CHBOffset)
+                    Vaxis_value = (((hvdiv-i) * CH2pdvRange ) + CHBOffset)
                     Vaxis_label = str(round(Vaxis_value, 3))
                     ca.create_text(x1-RightOffset-2, y, text=Vaxis_label, fill=COLORtrace2, anchor="e", font=("arial", FontSize )) # 26
             if ShowC3_V.get() == 1 and CHANNELS >= 3:
-                Iaxis_value = 1.0 * (((5-i) * CHCpdvRange ) + CHCOffset)
+                Iaxis_value = 1.0 * (((hvdiv-i) * CHCpdvRange ) + CHCOffset)
                 Iaxis_label = str(round(Iaxis_value, 3))
                 ca.create_text(x2+LeftOffset, y, text=Iaxis_label, fill=COLORtrace3, anchor="w", font=("arial", FontSize ))
             if ShowC4_V.get() == 1 and CHANNELS >= 4:
-                Iaxis_value = 1.0 * (((5-i) * CHDpdvRange ) + CHDOffset)
+                Iaxis_value = 1.0 * (((hvdiv-i) * CHDpdvRange ) + CHDOffset)
                 Iaxis_label = str(round(Iaxis_value, 3))
                 ca.create_text(x2+RightOffset+4, y, text=Iaxis_label, fill=COLORtrace4, anchor="w", font=("arial", FontSize )) # 28
             if MathTrace.get() > 0:
-                Vaxis_value = (((5-i) * CHMpdvRange ) + CHMOffset)
+                Vaxis_value = (((hvdiv-i) * CHMpdvRange ) + CHMOffset)
                 Vaxis_label = str(round(Vaxis_value, 3))
                 ca.create_text(x2+RightOffset+20, y, text=Vaxis_label, fill=COLORtrace5, anchor="e", font=("arial", FontSize )) # 26
     
             i = i + 1
         # Draw vertical grid lines
-        i = 0
+        if (Tdiv.get() % 2) == 0:
+            i = 1
+        else:
+            i = 0.5
         y1 = Y0T
         y2 = Y0T + GRH
-        mg_siz = GRH/10.0
+        mg_siz = GRH/Voltdiv.get()
         mg_inc = mg_siz/5.0
         vx = TimeDiv
         
         vt = vx * ZeroGrid.get() # (Tdiv.get()/-2)
-        #
-        NumLine = Tdiv.get() + 1
+        # Draw left and right edges
+        Dline = [X0L,y1,X0L,y2]
+        ca.create_line(Dline, fill=COLORgrid, width=GridWidth.get())
+        Dline = [X0L+GRW,y1,X0L+GRW,y2]
+        ca.create_line(Dline, fill=COLORgrid, width=GridWidth.get())
+        
+        NumLine = Tdiv.get()
         while (i < NumLine):
             x = X0L + i * GRW/Tdiv.get()
             Dline = [x,y1,x,y2]
             if (i == Tdiv.get()/2 ):
                 ca.create_line(Dline, fill=COLORzeroline, width=GridWidth.get())   # Blue vertical line at center of grid
                 k = 0
-                while (k < 10):
+                while (k < Voltdiv.get()):
                     l = 1
                     while (l < 5.0):
                         Dline = [x-5,y1+k*mg_siz+l*mg_inc,x+5,y1+k*mg_siz+l*mg_inc]
@@ -7751,7 +7856,7 @@ def MakeTimeScreen():
                         axis_label = ' {0:.1f} '.format(axis_value) + " uS"
                     ca.create_text(x, y2+3, text=axis_label, fill=COLORgrid, anchor="n", font=("arial", FontSize ))
                         
-            i = i + 1
+            i = i + 1.0
     # Write the trigger line if available
     if Roll_Mode.get() == 0: # Don't show trigger indicator when in Roll Mode
         if len(Triggerline) > 2:                    # Avoid writing lines with 1 coordinate
@@ -7779,31 +7884,31 @@ def MakeTimeScreen():
             ca.create_text(x, Ymin-FontSize, text=TgLabel, fill=COLORtrigger, anchor="w", font=("arial", FontSize ))
     # Draw T - V Cursor lines if required
     if MarkerScale.get() == 0:
-        Yconv1 = float(GRH/10.0) / CH1pdvRange
+        Yconv1 = float(GRH/Voltdiv.get()) / CH1pdvRange
         Yoffset1 = CHAOffset
         COLORmarker = COLORtrace1
         Units = " V"
     if MarkerScale.get() == 1:
         MouseY = MouseCAV
-        Yconv1 = float(GRH/10.0) / CH1pdvRange # CH1pdvRange
+        Yconv1 = float(GRH/Voltdiv.get()) / CH1pdvRange # CH1pdvRange
         Yoffset1 = CHAOffset
         COLORmarker = COLORtrace1
         Units = " V"
     if MarkerScale.get() == 2:
         MouseY = MouseCBV
-        Yconv1 = float(GRH/10.0) / CH2pdvRange
+        Yconv1 = float(GRH/Voltdiv.get()) / CH2pdvRange
         Yoffset1 = CHBOffset
         COLORmarker = COLORtrace2
         Units = " V"
     if MarkerScale.get() == 3:
         MouseY = MouseCCV
-        Yconv1 = float(GRH/10.0) / CHCpdvRange
+        Yconv1 = float(GRH/Voltdiv.get()) / CHCpdvRange
         Yoffset1 = CHCOffset
         COLORmarker = COLORtrace3
         Units = " V"
     if MarkerScale.get() == 4:
         MouseY = MouseCDV
-        Yconv1 = float(GRH/10.0) / CHDpdvRange
+        Yconv1 = float(GRH/Voltdiv.get()) / CHDpdvRange
         Yoffset1 = CHDOffset
         COLORmarker = COLORtrace4
         Units = " V"
@@ -14911,6 +15016,11 @@ def onHzPosScroll(event):
     onTextScroll(event)
     SetHorzPoss()
 #
+def onHzPosKey(event):
+
+    onTextKey(event)
+    SetHorzPoss()
+#
 def onTrigLevelScroll(event):
 
     onTextScroll(event)
@@ -15436,15 +15546,25 @@ def onTextKeyAux(event):
 
     UpdateAuxDAC()
 #
-def onPWMFScroll(event):
+def onPWMF1Scroll(event):
 
     onTextScroll(event)
-    UpdatePWM()
+    UpdatePWM1()
 #
-def onPWMWScroll(event):
+def onPWMW1Scroll(event):
 
     onTextScroll(event)
-    UpdatePWM()
+    UpdatePWM1()
+#
+def onPWMF2Scroll(event):
+
+    onTextScroll(event)
+    UpdatePWM2()
+#
+def onPWMW2Scroll(event):
+
+    onTextScroll(event)
+    UpdatePWM2()
 #
 #
 def DestroyAWGScreen():
@@ -17228,10 +17348,11 @@ def DestroyMeasureScreen():
 def MakeDigScreen():
     global D0_in_on, D1_in_on, D2_in_on, D3_in_on, D4_in_on, D5_in_on, D6_in_on, D7_in_on
     global digin0, digin1, digin2, digin3, digin4, digin5, digin6, digin7
-    global DigScreenStatus, win2, PWMDivEntry, PWMWidthEntry, PWMChannels
+    global DigScreenStatus, win2, FrameBG, BorderSize
+    global PWMDivEntry1, PWMWidthEntry1, PWMDivEntry2, PWMWidthEntry2, PWMChannels
     global RoundRedBtn, RoundGrnBtn, RoundOrBtn, DigChannels, LogicChannels
     global d0btn, d1btn, d2btn, d3btn, d4btn, d5btn, d6btn, d7btn, TgInput
-    global pwmbtn, PWMLabel, FrameBG, BorderSize
+    global pwmbtn1, PWMLabel1, pwmbtn2, PWMLabel2
     
     # setup Dig output window
     if DigScreenStatus.get() == 0:
@@ -17242,40 +17363,41 @@ def MakeDigScreen():
         win2.protocol("WM_DELETE_WINDOW", DestroyDigScreen)
         win2.configure(background=FrameBG, borderwidth=BorderSize)
         RowNum = 1
-        d7lab = Label(win2, text="  D7  ", background = "#8080ff")
-        d7lab.grid(row=RowNum, column=1, sticky=W)
-        d6lab = Label(win2, text="  D6  ", background = "#8080ff")
-        d6lab.grid(row=RowNum, column=2, sticky=W)
-        d5lab = Label(win2, text="  D5  ", background = "#8080ff")
-        d5lab.grid(row=RowNum, column=3, sticky=W)
-        d4lab = Label(win2, text="  D4  ", background = "#8080ff")
-        d4lab.grid(row=RowNum, column=4, sticky=W)
-        d3lab = Label(win2, text="  D3  ", background = "#8080ff")
-        d3lab.grid(row=RowNum, column=5, sticky=W)
-        d2lab = Label(win2, text="  D2  ", background = "#8080ff")
-        d2lab.grid(row=RowNum, column=6, sticky=W)
-        d1lab = Label(win2, text="  D1  ", background = "#8080ff")
-        d1lab.grid(row=RowNum, column=7, sticky=W)
-        d0lab = Label(win2, text="  D0  ", background = "#8080ff")
-        d0lab.grid(row=RowNum, column=8, sticky=W)
-        RowNum = RowNum + 1
-        d7btn = Button(win2, image=RoundRedBtn, command=DigBtn7)
-        d7btn.grid(row=RowNum, column=1, sticky=W)
-        d6btn = Button(win2, image=RoundRedBtn, command=DigBtn6)
-        d6btn.grid(row=RowNum, column=2, sticky=W)
-        d5btn = Button(win2, image=RoundRedBtn, command=DigBtn5)
-        d5btn.grid(row=RowNum, column=3, sticky=W)
-        d4btn = Button(win2, image=RoundRedBtn, command=DigBtn4)
-        d4btn.grid(row=RowNum, column=4, sticky=W)
-        d3btn = Button(win2, image=RoundRedBtn, command=DigBtn3)
-        d3btn.grid(row=RowNum, column=5, sticky=W)
-        d2btn = Button(win2, image=RoundRedBtn, command=DigBtn2)
-        d2btn.grid(row=RowNum, column=6, sticky=W)
-        d1btn = Button(win2, image=RoundRedBtn, command=DigBtn1)
-        d1btn.grid(row=RowNum, column=7, sticky=W)
-        d0btn = Button(win2, image=RoundRedBtn, command=DigBtn0)
-        d0btn.grid(row=RowNum, column=8, sticky=W)
-        RowNum = RowNum + 1
+        if DigChannels > 0:
+            d7lab = Label(win2, text="  D7  ", background = "#8080ff")
+            d7lab.grid(row=RowNum, column=1, sticky=W)
+            d6lab = Label(win2, text="  D6  ", background = "#8080ff")
+            d6lab.grid(row=RowNum, column=2, sticky=W)
+            d5lab = Label(win2, text="  D5  ", background = "#8080ff")
+            d5lab.grid(row=RowNum, column=3, sticky=W)
+            d4lab = Label(win2, text="  D4  ", background = "#8080ff")
+            d4lab.grid(row=RowNum, column=4, sticky=W)
+            d3lab = Label(win2, text="  D3  ", background = "#8080ff")
+            d3lab.grid(row=RowNum, column=5, sticky=W)
+            d2lab = Label(win2, text="  D2  ", background = "#8080ff")
+            d2lab.grid(row=RowNum, column=6, sticky=W)
+            d1lab = Label(win2, text="  D1  ", background = "#8080ff")
+            d1lab.grid(row=RowNum, column=7, sticky=W)
+            d0lab = Label(win2, text="  D0  ", background = "#8080ff")
+            d0lab.grid(row=RowNum, column=8, sticky=W)
+            RowNum = RowNum + 1
+            d7btn = Button(win2, image=RoundRedBtn, command=DigBtn7)
+            d7btn.grid(row=RowNum, column=1, sticky=W)
+            d6btn = Button(win2, image=RoundRedBtn, command=DigBtn6)
+            d6btn.grid(row=RowNum, column=2, sticky=W)
+            d5btn = Button(win2, image=RoundRedBtn, command=DigBtn5)
+            d5btn.grid(row=RowNum, column=3, sticky=W)
+            d4btn = Button(win2, image=RoundRedBtn, command=DigBtn4)
+            d4btn.grid(row=RowNum, column=4, sticky=W)
+            d3btn = Button(win2, image=RoundRedBtn, command=DigBtn3)
+            d3btn.grid(row=RowNum, column=5, sticky=W)
+            d2btn = Button(win2, image=RoundRedBtn, command=DigBtn2)
+            d2btn.grid(row=RowNum, column=6, sticky=W)
+            d1btn = Button(win2, image=RoundRedBtn, command=DigBtn1)
+            d1btn.grid(row=RowNum, column=7, sticky=W)
+            d0btn = Button(win2, image=RoundRedBtn, command=DigBtn0)
+            d0btn.grid(row=RowNum, column=8, sticky=W)
+            RowNum = RowNum + 1
         if LogicChannels > 0:
             TriggerOnLab = Label(win2, text="Trigger on:") # , background = "#8080ff")
             TriggerOnLab.grid(row=RowNum, column=1, columnspan=4, sticky=W)
@@ -17316,71 +17438,120 @@ def MakeDigScreen():
             RowNum = RowNum + 1
 #
         if PWMChannels >= 1:
-            pwmlab = Label(win2, text="On/Off", background = "#8080ff")
-            pwmlab.grid(row=RowNum, column=1, sticky=W)
-            pwmbtn = Button(win2, image=RoundRedBtn, command=TogglePWM)
-            pwmbtn.grid(row=RowNum, column=2, sticky=W)
+            pwmlab1 = Label(win2, text="PWM 1 On/Off", background = "#8080ff")
+            pwmlab1.grid(row=RowNum, column=1, sticky=W)
+            pwmbtn1 = Button(win2, image=RoundRedBtn, command=TogglePWM1)
+            pwmbtn1.grid(row=RowNum, column=2, sticky=W)
             RowNum = RowNum + 1
-            PWMLabel = Label(win2, text="PWM Freq Divider")
-            PWMLabel.grid(row=RowNum, column=1, columnspan=3, sticky=W)
-            PWMDivEntry = Entry(win2, width=6, cursor='double_arrow')
-            PWMDivEntry.bind("<Return>", UpdatePWM)
-            PWMDivEntry.bind('<MouseWheel>', onPWMFScroll)
-            PWMDivEntry.bind("<Button-4>", onPWMFScroll)# with Linux OS
-            PWMDivEntry.bind("<Button-5>", onPWMFScroll)
+            PWMLabel1 = Label(win2, text="PWM 1 Freq Divider")
+            PWMLabel1.grid(row=RowNum, column=1, columnspan=3, sticky=W)
+            PWMDivEntry1 = Entry(win2, width=6, cursor='double_arrow')
+            PWMDivEntry1.bind("<Return>", UpdatePWM1)
+            PWMDivEntry1.bind('<MouseWheel>', onPWMF1Scroll)
+            PWMDivEntry1.bind("<Button-4>", onPWMF1Scroll)# with Linux OS
+            PWMDivEntry1.bind("<Button-5>", onPWMF1Scroll)
             #PWMDivEntry.bind('<Key>', onTextKeyPWMF)
-            PWMDivEntry.grid(row=RowNum, column=5, columnspan=2, sticky=W)
-            PWMDivEntry.delete(0,"end")
-            PWMDivEntry.insert(0,500)
+            PWMDivEntry1.grid(row=RowNum, column=5, columnspan=2, sticky=W)
+            PWMDivEntry1.delete(0,"end")
+            PWMDivEntry1.insert(0,500)
             #
             RowNum = RowNum + 1
-            pwmwlab = Label(win2, text="PWM Width")
-            pwmwlab.grid(row=RowNum, column=1, columnspan=3, sticky=W)
-            PWMWidthEntry = Entry(win2, width=6, cursor='double_arrow')
-            PWMWidthEntry.bind("<Return>", UpdatePWM)
-            PWMWidthEntry.bind('<MouseWheel>', onPWMWScroll)
-            PWMWidthEntry.bind("<Button-4>", onPWMWScroll)# with Linux OS
-            PWMWidthEntry.bind("<Button-5>", onPWMWScroll)
+            pwmwlab1 = Label(win2, text="PWM 1 Width")
+            pwmwlab1.grid(row=RowNum, column=1, columnspan=3, sticky=W)
+            PWMWidthEntry1 = Entry(win2, width=6, cursor='double_arrow')
+            PWMWidthEntry1.bind("<Return>", UpdatePWM1)
+            PWMWidthEntry1.bind('<MouseWheel>', onPWMW1Scroll)
+            PWMWidthEntry1.bind("<Button-4>", onPWMW1Scroll)# with Linux OS
+            PWMWidthEntry1.bind("<Button-5>", onPWMW1Scroll)
             #PWMWidthEntry.bind('<Key>', onTextKeyPWMW)
-            PWMWidthEntry.grid(row=RowNum, column=5, columnspan=2, sticky=W)
-            PWMWidthEntry.delete(0,"end")
-            PWMWidthEntry.insert(0,50)
+            PWMWidthEntry1.grid(row=RowNum, column=5, columnspan=2, sticky=W)
+            PWMWidthEntry1.delete(0,"end")
+            PWMWidthEntry1.insert(0,50)
+            RowNum = RowNum + 1
+        #
+        if PWMChannels >= 2:
+            pwmlab2 = Label(win2, text="PWM 2 On/Off", background = "#8080ff")
+            pwmlab2.grid(row=RowNum, column=1, sticky=W)
+            pwmbtn2 = Button(win2, image=RoundRedBtn, command=TogglePWM2)
+            pwmbtn2.grid(row=RowNum, column=2, sticky=W)
+            RowNum = RowNum + 1
+            PWMLabel2 = Label(win2, text="PWM 2 Freq Divider")
+            PWMLabel2.grid(row=RowNum, column=1, columnspan=3, sticky=W)
+            PWMDivEntry2 = Entry(win2, width=6, cursor='double_arrow')
+            PWMDivEntry2.bind("<Return>", UpdatePWM2)
+            PWMDivEntry2.bind('<MouseWheel>', onPWMF2Scroll)
+            PWMDivEntry2.bind("<Button-4>", onPWMF2Scroll)# with Linux OS
+            PWMDivEntry2.bind("<Button-5>", onPWMF2Scroll)
+            #PWMDivEntry.bind('<Key>', onTextKeyPWMF)
+            PWMDivEntry2.grid(row=RowNum, column=5, columnspan=2, sticky=W)
+            PWMDivEntry2.delete(0,"end")
+            PWMDivEntry2.insert(0,500)
+            #
+            RowNum = RowNum + 1
+            pwmwlab2 = Label(win2, text="PWM 2 Width")
+            pwmwlab2.grid(row=RowNum, column=1, columnspan=3, sticky=W)
+            PWMWidthEntry2 = Entry(win2, width=6, cursor='double_arrow')
+            PWMWidthEntry2.bind("<Return>", UpdatePWM2)
+            PWMWidthEntry2.bind('<MouseWheel>', onPWMW2Scroll)
+            PWMWidthEntry2.bind("<Button-4>", onPWMW2Scroll)# with Linux OS
+            PWMWidthEntry2.bind("<Button-5>", onPWMW2Scroll)
+            #PWMWidthEntry.bind('<Key>', onTextKeyPWMW)
+            PWMWidthEntry2.grid(row=RowNum, column=5, columnspan=2, sticky=W)
+            PWMWidthEntry2.delete(0,"end")
+            PWMWidthEntry2.insert(0,50)
             RowNum = RowNum + 1
         #
         digdismissbutton = Button(win2, text="Dismiss", command=DestroyDigScreen)
         digdismissbutton.grid(row=RowNum, column=1, columnspan=2, sticky=W)
-        #Disable un used Digital buttons
-        if DigChannels < 8:
-            d7btn.config(state=DISABLED)
-        if DigChannels < 7:
-            d6btn.config(state=DISABLED)
-        if DigChannels < 6:
-            d5btn.config(state=DISABLED)
-        if DigChannels < 5:
-            d4btn.config(state=DISABLED)
-        if DigChannels < 4:
-            d3btn.config(state=DISABLED)
-        if DigChannels < 3:
-            d2btn.config(state=DISABLED)
-        if DigChannels < 2:
-            d1btn.config(state=DISABLED)
-        if DigChannels < 1:
-            d1btn.config(state=DISABLED)
+        if DigChannels > 0:
+            #Disable un used Digital buttons
+            if DigChannels < 8:
+                d7btn.config(state=DISABLED)
+            if DigChannels < 7:
+                d6btn.config(state=DISABLED)
+            if DigChannels < 6:
+                d5btn.config(state=DISABLED)
+            if DigChannels < 5:
+                d4btn.config(state=DISABLED)
+            if DigChannels < 4:
+                d3btn.config(state=DISABLED)
+            if DigChannels < 3:
+                d2btn.config(state=DISABLED)
+            if DigChannels < 2:
+                d1btn.config(state=DISABLED)
+            if DigChannels < 1:
+                d1btn.config(state=DISABLED)
 #
 ## Define digital button switch functions
-def TogglePWM():
-    global PWM_is_on, pwmbtn
+def TogglePWM1():
+    global PWM1_is_on, pwmbtn1
     global RoundRedBtn, RoundGrnBtn, RoundOrBtn
 	
     # Determine is on or off
-    if PWM_is_on:
-        pwmbtn.config(image = RoundRedBtn)
-        PWM_is_on = False
+    if PWM1_is_on:
+        pwmbtn1.config(image = RoundRedBtn)
+        PWM1_is_on = False
     else:
-        pwmbtn.config(image = RoundGrnBtn)
-        PWM_is_on = True
+        pwmbtn1.config(image = RoundGrnBtn)
+        PWM1_is_on = True
     try:
-        PWM_On_Off()
+        PWM1_On_Off()
+    except:
+        pass
+#
+def TogglePWM2():
+    global PWM2_is_on, pwmbtn2
+    global RoundRedBtn, RoundGrnBtn, RoundOrBtn
+	
+    # Determine is on or off
+    if PWM2_is_on:
+        pwmbtn2.config(image = RoundRedBtn)
+        PWM2_is_on = False
+    else:
+        pwmbtn2.config(image = RoundGrnBtn)
+        PWM2_is_on = True
+    try:
+        PWM2_On_Off()
     except:
         pass
 #
@@ -19003,6 +19174,10 @@ TRACEmodeTime.set(0)
 DecimateOption = IntVar()
 MathTrace = IntVar()
 # AWG variables
+AWGAMode = IntVar()   # AWG A mode variable
+AWGAMode.set(2)
+AWGBMode = IntVar()   # AWG A mode variable
+AWGBMode.set(2)
 AWGAShape = IntVar()  # AWG A Wave shape variable
 AWGAPhaseDelay = IntVar() #
 AWGBShape = IntVar()  # AWG B Wave shape variable
@@ -19115,7 +19290,7 @@ CH4VRange = "500mV"
 TimeDivStr = "200us"
 TiggerLevel = 0.0
 # Try to connect to hardware
-Sucess = ConnectDevice()
+# Sucess = ConnectDevice()
 #
 #
 if GUITheme == "Light": # Can be Light or Dark or Blue or LtBlue
@@ -19320,6 +19495,7 @@ if CHANNELS >= 4:
 if UseSoftwareTrigger == 0:
     Triggermenu.menu.add_radiobutton(label='Internal', variable=TgSource, value=0, command=BTrigIntExt)
     Triggermenu.menu.add_radiobutton(label='External', variable=TgSource, value=1, command=BTrigIntExt)
+Triggermenu.menu.add_checkbutton(label='Low Pass Filter', variable=LPFTrigger)
 Triggermenu.menu.add_checkbutton(label='Auto Level', variable=AutoLevel)
 Triggermenu.menu.add_checkbutton(label='Manual Trgger', variable=ManualTrigger)
 Triggermenu.menu.add_checkbutton(label='SingleShot', variable=SingleShot)
@@ -19354,10 +19530,10 @@ HozPossentry.bind('<MouseWheel>', onHzPosScroll)
 HozPossentry.bind("<Button-4>", onHzPosScroll)# with Linux OS
 HozPossentry.bind("<Button-5>", onHzPosScroll)
 HozPossentry.bind("<Return>", BHozPoss)
-HozPossentry.bind('<Key>', onTextKey)
+HozPossentry.bind('<Key>', onHzPosKey)
 HozPossentry.pack(side=LEFT)
 HozPossentry.delete(0,"end")
-HozPossentry.insert(0,508)
+HozPossentry.insert(0,0)
 #
 bexit = Button(frame1, text="Exit", style="W4.TButton", command=Bcloseexit)
 bexit.pack(side=RIGHT)
@@ -19910,9 +20086,9 @@ if CHANNELS >= 1:
         CHAofflab.pack(side=LEFT)
     CHAVPosEntry = Entry(frame3, width=5, cursor='double_arrow')
     CHAVPosEntry.bind("<Return>", BOffsetA)
-    CHAVPosEntry.bind('<MouseWheel>', onTextScroll)# with Windows OS
-    CHAVPosEntry.bind("<Button-4>", onTextScroll)# with Linux OS
-    CHAVPosEntry.bind("<Button-5>", onTextScroll)
+    CHAVPosEntry.bind('<MouseWheel>', onPosAScroll)# with Windows OS
+    CHAVPosEntry.bind("<Button-4>", onPosAScroll)# with Linux OS
+    CHAVPosEntry.bind("<Button-5>", onPosAScroll)
     CHAVPosEntry.bind('<Key>', onTextKey)
     CHAVPosEntry.pack(side=LEFT)
     CHAVPosEntry.delete(0,"end")
@@ -19943,9 +20119,9 @@ if CHANNELS >= 2:
         CHBofflab.pack(side=LEFT)
     CHBVPosEntry = Entry(frame3, width=5, cursor='double_arrow')
     CHBVPosEntry.bind("<Return>", BOffsetB)
-    CHBVPosEntry.bind('<MouseWheel>', onTextScroll)# with Windows OS
-    CHBVPosEntry.bind("<Button-4>", onTextScroll)# with Linux OS
-    CHBVPosEntry.bind("<Button-5>", onTextScroll)
+    CHBVPosEntry.bind('<MouseWheel>', onPosBScroll)# with Windows OS
+    CHBVPosEntry.bind("<Button-4>", onPosBScroll)# with Linux OS
+    CHBVPosEntry.bind("<Button-5>", onPosBScroll)
     CHBVPosEntry.bind('<Key>', onTextKey)
     CHBVPosEntry.pack(side=LEFT)
     CHBVPosEntry.delete(0,"end")
@@ -20035,9 +20211,9 @@ if CHANNELS >= 3:
         CHCofflab.pack(side=LEFT)
     CHCVPosEntry = Entry(frame4, width=5, cursor='double_arrow')
     CHCVPosEntry.bind("<Return>", BOffsetC)
-    CHCVPosEntry.bind('<MouseWheel>', onTextScroll)# with Windows OS
-    CHCVPosEntry.bind("<Button-4>", onTextScroll)# with Linux OS
-    CHCVPosEntry.bind("<Button-5>", onTextScroll)
+    CHCVPosEntry.bind('<MouseWheel>', onPosCScroll)# with Windows OS
+    CHCVPosEntry.bind("<Button-4>", onPosCScroll)# with Linux OS
+    CHCVPosEntry.bind("<Button-5>", onPosCScroll)
     CHCVPosEntry.bind('<Key>', onTextKey)
     CHCVPosEntry.pack(side=LEFT)
     CHCVPosEntry.delete(0,"end")
@@ -20068,9 +20244,9 @@ if CHANNELS >= 4:
         CHDofflab.pack(side=LEFT)
     CHDVPosEntry = Entry(frame4, width=5, cursor='double_arrow')
     CHDVPosEntry.bind("<Return>", BOffsetD)
-    CHDVPosEntry.bind('<MouseWheel>', onTextScroll)# with Windows OS
-    CHDVPosEntry.bind("<Button-4>", onTextScroll)# with Linux OS
-    CHDVPosEntry.bind("<Button-5>", onTextScroll)
+    CHDVPosEntry.bind('<MouseWheel>', onPosDScroll)# with Windows OS
+    CHDVPosEntry.bind("<Button-4>", onPosDScroll)# with Linux OS
+    CHDVPosEntry.bind("<Button-5>", onPosDScroll)
     CHDVPosEntry.bind('<Key>', onTextKey)
     CHDVPosEntry.pack(side=LEFT)
     CHDVPosEntry.delete(0,"end")
@@ -20131,16 +20307,18 @@ if not numpy_found:
     root.destroy()
     exit()
 #
-if EnableScopeOnly == 0:
-    if AWGChannels > 0:
+if AWGChannels > 0:
+    if EnableScopeOnly == 0:
         MakeAWGWindow() # build AWG window
-else:
-    AWGScreenStatus.set(1)
+    else:
+        AWGScreenStatus.set(1)
 #
 BLoadConfig("alice-last-config.cfg") # load configuration from last session
 if LocalLanguage != "English":
     BLoadConfig(LocalLanguage) # load local language configuration 
 #
+# Try to connect to hardware
+Sucess = ConnectDevice()
 if Sucess:
     # Get_Data() # do a dummy first data capture
     bcon.configure(text="Conn", style="GConn.TButton")
@@ -20148,7 +20326,8 @@ if Sucess:
     BSetTrigEdge()
     BSetTriggerSource()
     BTriglevel() # set trigger level
-    MakeAWGwaves()
+    if AWGChannels > 0:
+        MakeAWGwaves()
 #
 # ================ Call main routine ===============================
 #
