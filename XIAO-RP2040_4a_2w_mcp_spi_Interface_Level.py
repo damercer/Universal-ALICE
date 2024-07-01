@@ -115,8 +115,14 @@ def SetSampleRate():
         ser.write(b't32\n') # 15.625 KSPS
     elif TimeDiv >= 0.01 and TimeDiv < 0.02:
         ser.write(b't100\n') # 10 KSPS
-    else:
+    elif TimeDiv >= 0.02 and TimeDiv < 0.05:
         ser.write(b't200\n') # 5 KSPS
+    elif TimeDiv >= 0.05 and TimeDiv < 0.10:
+        ser.write(b't500\n') # 2 KSPS
+    elif TimeDiv >= 0.1 and TimeDiv < 0.20:
+        ser.write(b't1000\n') # 1 KSPS
+    else:
+        ser.write(b't2000\n') # 500 SPS
     #
     time.sleep(0.005)
     #
