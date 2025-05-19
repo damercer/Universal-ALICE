@@ -1,7 +1,7 @@
 #!/usr/bin/python
 # -*- coding: cp1252 -*-
 #
-# Alice-universal-alpha.py(w) (6-14-2024)
+# Alice-universal-alpha.py(w) (5-9-2025)
 # Written using Python version 3.10, Windows OS 
 # Requires a hardware interface level functions add-on file
 # Created by D Mercer ()
@@ -74,7 +74,7 @@ import webbrowser
 # check which operating system
 import platform
 #
-RevDate = "14 June 2024"
+RevDate = "9 May 2025"
 SWRev = "1.0 "
 #
 # small bit map of triangle logo for window icon
@@ -91,6 +91,7 @@ root.call('wm', 'iconphoto', root._w, '-default', img)
 print("Windowing System is " + str(root.tk.call('tk', 'windowingsystem')))
 # Place holder for hardware functions file name:
 HardwareFile = "Alice_Interface_Level.py"
+ConfigFileName = "alice-last-config.cfg"
 CHANNELS = 1                # Number of Channel traces 1 to 4
 AWGChannels = 1
 AWGPeakToPeak = 5.0
@@ -316,7 +317,7 @@ ZeroGrid.set(0)
 LPFTrigger = IntVar() # software triggering trigger lpf on/off
 LPFTrigger.set(0)
 Trigger_LPF_length = IntVar()
-Trigger_LPF_length.set(10) # Length of software Trigger box car LPF in samples
+Trigger_LPF_length.set(20) # Length of software Trigger box car LPF in samples
 # AWG waveform names:
 AwgString0 = "DC"
 AwgString1 = "Sine"
@@ -3805,18 +3806,43 @@ def BSaveScreenBP():
         UpdateBodeScreen()
 ## Save scope all time array data to file
 def BSaveData():
-    global VBuffA, VBuffB, VBuffC, VBuffD, SAMPLErate, NoiseCH1, NoiseCH2
+    global VBuffA, VBuffB, VBuffC, VBuffD, SAMPLErate, MBuff, MBuffX, MBuffY
+    global ShowC1_V, ShowC2_V, ShowC3_V, ShowC4_V, ShowMath
 
     # open file to save data
     filename = asksaveasfilename(defaultextension = ".csv", filetypes=[("Comma Separated Values", "*.csv")])
     DataFile = open(filename, 'w')
-    DataFile.write( 'Sample-#, CA-V, CB-V \n' )
+    HeaderStr = 'Sample Time'
+    if ShowC1_V.get() > 0:
+        HeaderStr = HeaderStr + ', CA-V'
+    if ShowC2_V.get() > 0:
+        HeaderStr = HeaderStr + ', CB-V'
+    if ShowC3_V.get() > 0:
+        HeaderStr = HeaderStr + ', CD-V'
+    if ShowC4_V.get() > 0:
+        HeaderStr = HeaderStr + ', CD-V'
+    if ShowMath.get() > 0:
+        HeaderStr = HeaderStr + ', Math'
+    HeaderStr = HeaderStr + ' \n'
+    DataFile.write( HeaderStr )
     for index in range(len(VBuffA)):
         if Roll_Mode.get() > 0:
             TimePnt = float(index+0.0)
         else:
             TimePnt = float((index+0.0)/SAMPLErate)
-        DataFile.write(str(TimePnt) + ', ' + str(VBuffA[index]) + ', ' + str(VBuffB[index]) + '\n')
+        DataStr = str(TimePnt)
+        if ShowC1_V.get() > 0:
+            DataStr = DataStr + ', ' + str(VBuffA[index])
+        if ShowC2_V.get() > 0:
+            DataStr = DataStr + ', ' + str(VBuffB[index])
+        if ShowC3_V.get() > 0:
+            DataStr = DataStr + ', ' + str(VBuffC[index])
+        if ShowC4_V.get() > 0:
+            DataStr = DataStr + ', ' + str(VBuffD[index])
+        if ShowMath.get() > 0:
+            DataStr = DataStr + ', ' + str(MBuff[index])
+        DataStr = DataStr + ' \n'
+        DataFile.write( DataStr )
     DataFile.close()
 
 ## Save selected scope time array data to file
@@ -4626,6 +4652,7 @@ def BTime():
     TimeDiv = UnitConvert(TMsb.get())
     SetSampleRate()
     #
+    time.sleep(0.1)
     if RUNstatus.get() == 0:      # if not running
         UpdateTimeTrace()           # Update
     
@@ -4962,6 +4989,10 @@ def Analog_In():
                 DMM_Analog_In()
         else:
             time.sleep(0.01) # slow down loop while not running to reduce CPU usage
+            try:
+                PingID()
+            except:
+                pass
         root.update_idletasks()
         root.update()
 ##
@@ -5769,7 +5800,7 @@ def Digital_RC_Low_Pass( InBuff, TC1, Gain ): # TC1 is in micro seconds
     
     OutBuff = []
     n = len(InBuff)
-    Delta = 1.0/SAMPLErate
+    Delta = 0.88/SAMPLErate
     TC = TC1 * 1.0E-6
     Alpha = Delta / (TC + Delta)
     i = 1
@@ -7625,7 +7656,7 @@ def MakeTimeScreen():
     global ShowRA_V, ShowRB_V, ShowRC_V, ShowRD_V, ShowMath
     global MathUnits, MathXUnits, MathYUnits
     global Xsignal, Ysignal, MathTrace, MathAxis, MathXAxis, MathYAxis
-    global RUNstatus, SingleShot, ManualTrigger, session    # 0 stopped, 1 start, 2 running, 3 stop now, 4 stop and restart
+    global RUNstatus, SingleShot, ManualTrigger # 0 stopped, 1 start, 2 running, 3 stop now, 4 stop and restart
     global CHAsb, CHCsb        # V range spinbox Index for channel 1
     global CHBsb, CHDsb        # V range spinbox Index for channel 2
     global CHAOffset, CHCOffset    # Position value for channel 1 V
@@ -8146,6 +8177,10 @@ def MakeTimeScreen():
                     V1String = ' {0:.1f} '.format(ChaF/1000000)
                     txt = txt + str(V1String) + " MHz "
                 #
+            if MeasPhase.get() == 1:
+                txt = txt + " CA-B Phase = " + ' {0:.1f} '.format(CHABphase) + " deg "
+            if MeasDelay.get() == 1:
+                txt = txt + " CB-A Delay = " + ' {0:.3f} '.format(CHBADelayR1) + " mS "
         if ShowC2_V.get() == 1 and CHANNELS >= 2:
             if MeasBHW.get() == 1:
                 txt = txt + " CB Hi Width = " + ' {0:.3f} '.format(CHBHW) + " mS "
@@ -8504,10 +8539,18 @@ def MakeXYScreen():
                     Vaxis_value = (((i-5) * XY1pdvRange ) + XYAOffset)
                     Vaxis_label = str(round(Vaxis_value, 3))
                     XYca.create_text(x, y2+3, text=Vaxis_label, fill=COLORtrace1, anchor="n", font=("arial", FontSize ))
+                elif Xsignal.get() == 2:
+                    Vaxis_value = (((i-5) * XY3pdvRange ) + XYCOffset)
+                    Vaxis_label = str(round(Vaxis_value, 3))
+                    XYca.create_text(x, y2+3, text=Vaxis_label, fill=COLORtrace3, anchor="n", font=("arial", FontSize ))
                 elif Xsignal.get() == 3:
                     Vaxis_value = (((i-5) * XY2pdvRange ) + XYBOffset)
                     Vaxis_label = str(round(Vaxis_value, 3))
                     XYca.create_text(x, y2+3, text=Vaxis_label, fill=COLORtrace2, anchor="n", font=("arial", FontSize ))
+                elif Xsignal.get() == 4:
+                    Vaxis_value = (((i-5) * XY4pdvRange ) + XYDOffset)
+                    Vaxis_label = str(round(Vaxis_value, 3))
+                    XYca.create_text(x, y2+3, text=Vaxis_label, fill=COLORtrace4, anchor="n", font=("arial", FontSize ))
                 elif Xsignal.get() == 6:
                     TempCOLOR = COLORtrace6
                     if MathTrace.get() == 2:
@@ -8532,10 +8575,18 @@ def MakeXYScreen():
                     Vaxis_value = (((i-5) * XY1pdvRange ) + XYAOffset)
                     Vaxis_label = str(round(Vaxis_value, 3))
                     XYca.create_text(x, y2+3, text=Vaxis_label, fill=COLORtrace1, anchor="n", font=("arial", FontSize ))
+                elif Xsignal.get() == 2:
+                    Vaxis_value = (((i-5) * XY3pdvRange ) + XYCOffset)
+                    Vaxis_label = str(round(Vaxis_value, 3))
+                    XYca.create_text(x, y2+3, text=Vaxis_label, fill=COLORtrace3, anchor="n", font=("arial", FontSize ))
                 elif Xsignal.get() == 3:
                     Vaxis_value = (((i-5) * XY2pdvRange ) + XYBOffset)
                     Vaxis_label = str(round(Vaxis_value, 3))
                     XYca.create_text(x, y2+3, text=Vaxis_label, fill=COLORtrace2, anchor="n", font=("arial", FontSize ))
+                elif Xsignal.get() == 4:
+                    Vaxis_value = (((i-5) * XY4pdvRange ) + XYDOffset)
+                    Vaxis_label = str(round(Vaxis_value, 3))
+                    XYca.create_text(x, y2+3, text=Vaxis_label, fill=COLORtrace4, anchor="n", font=("arial", FontSize ))
                 elif Xsignal.get() == 6:
                     TempCOLOR = COLORtrace6
                     if MathTrace.get() == 2:
@@ -18365,11 +18416,12 @@ def MakeSettingsMenu():
     global cha_A1Entry, cha_A2Entry, chb_A1Entry, chb_A2Entry
     global chc_TC1Entry, chc_TC2Entry, chd_TC1Entry, chd_TC2Entry
     global chc_A1Entry, chc_A2Entry, chd_A1Entry, chd_A2Entry
-    global FrameRelief, BorderSize
+    global FrameRelief, BorderSize, EntryText, FrameBG, ButRelief
 
     if SettingsStatus.get() == 0:
         SettingsStatus.set(1)
         Settingswindow = Toplevel()
+        Settingswindow.configure(background=FrameBG, borderwidth=BorderSize)
         Settingswindow.title("Settings " + SWRev + RevDate)
         Settingswindow.resizable(FALSE,FALSE)
         Settingswindow.protocol("WM_DELETE_WINDOW", DestroySettings)
@@ -19323,6 +19375,7 @@ if GUITheme == "Sun Valley Dark":
         #print("Setting ttk theme as dark")
         FrameBG = "#282828"
         ButtonText = "#cccccc"
+        EntryText = "#cccccc"
         COLORwhite = "#000000" # 100% black
         COLORblack = "#d7d7d7" # Gray
     # 
