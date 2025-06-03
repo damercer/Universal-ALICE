@@ -1,7 +1,7 @@
 #!/usr/bin/python
 # -*- coding: cp1252 -*-
 #
-# Alice-universal-alpha.py(w) (5-9-2025)
+# Alice-universal-alpha.py(w) (5-31-2025)
 # Written using Python version 3.10, Windows OS 
 # Requires a hardware interface level functions add-on file
 # Created by D Mercer ()
@@ -74,7 +74,7 @@ import webbrowser
 # check which operating system
 import platform
 #
-RevDate = "9 May 2025"
+RevDate = "31 May 2025"
 SWRev = "1.0 "
 #
 # small bit map of triangle logo for window icon
@@ -2313,7 +2313,7 @@ def AWGAMakeDC():
     try:
         AWGAAmplvalue = float(eval(AWGAAmplEntry.get()))
     except:
-        AWGBAmplvalue = 0.0
+        AWGAAmplvalue = 0.0
     try:
         AWGAOffsetvalue = float(eval(AWGAOffsetEntry.get()))
     except:
@@ -2778,7 +2778,23 @@ def AWGBMakeSine():
     global AWGBAmplvalue, AWGBOffsetvalue, AWGBAmplEntry, AWGBOffsetEntry
     global AWGBRecLength, AWGSampleRate, AWGBuffLen, MaxSamples, AWGBLength
     global AWGBShape
+    global AWGBPhaseEntry, AWGBPhasevalue
 
+    try:
+        AWGBPhasevalue = float(eval(AWGBPhaseEntry.get()))
+    except:
+        AWGBPhaseEntry.delete(0,"end")
+        AWGBPhaseEntry.insert(0, AWGBPhasevalue)
+
+    if AWGBPhasevalue > 360: # max phase is 360 degrees
+        AWGBPhasevalue = 360
+        AWGBPhaseEntry.delete(0,"end")
+        AWGBPhaseEntry.insert(0, AWGBPhasevalue)
+    if AWGBPhasevalue < 0: # min phase is 0 degrees
+        AWGBPhasevalue = 0
+        AWGBPhaseEntry.delete(0,"end")
+        AWGBPhaseEntry.insert(0, AWGBPhasevalue)
+    #
     SetAwgSampleRate()
     MaxRepRate = numpy.ceil(AWGSampleRate / AWGBuffLen)
     AWGBAmplvalue = float(eval(AWGBAmplEntry.get()))
@@ -2789,6 +2805,13 @@ def AWGBMakeSine():
         AWGBFreqEntry.delete(0,"end")
         AWGBFreqEntry.insert(0,AWGBFreqvalue)
     AWGBperiodvalue = AWGSampleRate/AWGBFreqvalue
+    if AWGBPhaseDelay.get() == 0:
+        if AWGBPhasevalue > 0:
+            AWGBdelayvalue = AWGBperiodvalue * AWGBPhasevalue / 360.0
+        else:
+            AWGBdelayvalue = 0.0
+    elif AWGBPhaseDelay.get() == 1:
+        AWGBdelayvalue = AWGBPhasevalue * AWGSAMPLErate / 1000
     #
     Cycles = numpy.floor(AWGBFreqvalue/MaxRepRate)
     #Cycles = int(MaxSamples/AWGBperiodvalue)
@@ -2802,6 +2825,7 @@ def AWGBMakeSine():
     else:
         AWG3 = numpy.cos(numpy.linspace(0, 2*Cycles*numpy.pi, RecLength))
     #
+    AWG3 = numpy.roll(AWG3, int(AWGBdelayvalue))
     AWGBLength.config(text = "L = " + str(int(len(AWG3)))) # change displayed value
     duty2lab.config(text="Percent")
     AWGBSendWave(AWG3)
@@ -2809,7 +2833,23 @@ def AWGBMakeSine():
 def AWGBMakeRampUp():
     global AWGBAmplvalue, AWGBOffsetvalue ,AWGBAmplEntry, AWGBOffsetEntry
     global AWGBRecLength, AWGBuffLen, MaxSamples, AWGSampleRate, AWGBLength
+    global AWGBPhaseEntry, AWGBPhasevalue
     
+    try:
+        AWGBPhasevalue = float(eval(AWGBPhaseEntry.get()))
+    except:
+        AWGBPhaseEntry.delete(0,"end")
+        AWGBPhaseEntry.insert(0, AWGBPhasevalue)
+
+    if AWGBPhasevalue > 360: # max phase is 360 degrees
+        AWGBPhasevalue = 360
+        AWGBPhaseEntry.delete(0,"end")
+        AWGBPhaseEntry.insert(0, AWGBPhasevalue)
+    if AWGBPhasevalue < 0: # min phase is 0 degrees
+        AWGBPhasevalue = 0
+        AWGBPhaseEntry.delete(0,"end")
+        AWGBPhaseEntry.insert(0, AWGBPhasevalue)
+    #
     SetAwgSampleRate()
     MaxRepRate = numpy.ceil(AWGSampleRate / AWGBuffLen)
     AWGBAmplvalue = float(eval(AWGBAmplEntry.get()))
@@ -2820,6 +2860,13 @@ def AWGBMakeRampUp():
         AWGBFreqEntry.delete(0,"end")
         AWGBFreqEntry.insert(0,AWGBFreqvalue)
     AWGBperiodvalue = AWGSampleRate/AWGBFreqvalue
+    if AWGBPhaseDelay.get() == 0:
+        if AWGBPhasevalue > 0:
+            AWGBdelayvalue = AWGBperiodvalue * AWGBPhasevalue / 360.0
+        else:
+            AWGBdelayvalue = 0.0
+    elif AWGBPhaseDelay.get() == 1:
+        AWGBdelayvalue = AWGBPhasevalue * AWGSAMPLErate / 1000
     # Cycles = int(MaxSamples/AWGBperiodvalue)
     Cycles = numpy.ceil(AWGBFreqvalue/MaxRepRate)
     if Cycles < 1:
@@ -2834,6 +2881,7 @@ def AWGBMakeRampUp():
     while len(AWG3) < AWGBuffLen-CycleLen:
         AWG3 = numpy.concatenate((AWG3, AWG0))
     #
+    AWG3 = numpy.roll(AWG3, int(AWGBdelayvalue))
     AWGBLength.config(text = "L = " + str(int(len(AWG3)))) # change displayed value
     duty2lab.config(text="Percent")
     AWGBSendWave(AWG3)
@@ -2841,7 +2889,23 @@ def AWGBMakeRampUp():
 def AWGBMakeRampDn():
     global AWGBAmplvalue, AWGBOffsetvalue ,AWGBAmplEntry, AWGBOffsetEntry
     global AWGBRecLength, MaxSamples, AWGSampleRate, AWGBuffLen, AWGBLength
+    global AWGBPhaseEntry, AWGBPhasevalue
     
+    try:
+        AWGBPhasevalue = float(eval(AWGBPhaseEntry.get()))
+    except:
+        AWGBPhaseEntry.delete(0,"end")
+        AWGBPhaseEntry.insert(0, AWGBPhasevalue)
+
+    if AWGBPhasevalue > 360: # max phase is 360 degrees
+        AWGBPhasevalue = 360
+        AWGBPhaseEntry.delete(0,"end")
+        AWGBPhaseEntry.insert(0, AWGBPhasevalue)
+    if AWGBPhasevalue < 0: # min phase is 0 degrees
+        AWGBPhasevalue = 0
+        AWGBPhaseEntry.delete(0,"end")
+        AWGBPhaseEntry.insert(0, AWGBPhasevalue)
+    #
     SetAwgSampleRate()
     MaxRepRate = numpy.ceil(AWGSampleRate / AWGBuffLen)
     AWGBAmplvalue = float(eval(AWGBAmplEntry.get()))
@@ -2852,6 +2916,13 @@ def AWGBMakeRampDn():
         AWGBFreqEntry.delete(0,"end")
         AWGBFreqEntry.insert(0,AWGBFreqvalue)
     AWGBperiodvalue = AWGSampleRate/AWGBFreqvalue
+    if AWGBPhaseDelay.get() == 0:
+        if AWGBPhasevalue > 0:
+            AWGBdelayvalue = AWGBperiodvalue * AWGBPhasevalue / 360.0
+        else:
+            AWGBdelayvalue = 0.0
+    elif AWGBPhaseDelay.get() == 1:
+        AWGBdelayvalue = AWGBPhasevalue * AWGSAMPLErate / 1000
     #Cycles = int(MaxSamples/AWGBperiodvalue)
     Cycles = numpy.ceil(AWGBFreqvalue/MaxRepRate)
     if Cycles < 1:
@@ -2866,6 +2937,7 @@ def AWGBMakeRampDn():
     while len(AWG3) < AWGBuffLen-CycleLen:
         AWG3 = numpy.concatenate((AWG3, AWG0))
     #
+    AWG3 = numpy.roll(AWG3, int(AWGBdelayvalue))
     AWGBLength.config(text = "L = " + str(int(len(AWG3)))) # change displayed value
     duty2lab.config(text="Percent")
     AWGBSendWave(AWG3)
@@ -2873,8 +2945,24 @@ def AWGBMakeRampDn():
 def AWGBMakeTriangle():
     global ser, SAMPLErate, AWGBFreqvalue, AWGBFreqEntry
     global AWGBRecLength, MaxSamples, AWGSampleRate, AWGBLength, AWGBuffLen
+    global AWGBPhaseEntry, AWGBPhasevalue
     global AWGBAmplEntry, AWGBAmplvalue, AWGBOffsetvalue, AWGBOffsetEntry
 
+    try:
+        AWGBPhasevalue = float(eval(AWGBPhaseEntry.get()))
+    except:
+        AWGBPhaseEntry.delete(0,"end")
+        AWGBPhaseEntry.insert(0, AWGBPhasevalue)
+
+    if AWGBPhasevalue > 360: # max phase is 360 degrees
+        AWGBPhasevalue = 360
+        AWGBPhaseEntry.delete(0,"end")
+        AWGBPhaseEntry.insert(0, AWGBPhasevalue)
+    if AWGBPhasevalue < 0: # min phase is 0 degrees
+        AWGBPhasevalue = 0
+        AWGBPhaseEntry.delete(0,"end")
+        AWGBPhaseEntry.insert(0, AWGBPhasevalue)
+    #
     SetAwgSampleRate()
     MaxRepRate = numpy.ceil(AWGSampleRate / AWGBuffLen)
     AWGBAmplvalue = float(eval(AWGBAmplEntry.get()))
@@ -2885,6 +2973,13 @@ def AWGBMakeTriangle():
         AWGBFreqEntry.delete(0,"end")
         AWGBFreqEntry.insert(0,AWGBFreqvalue)
     AWGBperiodvalue = AWGSampleRate/AWGBFreqvalue
+    if AWGBPhaseDelay.get() == 0:
+        if AWGBPhasevalue > 0:
+            AWGBdelayvalue = AWGBperiodvalue * AWGBPhasevalue / 360.0
+        else:
+            AWGBdelayvalue = 0.0
+    elif AWGBPhaseDelay.get() == 1:
+        AWGBdelayvalue = AWGBPhasevalue * AWGSAMPLErate / 1000
     AWGBDutyCyclevalue = float(eval(AWGBDutyCycleEntry.get()))
     DutyCycle = AWGBDutyCyclevalue / 100.0
     #Cycles = int(MaxSamples/AWGBperiodvalue)
@@ -2910,6 +3005,7 @@ def AWGBMakeTriangle():
     while len(AWG3) < AWGBuffLen-CycleLen:
         AWG3 = numpy.concatenate((AWG3, AWG0))
     #
+    AWG3 = numpy.roll(AWG3, int(AWGBdelayvalue))
     AWGBLength.config(text = "L = " + str(int(len(AWG3)))) # change displayed value
     duty2lab.config(text="Percent")
     AWGBSendWave(AWG3)
@@ -2917,8 +3013,24 @@ def AWGBMakeTriangle():
 def AWGBMakeSquare():
     global ser, SAMPLErate, AWGBFreqvalue, AWGBFreqEntry, AWGBDutyCycleEntry
     global AWGBAmplEntry, AWGBAmplvalue, AWGBOffsetvalue, AWGBOffsetEntry
+    global AWGBPhaseEntry, AWGBPhasevalue
     global AWGBRecLength, MaxSamples, AWGSampleRate, AWGBLength, AWGBuffLen
     
+    try:
+        AWGBPhasevalue = float(eval(AWGBPhaseEntry.get()))
+    except:
+        AWGBPhaseEntry.delete(0,"end")
+        AWGBPhaseEntry.insert(0, AWGBPhasevalue)
+
+    if AWGBPhasevalue > 360: # max phase is 360 degrees
+        AWGBPhasevalue = 360
+        AWGBPhaseEntry.delete(0,"end")
+        AWGBPhaseEntry.insert(0, AWGBPhasevalue)
+    if AWGBPhasevalue < 0: # min phase is 0 degrees
+        AWGBPhasevalue = 0
+        AWGBPhaseEntry.delete(0,"end")
+        AWGBPhaseEntry.insert(0, AWGBPhasevalue)
+    #
     SetAwgSampleRate()
     MaxRepRate = numpy.ceil(AWGSampleRate / AWGBuffLen)
     AWGBAmplvalue = float(eval(AWGBAmplEntry.get()))
@@ -2929,6 +3041,13 @@ def AWGBMakeSquare():
         AWGBFreqEntry.delete(0,"end")
         AWGBFreqEntry.insert(0,AWGBFreqvalue)
     AWGBperiodvalue = AWGSampleRate/AWGBFreqvalue
+    if AWGBPhaseDelay.get() == 0:
+        if AWGBPhasevalue > 0:
+            AWGBdelayvalue = AWGBperiodvalue * AWGBPhasevalue / 360.0
+        else:
+            AWGBdelayvalue = 0.0
+    elif AWGBPhaseDelay.get() == 1:
+        AWGBdelayvalue = AWGBPhasevalue * AWGSAMPLErate / 1000
     AWGBDutyCyclevalue = float(eval(AWGBDutyCycleEntry.get()))
     DutyCycle = AWGBDutyCyclevalue / 100.0
     # Cycles = int(MaxSamples/AWGBperiodvalue)
@@ -2955,6 +3074,7 @@ def AWGBMakeSquare():
     while len(AWG3) < AWGBuffLen-CycleLen:
         AWG3 = numpy.concatenate((AWG3, AWG0))
     #
+    AWG3 = numpy.roll(AWG3, int(AWGBdelayvalue))
     AWGBLength.config(text = "L = " + str(int(len(AWG3)))) # change displayed value
     duty2lab.config(text="Percent")
     AWGBSendWave(AWG3)
@@ -2963,13 +3083,36 @@ def AWGBMakeSinc():
     global ser, SAMPLErate, AWGBFreqvalue, AWGBFreqEntry, AWGBDutyCycleEntry
     global AWGBAmplEntry, AWGBAmplvalue, AWGBOffsetvalue, AWGBOffsetEntry
     global AWGBRecLength, AWGSampleRate, MaxSamples, AWGBLength
+    global AWGBPhaseEntry, AWGBPhasevalue
 
+    try:
+        AWGBPhasevalue = float(eval(AWGBPhaseEntry.get()))
+    except:
+        AWGBPhaseEntry.delete(0,"end")
+        AWGBPhaseEntry.insert(0, AWGBPhasevalue)
+
+    if AWGBPhasevalue > 360: # max phase is 360 degrees
+        AWGBPhasevalue = 360
+        AWGBPhaseEntry.delete(0,"end")
+        AWGBPhaseEntry.insert(0, AWGBPhasevalue)
+    if AWGBPhasevalue < 0: # min phase is 0 degrees
+        AWGBPhasevalue = 0
+        AWGBPhaseEntry.delete(0,"end")
+        AWGBPhaseEntry.insert(0, AWGBPhasevalue)
+    #
     SetAwgSampleRate()
     MaxRepRate = numpy.ceil(AWGSampleRate / AWGBuffLen)
     AWGBAmplvalue = float(eval(AWGBAmplEntry.get()))
     AWGBOffsetvalue = float(eval(AWGBOffsetEntry.get()))
     AWGBFreqvalue = UnitConvert(AWGBFreqEntry.get())
     AWGBperiodvalue = AWGSampleRate/AWGBFreqvalue
+    if AWGBPhaseDelay.get() == 0:
+        if AWGBPhasevalue > 0:
+            AWGBdelayvalue = AWGBperiodvalue * AWGBPhasevalue / 360.0
+        else:
+            AWGBdelayvalue = 0.0
+    elif AWGBPhaseDelay.get() == 1:
+        AWGBdelayvalue = AWGBPhasevalue * AWGSAMPLErate / 1000
     if AWGBFreqvalue == 0.0:
         AWGBFreqvalue = 10.0
         AWGBFreqEntry.delete(0,"end")
@@ -2992,6 +3135,7 @@ def AWGBMakeSinc():
     while len(AWG3) < AWGBuffLen-CycleLen:
         AWG3 = numpy.concatenate((AWG3, AWG0))
     #
+    AWG3 = numpy.roll(AWG3, int(AWGBdelayvalue))
     AWGBLength.config(text = "L = " + str(int(len(AWG3)))) # change displayed value
     duty2lab.config(text="Cycles")
     AWGBSendWave(AWG3)

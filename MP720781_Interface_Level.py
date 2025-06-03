@@ -44,7 +44,7 @@ def Bcloseexit():
     try:
         # try to write last config file, Don't crash if running in Write protected space
         BSaveConfig("alice-last-config.cfg")
-        dev.close() # May need to be changed for specific hardware port
+        dev.reset() # May need to be changed for specific hardware port
         # exit
     except:
         donothing()
