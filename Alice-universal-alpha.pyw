@@ -1,7 +1,7 @@
 #!/usr/bin/python
 # -*- coding: cp1252 -*-
 #
-# Alice-universal-alpha.py(w) (5-31-2025)
+# Alice-universal-alpha.py(w) (8-25-2025)
 # Written using Python version 3.10, Windows OS 
 # Requires a hardware interface level functions add-on file
 # Created by D Mercer ()
@@ -71,10 +71,12 @@ if sys.version_info[0] == 3:
 #
 import webbrowser
 #
+HelpURL = "https://github.com/damercer/Universal-ALICE"
+
 # check which operating system
 import platform
 #
-RevDate = "31 May 2025"
+RevDate = "25 Aug 2025"
 SWRev = "1.0 "
 #
 # small bit map of triangle logo for window icon
@@ -191,7 +193,7 @@ def ResetColors():
     global COLORtext, COLORcanvas, COLORtrigger, COLORsignalband, COLORframes, COLORgrid, COLORzeroline, COLORdial
     global COLORtrace1, COLORtraceR1, COLORtrace2, COLORtraceR2, COLORtrace3, COLORtraceR3, COLORtrace4, COLORtraceR4
     global COLORtrace5, COLORtraceR5, COLORtrace6, COLORtraceR6, COLORtrace7, COLORtraceR7, COLORtrace8, COLORtraceR8
-    
+    global COLORtraceD
     COLORtext = "#ffffff"     # 100% white
     COLORtrigger = "#ff0000"  # 100% red
     COLORsignalband = "#ff0000" # 100% red
@@ -215,6 +217,7 @@ def ResetColors():
     COLORtraceR6 = "#800000"   # 80% red
     COLORtraceR7 = "#4040a0"  # 80% purple
     COLORtraceR8 = "#808080"  # 50% Gray
+    COLORtraceD = "#800000"   # 80% red
     COLORdial = "#404040"     # 25% Gray
 #
 ResetColors()
@@ -1122,7 +1125,7 @@ def BSaveConfig(filename):
     global COLORtext, COLORcanvas, COLORtrigger, COLORsignalband, COLORframes, COLORgrid, COLORzeroline
     global COLORtrace1, COLORtraceR1, COLORtrace2, COLORtraceR2, COLORtrace3, COLORtraceR3, COLORtrace4, COLORtraceR4
     global COLORtrace5, COLORtraceR5, COLORtrace6, COLORtraceR6, COLORtrace7, COLORtraceR7, COLORtrace8, COLORtraceR8
-    global AMuxScreenStatus, win2a, CHAMux, CHBMux, CHCMux, CHDMux
+    global COLORtraceD, AMuxScreenStatus, win2a, CHAMux, CHBMux, CHCMux, CHDMux
     # open Config file for Write?
     try:
         ConfgFile = open(filename, "w")
@@ -1169,6 +1172,7 @@ def BSaveConfig(filename):
     ConfgFile.write('COLORtraceR7 = "' + COLORtraceR7 + '"\n')
     ConfgFile.write('COLORtrace8 = "' + COLORtrace8 + '"\n')
     ConfgFile.write('COLORtraceR8 = "' + COLORtraceR8 + '"\n')
+    ConfgFile.write('COLORtraceD = "' + COLORtraceD+ '"\n')
     #
     if MathScreenStatus.get() > 0:
         ConfgFile.write('NewEnterMathControls()\n')
@@ -1641,7 +1645,7 @@ def BLoadConfig(filename):
     global COLORtext, COLORcanvas, COLORtrigger, COLORsignalband, COLORframes, COLORgrid, COLORzeroline
     global COLORtrace1, COLORtraceR1, COLORtrace2, COLORtraceR2, COLORtrace3, COLORtraceR3, COLORtrace4, COLORtraceR4
     global COLORtrace5, COLORtraceR5, COLORtrace6, COLORtraceR6, COLORtrace7, COLORtraceR7, COLORtrace8, COLORtraceR8
-    global AMuxScreenStatus, win2a, CHAMux, CHBMux, CHCMux, CHDMux
+    global COLORtraceD, AMuxScreenStatus, win2a, CHAMux, CHBMux, CHCMux, CHDMux
     # Read configuration values from file
     try:
         ConfgFile = open(filename)
@@ -3508,7 +3512,7 @@ def BgColor():
         UpdateBodeScreen()
 ## Color Selector / Editor
 def ColorSelector():
-    global ColorScreenStatus, FrameBG, SWRev, RevDate, ColorWindow
+    global ColorScreenStatus, FrameBG, SWRev, RevDate, ColorWindow, COLORtraceD
     global COLORtext, COLORcanvas, COLORtrigger, COLORsignalband, COLORframes, COLORgrid, COLORzeroline
     global COLORtrace1, COLORtraceR1, COLORtrace2, COLORtraceR2, COLORtrace3, COLORtraceR3, COLORtrace4, COLORtraceR4
     global COLORtrace5, COLORtraceR5, COLORtrace6, COLORtraceR6, COLORtrace7, COLORtraceR7, COLORtrace8, COLORtraceR8
@@ -3590,7 +3594,7 @@ def DestroyColorScreen():
         ColorWindow.destroy()
 ##
 def ResetAllColors():
-    global COLORtext, COLORcanvas, COLORtrigger, COLORsignalband, COLORframes, COLORgrid, COLORzeroline
+    global COLORtext, COLORcanvas, COLORtrigger, COLORsignalband, COLORframes, COLORgrid, COLORzeroline, COLORtraceD
     global COLORtrace1, COLORtraceR1, COLORtrace2, COLORtraceR2, COLORtrace3, COLORtraceR3, COLORtrace4, COLORtraceR4
     global COLORtrace5, COLORtraceR5, COLORtrace6, COLORtraceR6, COLORtrace7, COLORtraceR7, COLORtrace8, COLORtraceR8
     
@@ -4084,9 +4088,9 @@ def BReadData():
 ## Open User Guide in Browser
 # open a URL, in this case, the ALICE desk-top-users-guide
 def BHelp():
-    # need to cahnge this when new user guig is written!
-    url = "https://wiki.analog.com/university/tools/m1k/alice/desk-top-users-guide"
-    webbrowser.open(url,new=2)
+    global HelpURL
+    # need to change this when new user gui is written!
+    webbrowser.open(HelpURL,new=2)
 ## Show info on software / firmware / hardware
 def BAbout():
     global RevDate, SWRev, FWRevOne, HWRevOne, DevID, Version_url
@@ -5520,7 +5524,7 @@ def Analog_Roll_time():
 def Analog_Fast_time():
     global VBuffA, VBuffB, VBuffC, VBuffD, VFilterA, VFilterB, VmemoryA, VmemoryB
     global VmemoryC, VmemoryD, VUnAvgA, VUnAvgB, UnAvgSav, NoiseCH1, NoiseCH2
-    global D0_is_on, D1_is_on, D2_is_on, D3_is_on, SaveDig
+    global VBuffG, D0_is_on, D1_is_on, D2_is_on, D3_is_on, SaveDig
     global D4_is_on, D5_is_on, D6_is_on, D7_is_on, COLORtrace8
     global DBuff0, DBuff1, DBuff2, DBuff3, DBuff4, DBuff5, DBuff6, DBuff7
     global AWGSync, TMsb, HoldOff, HozPoss, HozPossentry
@@ -5789,6 +5793,10 @@ def Analog_Fast_time():
                 FindTriggerSample(DBuff4)
             if TgInput.get() == 10:
                 FindTriggerSample(DBuff5)
+            if TgInput.get() == 11:
+                FindTriggerSample(DBuff6)
+            if TgInput.get() == 12:
+                FindTriggerSample(DBuff7)
         if TgInput.get() > 0: # if triggering left shift all arrays such that trigger point is at index 0
             LShift = 0 - TRIGGERsample
             if ShowC1_V.get() > 0:
@@ -5813,6 +5821,10 @@ def Analog_Fast_time():
                     DBuff4 = numpy.roll(DBuff4, LShift)
                 if D5_is_on:
                     DBuff5 = numpy.roll(DBuff5, LShift)
+                if D6_is_on:
+                    DBuff5 = numpy.roll(DBuff6, LShift)
+                if D7_is_on:
+                    DBuff5 = numpy.roll(DBuff7, LShift)
     else:
         # VBuffA = numpy.roll(VBuffA, -2)
         VBuffA = numpy.roll(VBuffA, -4)
@@ -7814,7 +7826,7 @@ def MakeTimeScreen():
     global COLORgrid, COLORzeroline, COLORtext, COLORtrigger  # The colors
     global COLORtrace1, COLORtrace2, COLORtrace3, COLORtrace4, COLORtrace5, COLORtrace6
     global COLORtraceR1, COLORtraceR2, COLORtraceR3, COLORtraceR4, COLORtraceR5, COLORtraceR6
-    global COLORtrace7, COLORtraceR7, COLORtrace8, COLORtraceR8
+    global COLORtrace7, COLORtraceR7, COLORtrace8, COLORtraceR8, COLORtraceD
     global CANVASwidth, CANVASheight
     global TRACErefresh, TRACEmode, TRACEwidth, GridWidth
     global ScreenTrefresh, SmoothCurves, Is_Triggered, TgLabel
@@ -8209,21 +8221,21 @@ def MakeTimeScreen():
     if len(TMYline) > 4 : # Write Y Math tace if active
         ca.create_line(TMYline, fill=COLORtrace7, smooth=SmoothBool, splinestep=5, width=TRACEwidth.get())
     if len(D0line) > 4 : # Write D0 tace if active
-        ca.create_line(D0line, fill=COLORtrace8, smooth=SmoothBool, splinestep=5, width=TRACEwidth.get())
+        ca.create_line(D0line, fill=COLORtraceD, smooth=SmoothBool, splinestep=5, width=TRACEwidth.get())
     if len(D1line) > 4 : # Write D1 tace if active
-        ca.create_line(D1line, fill=COLORtrace8, smooth=SmoothBool, splinestep=5, width=TRACEwidth.get())
+        ca.create_line(D1line, fill=COLORtraceD, smooth=SmoothBool, splinestep=5, width=TRACEwidth.get())
     if len(D2line) > 4 : # Write D2 tace if active
-        ca.create_line(D2line, fill=COLORtrace8, smooth=SmoothBool, splinestep=5, width=TRACEwidth.get())
+        ca.create_line(D2line, fill=COLORtraceD, smooth=SmoothBool, splinestep=5, width=TRACEwidth.get())
     if len(D3line) > 4 : # Write D3 tace if active
-        ca.create_line(D3line, fill=COLORtrace8, smooth=SmoothBool, splinestep=5, width=TRACEwidth.get())
+        ca.create_line(D3line, fill=COLORtraceD, smooth=SmoothBool, splinestep=5, width=TRACEwidth.get())
     if len(D4line) > 4 : # Write D4 tace if active
-        ca.create_line(D4line, fill=COLORtrace8, smooth=SmoothBool, splinestep=5, width=TRACEwidth.get())
+        ca.create_line(D4line, fill=COLORtraceD, smooth=SmoothBool, splinestep=5, width=TRACEwidth.get())
     if len(D5line) > 4 : # Write D5 tace if active
-        ca.create_line(D5line, fill=COLORtrace8, smooth=SmoothBool, splinestep=5, width=TRACEwidth.get())
+        ca.create_line(D5line, fill=COLORtraceD, smooth=SmoothBool, splinestep=5, width=TRACEwidth.get())
     if len(D6line) > 4 : # Write D6 tace if active
-        ca.create_line(D6line, fill=COLORtrace8, smooth=SmoothBool, splinestep=5, width=TRACEwidth.get())
+        ca.create_line(D6line, fill=COLORtraceD, smooth=SmoothBool, splinestep=5, width=TRACEwidth.get())
     if len(D7line) > 4 : # Write D7 tace if active
-        ca.create_line(D7line, fill=COLORtrace8, smooth=SmoothBool, splinestep=5, width=TRACEwidth.get())
+        ca.create_line(D7line, fill=COLORtraceD, smooth=SmoothBool, splinestep=5, width=TRACEwidth.get())
     if ShowRA_V.get() == 1 and len(T1VRline) > 4:
         ca.create_line(T1VRline, fill=COLORtraceR1, smooth=SmoothBool, splinestep=5, width=TRACEwidth.get())
     if ShowRB_V.get() == 1 and len(T2VRline) > 4:
@@ -19675,6 +19687,9 @@ frame3.pack(side=TOP, fill=BOTH, expand=NO)
 
 frame4 = Frame(root, borderwidth=BorderSize, relief=FrameRelief)
 frame4.pack(side=TOP, fill=BOTH, expand=NO)
+#
+DigScreenStatus = IntVar()
+DigScreenStatus.set(0)
 # create a pulldown menu
 # Trigger signals
 Triggermenu = Menubutton(frame1, text="Trigger", style="W7.TButton")
@@ -19692,6 +19707,22 @@ if CHANNELS >= 4:
 if UseSoftwareTrigger == 0:
     Triggermenu.menu.add_radiobutton(label='Internal', variable=TgSource, value=0, command=BTrigIntExt)
     Triggermenu.menu.add_radiobutton(label='External', variable=TgSource, value=1, command=BTrigIntExt)
+if DigChannels >= 1:
+    Triggermenu.menu.add_radiobutton(label='D0', background=COLORtraceD, variable=TgInput, value=5, command=BSetTriggerSource)
+if DigChannels >= 2:
+    Triggermenu.menu.add_radiobutton(label='D1', background=COLORtraceD, variable=TgInput, value=6, command=BSetTriggerSource)
+if DigChannels >= 3:
+    Triggermenu.menu.add_radiobutton(label='D2', background=COLORtraceD, variable=TgInput, value=7, command=BSetTriggerSource)
+if DigChannels >= 4:
+    Triggermenu.menu.add_radiobutton(label='D3', background=COLORtraceD, variable=TgInput, value=8, command=BSetTriggerSource)
+if DigChannels >= 5:
+    Triggermenu.menu.add_radiobutton(label='D4', background=COLORtraceD, variable=TgInput, value=9, command=BSetTriggerSource)
+if DigChannels >= 6:
+    Triggermenu.menu.add_radiobutton(label='D5', background=COLORtraceD, variable=TgInput, value=10, command=BSetTriggerSource)
+if DigChannels >= 7:
+    Triggermenu.menu.add_radiobutton(label='D6', background=COLORtraceD, variable=TgInput, value=11, command=BSetTriggerSource)
+if DigChannels >= 8:
+    Triggermenu.menu.add_radiobutton(label='D7', background=COLORtraceD, variable=TgInput, value=12, command=BSetTriggerSource)
 Triggermenu.menu.add_checkbutton(label='Low Pass Filter', variable=LPFTrigger)
 Triggermenu.menu.add_checkbutton(label='Auto Level', variable=AutoLevel)
 Triggermenu.menu.add_checkbutton(label='Manual Trgger', variable=ManualTrigger)
@@ -19974,9 +20005,6 @@ if ShowBallonHelp > 0:
     math_tip = CreateToolTip(mathbt, 'Open Math window')
     options_tip = CreateToolTip(Optionmenu, 'Select Optional Settings')
     file_tip = CreateToolTip(Filemenu, 'Select File operations')
-#
-DigScreenStatus = IntVar()
-DigScreenStatus.set(0)
 #
 if AWGChannels > 0:
     BuildAWGScreen = Button(frame2r, text="AWG Window", style="W16.TButton", command=MakeAWGWindow)
