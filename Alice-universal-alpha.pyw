@@ -1,8 +1,8 @@
 #!/usr/bin/python
 # -*- coding: cp1252 -*-
 #
-# Alice-universal-alpha.py(w) (8-25-2025)
-# Written using Python version 3.10, Windows OS 
+# Alice-universal-alpha.py(w) (8-12-2026)
+# Written using Python version 3.10 - 3.13, Windows OS 
 # Requires a hardware interface level functions add-on file
 # Created by D Mercer ()
 #
@@ -76,7 +76,7 @@ HelpURL = "https://github.com/damercer/Universal-ALICE"
 # check which operating system
 import platform
 #
-RevDate = "25 Aug 2025"
+RevDate = "12 Aug 2026"
 SWRev = "1.0 "
 #
 # small bit map of triangle logo for window icon
@@ -94,8 +94,6 @@ print("Windowing System is " + str(root.tk.call('tk', 'windowingsystem')))
 # Place holder for hardware functions file name:
 HardwareFile = "Alice_Interface_Level.py"
 ConfigFileName = "alice-last-config.cfg"
-CHANNELS = 1                # Number of Channel traces 1 to 4
-AWGChannels = 1
 AWGPeakToPeak = 5.0
 AllowFlashFirmware = 0
 TRACESread = 0              # Number of traces that have been read
@@ -391,6 +389,7 @@ EnableInterpFilter = IntVar()
 EnableInterpFilter.set(0)
 EnableMeasureScreen = 0
 EnableUserEntries = 0
+ExtraUI = 0
 CHANNELS = 2 # Number of supported Analog input channels
 AWGChannels = 2 # Number of supported Analog output channels
 PWMChannels = 0 # Number of supported PWM output channels
@@ -523,9 +522,9 @@ divfactor = {
     "n" : 1000000000, # nano 
 }
 ## SA Lin scale Max Min values
-SAMagdiv = ("10nV", "100nV", "1uV", "10uV", "100uV", "1mV", "10mV", "0.1", "1.0", "10.0")
+SAMagdiv = ("1nV", "10nV", "100nV", "1uV", "10uV", "100uV", "1mV", "10mV", "0.1", "1.0", "10.0")
 ## Time list in s/div
-TMpdiv = ("5us", "10us", "20us", "50us", "100us", "200us", "500us", "1.0ms", "2.0ms", "5.0ms",
+TMpdiv = ("0.1us", "0.2us", "0.5us", "1us", "2us", "5us", "10us", "20us", "50us", "100us", "200us", "500us", "1.0ms", "2.0ms", "5.0ms",
           "10ms", "20ms", "50ms", "100ms", "200ms", "500ms", "1.0s", "2.0s", "5.0s")
 # TMpdiv = (0.001, 0.002, 0.005, 0.01, 0.02, 0.05, 0.1, 0.2, 0.5, 1.0, 2.0, 5.0, 10.0, 20.0, 50.0, 100.0, 200.0)
 ResScalediv = (0.01, 0.02, 0.05, 0.1, 0.2, 0.5, 1, 2, 5, 10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000, 50000, 100000)
@@ -873,6 +872,10 @@ D6_is_on = False
 D7_is_on = False
 PWM1_is_on = False
 PWM2_is_on = False
+CLK1_is_on = False
+CLK2_is_on = False
+CLK3_is_on = False
+CLK4_is_on = False
 # Digital waveform buffers
 DBuff0 = []
 DBuff1 = []
@@ -1744,7 +1747,10 @@ def BLoadConfig(filename):
         # TimeCheckBox()
         if TimeDisp.get() == 1:
             ckb1.config(style="Enab.TCheckbutton")
-        XYCheckBox()
+        try:
+            XYCheckBox()
+        except:
+            donothing()
         try:
             FreqCheckBox()
         except:
@@ -4710,7 +4716,7 @@ def BStart():
     global RUNstatus, devx, PwrBt, DevID, FWRevOne, session, AWGSync
     global contloop, discontloop, TimeDiv, First_Slow_sweep, OhmDisp, DMMDisp
     global TimeDisp, XYDisp, PhADisp, FreqDisp, BodeDisp, IADisp
-    global Dlog_open, dlog, Ztime, Header
+    global Dlog_open, dlog, Ztime, Header, LoopCounter
 
     # Check if User wants data loging on or off
     if Dlog_open.get() == 1 and dlog.get() > 0:
@@ -4733,6 +4739,7 @@ def BStart():
         temp = 0
         #
         if (RUNstatus.get() == 0):
+            LoopCounter = 0
             RUNstatus.set(1)
         #
                     
@@ -4807,8 +4814,8 @@ def BTime():
 def BCHAlevel():
     global CHAsb, RUNstatus, CH1vpdvLevel
     
-    CH1vpdvLevel = UnitConvert(CHAsb.get())
     try:
+        CH1vpdvLevel = UnitConvert(CHAsb.get())
         HCHAlevel()
     except:
         donothing()
@@ -4818,8 +4825,8 @@ def BCHAlevel():
 def BCHBlevel():
     global CHBsb, RUNstatus, CH2vpdvLevel
     
-    CH2vpdvLevel = UnitConvert(CHBsb.get())
     try:
+        CH2vpdvLevel = UnitConvert(CHBsb.get())
         HCHBlevel()
     except:
         donothing()
@@ -4829,8 +4836,8 @@ def BCHBlevel():
 def BCHClevel():
     global CHCsb, RUNstatus, CH3vpdvLevel
     
-    CH3vpdvLevel = UnitConvert(CHCsb.get())
     try:
+        CH3vpdvLevel = UnitConvert(CHCsb.get())
         HCHClevel()
     except:
         donothing()
@@ -4840,8 +4847,8 @@ def BCHClevel():
 def BCHDlevel():
     global CHDsb, RUNstatus, CH4vpdvLevel
     
-    CH4vpdvLevel = UnitConvert(CHDsb.get())
     try:
+        CH4vpdvLevel = UnitConvert(CHDsb.get())
         HCHDlevel()
     except:
         donothing()
@@ -4871,8 +4878,8 @@ def onPosDScroll(event):
 def BOffsetA(event):
     global CHAOffset, CHAVPosEntry, CH1vpdvLevel, CHAsb, RUNstatus
 
-    CH1vpdvLevel = UnitConvert(CHAsb.get())
     try:
+        CH1vpdvLevel = UnitConvert(CHAsb.get())
         CHAOffset = float(eval(CHAVPosEntry.get())) # evalute entry string to a numerical value
     except:
         CHAVPosEntry.delete(0,END)
@@ -4889,8 +4896,8 @@ def BOffsetA(event):
 def BOffsetB(event):
     global CHBOffset, CHBVPosEntry, CH2vpdvLevel, CHBsb, RUNstatus
 
-    CH2vpdvLevel = UnitConvert(CHBsb.get())
     try:
+        CH2vpdvLevel = UnitConvert(CHBsb.get())
         CHBOffset = float(eval(CHBVPosEntry.get())) # evalute entry string to a numerical value
     except:
         CHBVPosEntry.delete(0,END)
@@ -4907,8 +4914,8 @@ def BOffsetB(event):
 def BOffsetC(event):
     global CHCOffset, CHCVPosEntry, CH3vpdvLevel, CHCsb, RUNstatus
 
-    CH3vpdvLevel = UnitConvert(CHCsb.get())
     try:
+        CH3vpdvLevel = UnitConvert(CHCsb.get())
         CHCOffset = float(eval(CHCVPosEntry.get())) # evalute entry string to a numerical value
     except:
         CHCVPosEntry.delete(0,END)
@@ -4925,8 +4932,8 @@ def BOffsetC(event):
 def BOffsetD(event):
     global CHDOffset, CHDVPosEntry, CH4vpdvLevel, CHDsb, RUNstatus
 
-    CH4vpdvLevel = UnitConvert(CHDsb.get())
     try:
+        CH4vpdvLevel = UnitConvert(CHDsb.get())
         CHDOffset = float(eval(CHDVPosEntry.get())) # evalute entry string to a numerical value
     except:
         CHDVPosEntry.delete(0,END)
@@ -4949,11 +4956,17 @@ def TimeCheckBox():
         ckb1.config(style="Disab.TCheckbutton")
 #
 def XYCheckBox():
-    global XYDisp, ckb2
+    global XYDisp, ckb2, OOTckb2, OOTScreenStatus
     if XYDisp.get() == 1:
-        ckb2.config(style="Enab.TCheckbutton")
+        if OOTScreenStatus.get() == 0:
+            ckb2.config(style="Enab.TCheckbutton")
+        else:
+            OOTckb2.config(style="Enab.TCheckbutton")
     else:
-        ckb2.config(style="Disab.TCheckbutton")
+        if OOTScreenStatus.get() == 0:
+            ckb2.config(style="Disab.TCheckbutton")
+        else:
+            OOTckb2.config(style="Disab.TCheckbutton")
 #
 def FreqCheckBox():
     global FreqDisp, ckb3, OOTckb3, OOTScreenStatus
@@ -5107,6 +5120,7 @@ def Analog_In():
                 CHDVOffsetEntry.insert(0, InOffD)
         # RUNstatus = 1 : Open Acquisition
         if (RUNstatus.get() == 1) or (RUNstatus.get() == 2):
+            # StartTime = time.time()
             if SettingsStatus.get() == 1:
                 SettingsUpdate() # Make sure current entries in Settings controls are up to date
             # if TimeDisp.get() > 0 or XYDisp.get() > 0 or PhADisp.get() > 0:
@@ -5135,6 +5149,9 @@ def Analog_In():
                 Ohm_Analog_In()
             if DMMRunStatus.get() == 1 and DMMDisp.get() == 1:
                 DMM_Analog_In()
+            # EndTime = time.time()
+            # Elapsed = EndTime - StartTime
+            # print("Elapsed Time = ", Elapsed)
         else:
             time.sleep(0.01) # slow down loop while not running to reduce CPU usage
             try:
@@ -5822,9 +5839,9 @@ def Analog_Fast_time():
                 if D5_is_on:
                     DBuff5 = numpy.roll(DBuff5, LShift)
                 if D6_is_on:
-                    DBuff5 = numpy.roll(DBuff6, LShift)
+                    DBuff6 = numpy.roll(DBuff6, LShift)
                 if D7_is_on:
-                    DBuff5 = numpy.roll(DBuff7, LShift)
+                    DBuff7 = numpy.roll(DBuff7, LShift)
     else:
         # VBuffA = numpy.roll(VBuffA, -2)
         VBuffA = numpy.roll(VBuffA, -4)
@@ -6149,6 +6166,8 @@ def FindRisingEdge(Trace1, Trace2):
     global CHAHW, CHALW, CHADCy, CHBHW, CHBLW, CHBDCy, ShowC1_V, ShowC2_V
     global CHABphase, CHBADelayR1, CHBADelayR2, CHBADelayF
 
+    if len(Trace1)<4 or len(Trace2)<4:
+        return
     CHAHW = CHALW = CHADCy = CHBHW = CHBLW = CHBDCy = 0
     anr1 = bnr1 = 0
     anf1 = bnf1 = 1
@@ -6172,9 +6191,10 @@ def FindRisingEdge(Trace1, Trace2):
     Afalling = [i for (i, val) in enumerate(Trace1) if val <= MidV1 and Trace1[i-1] > MidV1]
     AIrising = [i - (Trace1[i] - MidV1)/(Trace1[i] - Trace1[i-1]) for i in Arising]
     AIfalling = [i - (MidV1 - Trace1[i])/(Trace1[i-1] - Trace1[i]) for i in Afalling]
+    if len(AIrising) > 0:
+        CHAfreq = SAMPLErate / numpy.mean(numpy.diff(AIrising))
+        CHAperiod = (numpy.mean(numpy.diff(AIrising)) * 1000.0) / SAMPLErate # time in mSec
     
-    CHAfreq = SAMPLErate / numpy.mean(numpy.diff(AIrising))
-    CHAperiod = (numpy.mean(numpy.diff(AIrising)) * 1000.0) / SAMPLErate # time in mSec
 # Catch zero length array?
     try:
         Dummy_read = Arising[0]
@@ -6222,9 +6242,9 @@ def FindRisingEdge(Trace1, Trace2):
     Bfalling = [i for (i, val) in enumerate(Trace2) if val <= MidV2 and Trace2[i-1] > MidV2]
     BIrising = [i - (Trace2[i] - MidV2)/(Trace2[i] - Trace2[i-1]) for i in Brising]
     BIfalling = [i - (MidV2 - Trace2[i])/(Trace2[i-1] - Trace2[i]) for i in Bfalling]
-
-    CHBfreq = SAMPLErate / numpy.mean(numpy.diff(BIrising))
-    CHBperiod = (numpy.mean(numpy.diff(BIrising)) * 1000.0) / SAMPLErate # time in mSec
+    if len(BIrising) > 0:
+        CHBfreq = SAMPLErate / numpy.mean(numpy.diff(BIrising))
+        CHBperiod = (numpy.mean(numpy.diff(BIrising)) * 1000.0) / SAMPLErate # time in mSec
 # Catch zero length array?
     try:
         Dummy_read = Brising[0]
@@ -7806,7 +7826,7 @@ def MakeTimeScreen():
     global FontSize, Tdiv, ZeroGrid
     global LabelPlotText, PlotLabelText # plot custom label text flag
     global MouseX, MouseY, MouseWidget, MouseCAV, MouseCBV
-    global ShowXCur, ShowYCur, TCursor, VCursor
+    global ShowXCur, ShowYCur, TCursor, VCursor, DigScreenStatus
     global SHOWsamples  # Number of samples in data record
     global ShowC1_V, ShowC2_V, Show_MathX, Show_MathY
     global ShowRA_V, ShowRB_V, ShowRC_V, ShowRD_V, ShowMath
@@ -7851,6 +7871,7 @@ def MakeTimeScreen():
     global VABase, VATop, VBBase, VBTop, UserALabel, UserAString, UserBLabel, UserBString
     global MeasTopV1, MeasBaseV1, MeasTopV2, MeasBaseV2, MeasUserA, MeasUserB
     global CHBADelayR1, CHBADelayR2, CHBADelayF, MeasDelay
+    global d0entry, d1entry, d2entry, d3entry, d4entry, d5entry, d6entry, d7entry
     #
     Ymin = Y0T                  # Minimum position of time grid (top)
     Ymax = Y0T + GRH            # Maximum position of time grid (bottom)
@@ -8205,6 +8226,7 @@ def MakeTimeScreen():
         #
 #
     SmoothBool = SmoothCurves.get()
+    DigX = X0L+GRW+5 
     # Write the traces if available
     if len(T1Vline) > 4: # Avoid writing lines with 1 coordinate    
         ca.create_line(T1Vline, fill=COLORtrace1, smooth=SmoothBool, splinestep=5, width=TRACEwidth.get())   # Write the voltage trace 1
@@ -8220,22 +8242,31 @@ def MakeTimeScreen():
         ca.create_line(TMXline, fill=COLORtrace6, smooth=SmoothBool, splinestep=5, width=TRACEwidth.get())
     if len(TMYline) > 4 : # Write Y Math tace if active
         ca.create_line(TMYline, fill=COLORtrace7, smooth=SmoothBool, splinestep=5, width=TRACEwidth.get())
-    if len(D0line) > 4 : # Write D0 tace if active
-        ca.create_line(D0line, fill=COLORtraceD, smooth=SmoothBool, splinestep=5, width=TRACEwidth.get())
-    if len(D1line) > 4 : # Write D1 tace if active
-        ca.create_line(D1line, fill=COLORtraceD, smooth=SmoothBool, splinestep=5, width=TRACEwidth.get())
-    if len(D2line) > 4 : # Write D2 tace if active
-        ca.create_line(D2line, fill=COLORtraceD, smooth=SmoothBool, splinestep=5, width=TRACEwidth.get())
-    if len(D3line) > 4 : # Write D3 tace if active
-        ca.create_line(D3line, fill=COLORtraceD, smooth=SmoothBool, splinestep=5, width=TRACEwidth.get())
-    if len(D4line) > 4 : # Write D4 tace if active
-        ca.create_line(D4line, fill=COLORtraceD, smooth=SmoothBool, splinestep=5, width=TRACEwidth.get())
-    if len(D5line) > 4 : # Write D5 tace if active
-        ca.create_line(D5line, fill=COLORtraceD, smooth=SmoothBool, splinestep=5, width=TRACEwidth.get())
-    if len(D6line) > 4 : # Write D6 tace if active
-        ca.create_line(D6line, fill=COLORtraceD, smooth=SmoothBool, splinestep=5, width=TRACEwidth.get())
-    if len(D7line) > 4 : # Write D7 tace if active
-        ca.create_line(D7line, fill=COLORtraceD, smooth=SmoothBool, splinestep=5, width=TRACEwidth.get())
+    if DigScreenStatus.get() > 0:
+        if len(D0line) > 4 : # Write D0 tace if active
+            ca.create_line(D0line, fill=COLORtraceD, smooth=SmoothBool, splinestep=5, width=TRACEwidth.get())
+            ca.create_text(DigX, D0line[1], text=d0entry.get(), fill=COLORtraceD, anchor='w', font=("arial", FontSize ))
+        if len(D1line) > 4 : # Write D1 tace if active
+            ca.create_line(D1line, fill=COLORtraceD, smooth=SmoothBool, splinestep=5, width=TRACEwidth.get())
+            ca.create_text(DigX, D1line[1], text=d1entry.get(), fill=COLORtraceD, anchor='w', font=("arial", FontSize ))
+        if len(D2line) > 4 : # Write D2 tace if active
+            ca.create_line(D2line, fill=COLORtraceD, smooth=SmoothBool, splinestep=5, width=TRACEwidth.get())
+            ca.create_text(DigX, D2line[1], text=d2entry.get(), fill=COLORtraceD, anchor='w', font=("arial", FontSize ))
+        if len(D3line) > 4 : # Write D3 tace if active
+            ca.create_line(D3line, fill=COLORtraceD, smooth=SmoothBool, splinestep=5, width=TRACEwidth.get())
+            ca.create_text(DigX, D3line[1], text=d3entry.get(), fill=COLORtraceD, anchor='w', font=("arial", FontSize ))
+        if len(D4line) > 4 : # Write D4 tace if active
+            ca.create_line(D4line, fill=COLORtraceD, smooth=SmoothBool, splinestep=5, width=TRACEwidth.get())
+            ca.create_text(DigX, D4line[1], text=d4entry.get(), fill=COLORtraceD, anchor='w', font=("arial", FontSize ))
+        if len(D5line) > 4 : # Write D5 tace if active
+            ca.create_line(D5line, fill=COLORtraceD, smooth=SmoothBool, splinestep=5, width=TRACEwidth.get())
+            ca.create_text(DigX, D5line[1], text=d5entry.get(), fill=COLORtraceD, anchor='w', font=("arial", FontSize ))
+        if len(D6line) > 4 : # Write D6 tace if active
+            ca.create_line(D6line, fill=COLORtraceD, smooth=SmoothBool, splinestep=5, width=TRACEwidth.get())
+            ca.create_text(DigX, D6line[1], text=d6entry.get(), fill=COLORtraceD, anchor='w', font=("arial", FontSize ))
+        if len(D7line) > 4 : # Write D7 tace if active
+            ca.create_line(D7line, fill=COLORtraceD, smooth=SmoothBool, splinestep=5, width=TRACEwidth.get())
+            ca.create_text(DigX, D7line[1], text=d7entry.get(), fill=COLORtraceD, anchor='w', font=("arial", FontSize ))
     if ShowRA_V.get() == 1 and len(T1VRline) > 4:
         ca.create_line(T1VRline, fill=COLORtraceR1, smooth=SmoothBool, splinestep=5, width=TRACEwidth.get())
     if ShowRB_V.get() == 1 and len(T2VRline) > 4:
@@ -8311,6 +8342,7 @@ def MakeTimeScreen():
                 FindRisingEdge(VBuffA[hldn:Endsample],VBuffB[hldn:Endsample])
         else:
             FindRisingEdge(VBuffA,VBuffB)
+            
         if ShowC1_V.get() == 1 and CHANNELS >= 1:
             if MeasAHW.get() == 1:
                 txt = txt + " CA Hi Width = " + ' {0:.3f} '.format(CHAHW) + " mS "
@@ -9100,7 +9132,10 @@ def SetScaleC():
     if MarkerScale.get() != 1:
         MarkerScale.set(3)
         CHClab.config(style="Rtrace3.TButton")
-        CHDlab.config(style="Strace4.TButton")
+        try:
+            CHDlab.config(style="Strace4.TButton")
+        except:
+            pass
     else:
         MarkerScale.set(0)
 
@@ -11362,6 +11397,7 @@ def MakeFreqTrace():        # Update the grid and trace
     n = STARTsample
     PeakIndexA = PeakIndexB = n
     PeakdbA = PeakdbB = PeakMdb = -200 # PeakdbB
+    # print(FFTresultA[n+1])
     while n < STOPsample:
         F = (n * Fsample) # + SAfreq_min
         if HScale.get() == 1:
@@ -11495,6 +11531,7 @@ def MakeFreqTrace():        # Update the grid and trace
                 PeakfreqM = F
             TFMline.append(int(yb + 0.5))
         n = n + 1
+    # print(len(T1Fline))
 #
 ## make Bode Plot Traces
 def MakeBodeTrace():        # Update the grid and trace
@@ -14332,7 +14369,8 @@ def MakeFreqScreen():       # Update the screen with traces and text
                 except:
                     x = X0LF
                 Dline = [x,y1,x,y2]
-                if F == 1 or F == 10 or F == 100 or F == 1000 or F == 10000 or F == 100000:
+                # print(Dline)
+                if F == 1 or F == 10 or F == 100 or F == 1000 or F == 10000 or F == 100000 or F == 1000000:
                     Freqca.create_line(Dline, fill=COLORgrid, width=GridWidth.get())
                     axis_label = str(F)
                     Freqca.create_text(x, y2+3, text=axis_label, fill=COLORgrid, anchor="n", font=("arial", FontSize ))
@@ -14351,8 +14389,10 @@ def MakeFreqScreen():       # Update the screen with traces and text
                 F = F + 1000
             elif F < 100000:
                 F = F + 10000
-            elif F < 200000:
-                F = F + 10000
+            elif F < 1000000:
+                F = F + 100000
+            else:
+                F = F + 1000000
     else:
         Freqdiv = (StopFrequency - StartFrequency) / 10
         while (i < 11):
@@ -15773,6 +15813,25 @@ def onPWMW2Scroll(event):
     onTextScroll(event)
     UpdatePWM2()
 #
+def onCLKF1Scroll(event):
+
+    onTextScroll(event)
+    UpdateCLK1()
+#
+def onCLKF2Scroll(event):
+
+    onTextScroll(event)
+    UpdateCLK2()
+#
+def onCLKF3Scroll(event):
+
+    onTextScroll(event)
+    UpdateCLK3()
+#
+def onCLKF4Scroll(event):
+
+    onTextScroll(event)
+    UpdateCLK4()
 #
 def DestroyAWGScreen():
     global awgwindow, AWGScreenStatus
@@ -17557,8 +17616,11 @@ def MakeDigScreen():
     global digin0, digin1, digin2, digin3, digin4, digin5, digin6, digin7
     global DigScreenStatus, win2, FrameBG, BorderSize
     global PWMDivEntry1, PWMWidthEntry1, PWMDivEntry2, PWMWidthEntry2, PWMChannels
+    global DigClkEntry1, DigClkEntry2, DigClkEntry3, DigClkEntry4, CLKChannels
+    global clkbtn1, clkbtn2, clkbtn3, clkbtn4, CLKLabel1, CLKLabel2, CLKLabel3, CLKLabel4
     global RoundRedBtn, RoundGrnBtn, RoundOrBtn, DigChannels, LogicChannels
     global d0btn, d1btn, d2btn, d3btn, d4btn, d5btn, d6btn, d7btn, TgInput
+    global d0entry, d1entry, d2entry, d3entry, d4entry, d5entry, d6entry, d7entry
     global pwmbtn1, PWMLabel1, pwmbtn2, PWMLabel2
     
     # setup Dig output window
@@ -17587,6 +17649,39 @@ def MakeDigScreen():
             d1lab.grid(row=RowNum, column=7, sticky=W)
             d0lab = Label(win2, text="  D0  ", background = "#8080ff")
             d0lab.grid(row=RowNum, column=8, sticky=W)
+            RowNum = RowNum + 1
+            d7entry = Entry(win2, width=4, background = "#8080ff")
+            d7entry.grid(row=RowNum, column=1, sticky=W)
+            d7entry.delete(0,"end")
+            d7entry.insert(0,"D7")
+            d6entry = Entry(win2, width=4, background = "#8080ff")
+            d6entry.grid(row=RowNum, column=2, sticky=W)
+            d6entry.delete(0,"end")
+            d6entry.insert(0,"D6")
+            d5entry = Entry(win2, width=4, background = "#8080ff")
+            d5entry.grid(row=RowNum, column=3, sticky=W)
+            d5entry.delete(0,"end")
+            d5entry.insert(0,"D5")
+            d4entry = Entry(win2, width=4, background = "#8080ff")
+            d4entry.grid(row=RowNum, column=4, sticky=W)
+            d4entry.delete(0,"end")
+            d4entry.insert(0,"D4")
+            d3entry = Entry(win2, width=4, background = "#8080ff")
+            d3entry.grid(row=RowNum, column=5, sticky=W)
+            d3entry.delete(0,"end")
+            d3entry.insert(0,"D3")
+            d2entry = Entry(win2, width=4, background = "#8080ff")
+            d2entry.grid(row=RowNum, column=6, sticky=W)
+            d2entry.delete(0,"end")
+            d2entry.insert(0,"D2")
+            d1entry = Entry(win2, width=4, background = "#8080ff")
+            d1entry.grid(row=RowNum, column=7, sticky=W)
+            d1entry.delete(0,"end")
+            d1entry.insert(0,"D1")
+            d0entry = Entry(win2, width=4, background = "#8080ff")
+            d0entry.grid(row=RowNum, column=8, sticky=W)
+            d0entry.delete(0,"end")
+            d0entry.insert(0,"D0")
             RowNum = RowNum + 1
             d7btn = Button(win2, image=RoundRedBtn, command=DigBtn7)
             d7btn.grid(row=RowNum, column=1, sticky=W)
@@ -17708,6 +17803,83 @@ def MakeDigScreen():
             PWMWidthEntry2.insert(0,50)
             RowNum = RowNum + 1
         #
+        if CLKChannels >= 1:
+            clklab1 = Label(win2, text="Clk 1 On/Off", background = "#8080ff")
+            clklab1.grid(row=RowNum, column=1, columnspan=2, sticky=W)
+            clkbtn1 = Button(win2, image=RoundRedBtn, command=ToggleCLK1)
+            clkbtn1.grid(row=RowNum, column=2, sticky=W)
+            RowNum = RowNum + 1
+            CLKLabel1 = Label(win2, text="CLK 1 Frequency")
+            CLKLabel1.grid(row=RowNum, column=1, columnspan=3, sticky=W)
+            DigClkEntry1 = Entry(win2, width=6, cursor='double_arrow')
+            DigClkEntry1.bind("<Return>", UpdateCLK1)
+            DigClkEntry1.bind('<MouseWheel>', onCLKF1Scroll)
+            DigClkEntry1.bind("<Button-4>", onCLKF1Scroll)# with Linux OS
+            DigClkEntry1.bind("<Button-5>", onCLKF1Scroll)
+            #DigClkEntry1.bind('<Key>', onTextKeyPWMF)
+            DigClkEntry1.grid(row=RowNum, column=4, columnspan=2, sticky=W)
+            DigClkEntry1.delete(0,"end")
+            DigClkEntry1.insert(0,500)
+            #
+            RowNum = RowNum + 1
+        if CLKChannels >= 2:
+            clklab2 = Label(win2, text="Clk 2 On/Off", background = "#8080ff")
+            clklab2.grid(row=RowNum, column=1, columnspan=2, sticky=W)
+            clkbtn2 = Button(win2, image=RoundRedBtn, command=ToggleCLK2)
+            clkbtn2.grid(row=RowNum, column=2, sticky=W)
+            RowNum = RowNum + 1
+            CLKLabel2 = Label(win2, text="CLK 2 Frequency")
+            CLKLabel2.grid(row=RowNum, column=1, columnspan=3, sticky=W)
+            DigClkEntry2 = Entry(win2, width=6, cursor='double_arrow')
+            DigClkEntry2.bind("<Return>", UpdateCLK2)
+            DigClkEntry2.bind('<MouseWheel>', onCLKF2Scroll)
+            DigClkEntry2.bind("<Button-4>", onCLKF2Scroll)# with Linux OS
+            DigClkEntry2.bind("<Button-5>", onCLKF2Scroll)
+            #DigClkEntry2.bind('<Key>', onTextKeyPWMF)
+            DigClkEntry2.grid(row=RowNum, column=4, columnspan=2, sticky=W)
+            DigClkEntry2.delete(0,"end")
+            DigClkEntry2.insert(0,500)
+            #
+            RowNum = RowNum + 1
+        if CLKChannels >= 3:
+            clklab3 = Label(win2, text="Clk 3 On/Off", background = "#8080ff")
+            clklab3.grid(row=RowNum, column=1,columnspan=2, sticky=W)
+            clkbtn3 = Button(win2, image=RoundRedBtn, command=ToggleCLK3)
+            clkbtn3.grid(row=RowNum, column=2, sticky=W)
+            RowNum = RowNum + 1
+            CLKLabel3 = Label(win2, text="CLK 3 Frequency")
+            CLKLabel3.grid(row=RowNum, column=1, columnspan=3, sticky=W)
+            DigClkEntry3 = Entry(win2, width=6, cursor='double_arrow')
+            DigClkEntry3.bind("<Return>", UpdateCLK3)
+            DigClkEntry3.bind('<MouseWheel>', onCLKF3Scroll)
+            DigClkEntry3.bind("<Button-4>", onCLKF3Scroll)# with Linux OS
+            DigClkEntry3.bind("<Button-5>", onCLKF3Scroll)
+            #DigClkEntry3.bind('<Key>', onTextKeyPWMF)
+            DigClkEntry3.grid(row=RowNum, column=4, columnspan=2, sticky=W)
+            DigClkEntry3.delete(0,"end")
+            DigClkEntry3.insert(0,500)
+            #
+            RowNum = RowNum + 1
+        if CLKChannels >= 4:
+            clklab4 = Label(win2, text="Clk 4 On/Off", background = "#8080ff")
+            clklab4.grid(row=RowNum, column=1, columnspan=2, sticky=W)
+            clkbtn4 = Button(win2, image=RoundRedBtn, command=ToggleCLK4)
+            clkbtn4.grid(row=RowNum, column=2, sticky=W)
+            RowNum = RowNum + 1
+            CLKLabel4 = Label(win2, text="CLK 4 Frequency")
+            CLKLabel4.grid(row=RowNum, column=1, columnspan=3, sticky=W)
+            DigClkEntry4 = Entry(win2, width=6, cursor='double_arrow')
+            DigClkEntry4.bind("<Return>", UpdateCLK4)
+            DigClkEntry4.bind('<MouseWheel>', onCLKF4Scroll)
+            DigClkEntry4.bind("<Button-4>", onCLKF4Scroll)# with Linux OS
+            DigClkEntry4.bind("<Button-5>", onCLKF4Scroll)
+            #DigClkEntry4.bind('<Key>', onTextKeyPWMF)
+            DigClkEntry4.grid(row=RowNum, column=4, columnspan=2, sticky=W)
+            DigClkEntry4.delete(0,"end")
+            DigClkEntry4.insert(0,500)
+            #
+            RowNum = RowNum + 1
+        #
         digdismissbutton = Button(win2, text="Dismiss", command=DestroyDigScreen)
         digdismissbutton.grid(row=RowNum, column=1, columnspan=2, sticky=W)
         if DigChannels > 0:
@@ -17759,6 +17931,70 @@ def TogglePWM2():
         PWM2_is_on = True
     try:
         PWM2_On_Off()
+    except:
+        pass
+#
+def ToggleCLK1():
+    global CLK1_is_on, clkbtn1
+    global RoundRedBtn, RoundGrnBtn, RoundOrBtn
+	
+    # Determine is on or off
+    if CLK1_is_on:
+        clkbtn1.config(image = RoundRedBtn)
+        CLK1_is_on = False
+    else:
+        clkbtn1.config(image = RoundGrnBtn)
+        CLK1_is_on = True
+    try:
+        CLK1_On_Off()
+    except:
+        pass
+#
+def ToggleCLK2():
+    global CLK2_is_on, clkbtn2
+    global RoundRedBtn, RoundGrnBtn, RoundOrBtn
+	
+    # Determine is on or off
+    if CLK2_is_on:
+        clkbtn2.config(image = RoundRedBtn)
+        CLK2_is_on = False
+    else:
+        clkbtn2.config(image = RoundGrnBtn)
+        CLK2_is_on = True
+    try:
+        CLK2_On_Off()
+    except:
+        pass
+#
+def ToggleCLK3():
+    global CLK3_is_on, clkbtn3
+    global RoundRedBtn, RoundGrnBtn, RoundOrBtn
+	
+    # Determine is on or off
+    if CLK3_is_on:
+        clkbtn3.config(image = RoundRedBtn)
+        CLK3_is_on = False
+    else:
+        clkbtn3.config(image = RoundGrnBtn)
+        CLK3_is_on = True
+    try:
+        CLK3_On_Off()
+    except:
+        pass
+#
+def ToggleCLK4():
+    global CLK4_is_on, clkbtn4
+    global RoundRedBtn, RoundGrnBtn, RoundOrBtn
+	
+    # Determine is on or off
+    if CLK4_is_on:
+        clkbtn4.config(image = RoundRedBtn)
+        CLK4_is_on = False
+    else:
+        clkbtn4.config(image = RoundGrnBtn)
+        CLK4_is_on = True
+    try:
+        CLK4_On_Off()
     except:
         pass
 #
@@ -17892,9 +18128,27 @@ def DigBtn7():
 #
 ## Destroy the Digtal controls Screen
 def DestroyDigScreen():
-    global win2, DigScreenStatus
+    global win2, DigScreenStatus, RoundRedBtn, RoundGrnBtn, RoundOrBtn
+    global D0_in_on, D1_in_on, D2_in_on, D3_in_on, D4_in_on, D5_in_on, D6_in_on, D7_in_on
+    global d0btn, d1btn, d2btn, d3btn, d4btn, d5btn, d6btn, d7btn
     
     DigScreenStatus.set(0)
+    d0btn.config(image = RoundRedBtn)
+    D0_is_on = False
+    d1btn.config(image = RoundRedBtn)
+    D1_is_on = False
+    d2btn.config(image = RoundRedBtn)
+    D2_is_on = False
+    d3btn.config(image = RoundRedBtn)
+    D3_is_on = False
+    d4btn.config(image = RoundRedBtn)
+    D4_is_on = False
+    d5btn.config(image = RoundRedBtn)
+    D5_is_on = False
+    d6btn.config(image = RoundRedBtn)
+    D6_is_on = False
+    d7btn.config(image = RoundRedBtn)
+    D7_is_on = False
     win2.destroy()
 #
 def onStopfreqScroll(event):
@@ -19155,16 +19409,25 @@ def RDbutton():
         display8.config(text="%f Gain" %RDGain)		
 #
 # Draw a resistor shape at location
-def DrawRes(X, Y, ResW, SchCa): 
+def DrawRes(X, Y, ResW, SchCa, direction=0): 
     global COLORblack
 
-    SchCa.create_line(X, Y, X, Y+20, fill=COLORblack, width=3)
-    SchCa.create_line(X, Y+20, X+ResW, Y+25, fill=COLORblack, width=3)
-    SchCa.create_line(X+ResW, Y+25, X-ResW, Y+35, fill=COLORblack, width=3)
-    SchCa.create_line(X-ResW, Y+35, X+ResW, Y+45, fill=COLORblack, width=3)
-    SchCa.create_line(X+ResW, Y+45, X-ResW, Y+55, fill=COLORblack, width=3)
-    SchCa.create_line(X-ResW, Y+55, X, Y+60, fill=COLORblack, width=3)
-    SchCa.create_line(X, Y+60, X, Y+80, fill=COLORblack, width=3)
+    if direction == 0: # Draw vertical resistor
+        SchCa.create_line(X, Y, X, Y+20, fill=COLORblack, width=3)
+        SchCa.create_line(X, Y+20, X+ResW, Y+25, fill=COLORblack, width=3)
+        SchCa.create_line(X+ResW, Y+25, X-ResW, Y+35, fill=COLORblack, width=3)
+        SchCa.create_line(X-ResW, Y+35, X+ResW, Y+45, fill=COLORblack, width=3)
+        SchCa.create_line(X+ResW, Y+45, X-ResW, Y+55, fill=COLORblack, width=3)
+        SchCa.create_line(X-ResW, Y+55, X, Y+60, fill=COLORblack, width=3)
+        SchCa.create_line(X, Y+60, X, Y+80, fill=COLORblack, width=3)
+    else: # Draw horizontal resistor
+        SchCa.create_line(X, Y, X+20, Y, fill=COLORblack, width=3)
+        SchCa.create_line(X+20, Y, X+25, Y+ResW, fill=COLORblack, width=3)
+        SchCa.create_line(X+25, Y+ResW, X+35, Y-ResW, fill=COLORblack, width=3)
+        SchCa.create_line(X+35, Y-ResW, X+45, Y+ResW, fill=COLORblack, width=3)
+        SchCa.create_line(X+45, Y+ResW, X+55, Y-ResW, fill=COLORblack, width=3)
+        SchCa.create_line(X+55, Y-ResW, X+60, Y, fill=COLORblack, width=3)
+        SchCa.create_line(X+60, Y, X+80, Y, fill=COLORblack, width=3)
 #
 def RDSetAGO():
     global CHAVGainEntry, CHAVOffsetEntry
@@ -19334,7 +19597,8 @@ def ReConnectDevice():
         BSetTrigEdge()
         BSetTriggerSource()
         BTriglevel() # set trigger level
-        MakeAWGwaves()
+        if AWGChannels > 0:
+            MakeAWGwaves()
 #
 # ================ Make main Screen ==========================
 #
@@ -19688,46 +19952,55 @@ frame3.pack(side=TOP, fill=BOTH, expand=NO)
 frame4 = Frame(root, borderwidth=BorderSize, relief=FrameRelief)
 frame4.pack(side=TOP, fill=BOTH, expand=NO)
 #
+# Try to connect to hardware
+Sucess = ConnectDevice()#
 DigScreenStatus = IntVar()
 DigScreenStatus.set(0)
 # create a pulldown menu
 # Trigger signals
 Triggermenu = Menubutton(frame1, text="Trigger", style="W7.TButton")
-Triggermenu.menu = Menu(Triggermenu, tearoff = 0 )
-Triggermenu["menu"]  = Triggermenu.menu
-Triggermenu.menu.add_radiobutton(label='None', variable=TgInput, value=0)
-if CHANNELS >= 1:
-    Triggermenu.menu.add_radiobutton(label='CH A', background=COLORtrace1, variable=TgInput, value=1, command=BSetTriggerSource)
-if CHANNELS >= 2:
-    Triggermenu.menu.add_radiobutton(label='CH B', background=COLORtrace2, variable=TgInput, value=2, command=BSetTriggerSource)
-if CHANNELS >= 3:
-    Triggermenu.menu.add_radiobutton(label='CH C', background=COLORtrace3, variable=TgInput, value=3, command=BSetTriggerSource)
-if CHANNELS >= 4:
-    Triggermenu.menu.add_radiobutton(label='CH D', background=COLORtrace4, variable=TgInput, value=4, command=BSetTriggerSource)
-if UseSoftwareTrigger == 0:
-    Triggermenu.menu.add_radiobutton(label='Internal', variable=TgSource, value=0, command=BTrigIntExt)
-    Triggermenu.menu.add_radiobutton(label='External', variable=TgSource, value=1, command=BTrigIntExt)
-if DigChannels >= 1:
-    Triggermenu.menu.add_radiobutton(label='D0', background=COLORtraceD, variable=TgInput, value=5, command=BSetTriggerSource)
-if DigChannels >= 2:
-    Triggermenu.menu.add_radiobutton(label='D1', background=COLORtraceD, variable=TgInput, value=6, command=BSetTriggerSource)
-if DigChannels >= 3:
-    Triggermenu.menu.add_radiobutton(label='D2', background=COLORtraceD, variable=TgInput, value=7, command=BSetTriggerSource)
-if DigChannels >= 4:
-    Triggermenu.menu.add_radiobutton(label='D3', background=COLORtraceD, variable=TgInput, value=8, command=BSetTriggerSource)
-if DigChannels >= 5:
-    Triggermenu.menu.add_radiobutton(label='D4', background=COLORtraceD, variable=TgInput, value=9, command=BSetTriggerSource)
-if DigChannels >= 6:
-    Triggermenu.menu.add_radiobutton(label='D5', background=COLORtraceD, variable=TgInput, value=10, command=BSetTriggerSource)
-if DigChannels >= 7:
-    Triggermenu.menu.add_radiobutton(label='D6', background=COLORtraceD, variable=TgInput, value=11, command=BSetTriggerSource)
-if DigChannels >= 8:
-    Triggermenu.menu.add_radiobutton(label='D7', background=COLORtraceD, variable=TgInput, value=12, command=BSetTriggerSource)
-Triggermenu.menu.add_checkbutton(label='Low Pass Filter', variable=LPFTrigger)
-Triggermenu.menu.add_checkbutton(label='Auto Level', variable=AutoLevel)
-Triggermenu.menu.add_checkbutton(label='Manual Trgger', variable=ManualTrigger)
-Triggermenu.menu.add_checkbutton(label='SingleShot', variable=SingleShot)
 Triggermenu.pack(side=LEFT)
+TriggerMain = Menu(Triggermenu, tearoff = 0 )
+Triggermenu["menu"]  = TriggerMain
+# define sub-menu
+TrigSubmenu = Menu(TriggerMain, tearoff = 0 )
+if DigChannels >= 1:
+    TrigSubmenu.add_radiobutton(label='D0', background=COLORtraceD, variable=TgInput, value=5, command=BSetTriggerSource)
+if DigChannels >= 2:
+    TrigSubmenu.add_radiobutton(label='D1', background=COLORtraceD, variable=TgInput, value=6, command=BSetTriggerSource)
+if DigChannels >= 3:
+    TrigSubmenu.add_radiobutton(label='D2', background=COLORtraceD, variable=TgInput, value=7, command=BSetTriggerSource)
+if DigChannels >= 4:
+    TrigSubmenu.add_radiobutton(label='D3', background=COLORtraceD, variable=TgInput, value=8, command=BSetTriggerSource)
+if DigChannels >= 5:
+    TrigSubmenu.add_radiobutton(label='D4', background=COLORtraceD, variable=TgInput, value=9, command=BSetTriggerSource)
+if DigChannels >= 6:
+    TrigSubmenu.add_radiobutton(label='D5', background=COLORtraceD, variable=TgInput, value=10, command=BSetTriggerSource)
+if DigChannels >= 7:
+    TrigSubmenu.add_radiobutton(label='D6', background=COLORtraceD, variable=TgInput, value=11, command=BSetTriggerSource)
+if DigChannels >= 8:
+    TrigSubmenu.add_radiobutton(label='D7', background=COLORtraceD, variable=TgInput, value=12, command=BSetTriggerSource)
+#
+TriggerMain.add_radiobutton(label='None', variable=TgInput, value=0)
+if CHANNELS >= 1:
+    TriggerMain.add_radiobutton(label='CH A', background=COLORtrace1, variable=TgInput, value=1, command=BSetTriggerSource)
+if CHANNELS >= 2:
+    TriggerMain.add_radiobutton(label='CH B', background=COLORtrace2, variable=TgInput, value=2, command=BSetTriggerSource)
+if CHANNELS >= 3:
+    TriggerMain.add_radiobutton(label='CH C', background=COLORtrace3, variable=TgInput, value=3, command=BSetTriggerSource)
+if CHANNELS >= 4:
+    TriggerMain.add_radiobutton(label='CH D', background=COLORtrace4, variable=TgInput, value=4, command=BSetTriggerSource)
+if UseSoftwareTrigger == 0:
+    TriggerMain.add_radiobutton(label='Internal', variable=TgSource, value=0, command=BTrigIntExt)
+    TriggerMain.add_radiobutton(label='External', variable=TgSource, value=1, command=BTrigIntExt)
+
+if DigChannels > 0:
+    TriggerMain.add_cascade(label="Digital", menu=TrigSubmenu) #
+TriggerMain.add_checkbutton(label='Low Pass Filter', variable=LPFTrigger)
+TriggerMain.add_checkbutton(label='Auto Level', variable=AutoLevel)
+TriggerMain.add_checkbutton(label='Manual Trgger', variable=ManualTrigger)
+TriggerMain.add_checkbutton(label='SingleShot', variable=SingleShot)
+
 #
 Edgemenu = Menubutton(frame1, text="Edge", style="W5.TButton")
 Edgemenu.menu = Menu(Edgemenu, tearoff = 0 )
@@ -19934,73 +20207,75 @@ mathbt.pack(side=RIGHT, anchor=W)
 # Measurments menu
 measlab = Label(dropmenu2, text="Meas")
 measlab.pack(side=LEFT, anchor=W)
-MeasmenuA = Menubutton(dropmenu2, text="CA", style="W3.TButton")
-MeasmenuA.menu = Menu(MeasmenuA, tearoff = 0 )
-MeasmenuA["menu"]  = MeasmenuA.menu
-MeasmenuA.menu.add_command(label="-CA-V-", foreground="blue", command=donothing)
-MeasmenuA.menu.add_checkbutton(label='Avg', variable=MeasDCV1)
-MeasmenuA.menu.add_checkbutton(label='Min', variable=MeasMinV1)
-MeasmenuA.menu.add_checkbutton(label='Max', variable=MeasMaxV1)
-MeasmenuA.menu.add_checkbutton(label='Base', variable=MeasBaseV1)
-MeasmenuA.menu.add_checkbutton(label='Top', variable=MeasTopV1)
-MeasmenuA.menu.add_checkbutton(label='Mid', variable=MeasMidV1)
-MeasmenuA.menu.add_checkbutton(label='P-P', variable=MeasPPV1)
-MeasmenuA.menu.add_checkbutton(label='RMS', variable=MeasRMSV1)
-MeasmenuA.menu.add_checkbutton(label='A-B', variable=MeasDiffAB)
-MeasmenuA.menu.add_checkbutton(label='A-B RMS', variable=MeasRMSVA_B)
-MeasmenuA.menu.add_checkbutton(label='User', variable=MeasUserA, command=BUserAMeas)
-#MeasmenuA.menu.add_separator()
-MeasmenuA.menu.add_command(label="-CA-Time-", foreground="blue", command=donothing)
-MeasmenuA.menu.add_checkbutton(label='H-Width', variable=MeasAHW)
-MeasmenuA.menu.add_checkbutton(label='L-Width', variable=MeasALW)
-MeasmenuA.menu.add_checkbutton(label='DutyCyle', variable=MeasADCy)
-MeasmenuA.menu.add_checkbutton(label='Period', variable=MeasAPER)
-MeasmenuA.menu.add_checkbutton(label='Freq', variable=MeasAFREQ)
-MeasmenuA.menu.add_checkbutton(label='A-B Phase', variable=MeasPhase)
-if CHANNELS >= 3:
-    MeasmenuA.menu.add_separator()
-    MeasmenuA.menu.add_command(label="-CC-V-", foreground="blue", command=donothing)
-    MeasmenuA.menu.add_checkbutton(label='Avg', variable=MeasDCV3)
-    MeasmenuA.menu.add_checkbutton(label='Min', variable=MeasMinV3)
-    MeasmenuA.menu.add_checkbutton(label='Max', variable=MeasMaxV3)
-    MeasmenuA.menu.add_checkbutton(label='Mid', variable=MeasMidV3)
-    MeasmenuA.menu.add_checkbutton(label='P-P', variable=MeasPPV3)
-    MeasmenuA.menu.add_checkbutton(label='RMS', variable=MeasRMSV3)
+if CHANNELS >= 1:
+    MeasmenuA = Menubutton(dropmenu2, text="CA", style="W3.TButton")
+    MeasmenuA.menu = Menu(MeasmenuA, tearoff = 0 )
+    MeasmenuA["menu"]  = MeasmenuA.menu
+    MeasmenuA.menu.add_command(label="-CA-V-", foreground="blue", command=donothing)
+    MeasmenuA.menu.add_checkbutton(label='Avg', variable=MeasDCV1)
+    MeasmenuA.menu.add_checkbutton(label='Min', variable=MeasMinV1)
+    MeasmenuA.menu.add_checkbutton(label='Max', variable=MeasMaxV1)
+    MeasmenuA.menu.add_checkbutton(label='Base', variable=MeasBaseV1)
+    MeasmenuA.menu.add_checkbutton(label='Top', variable=MeasTopV1)
+    MeasmenuA.menu.add_checkbutton(label='Mid', variable=MeasMidV1)
+    MeasmenuA.menu.add_checkbutton(label='P-P', variable=MeasPPV1)
+    MeasmenuA.menu.add_checkbutton(label='RMS', variable=MeasRMSV1)
+    MeasmenuA.menu.add_checkbutton(label='A-B', variable=MeasDiffAB)
+    MeasmenuA.menu.add_checkbutton(label='A-B RMS', variable=MeasRMSVA_B)
+    MeasmenuA.menu.add_checkbutton(label='User', variable=MeasUserA, command=BUserAMeas)
+    #MeasmenuA.menu.add_separator()
+    MeasmenuA.menu.add_command(label="-CA-Time-", foreground="blue", command=donothing)
+    MeasmenuA.menu.add_checkbutton(label='H-Width', variable=MeasAHW)
+    MeasmenuA.menu.add_checkbutton(label='L-Width', variable=MeasALW)
+    MeasmenuA.menu.add_checkbutton(label='DutyCyle', variable=MeasADCy)
+    MeasmenuA.menu.add_checkbutton(label='Period', variable=MeasAPER)
+    MeasmenuA.menu.add_checkbutton(label='Freq', variable=MeasAFREQ)
+    MeasmenuA.menu.add_checkbutton(label='A-B Phase', variable=MeasPhase)
+    if CHANNELS >= 3:
+        MeasmenuA.menu.add_separator()
+        MeasmenuA.menu.add_command(label="-CC-V-", foreground="blue", command=donothing)
+        MeasmenuA.menu.add_checkbutton(label='Avg', variable=MeasDCV3)
+        MeasmenuA.menu.add_checkbutton(label='Min', variable=MeasMinV3)
+        MeasmenuA.menu.add_checkbutton(label='Max', variable=MeasMaxV3)
+        MeasmenuA.menu.add_checkbutton(label='Mid', variable=MeasMidV3)
+        MeasmenuA.menu.add_checkbutton(label='P-P', variable=MeasPPV3)
+        MeasmenuA.menu.add_checkbutton(label='RMS', variable=MeasRMSV3)
+    #
+    MeasmenuA.pack(side=LEFT)
 #
-MeasmenuA.pack(side=LEFT)
-#
-MeasmenuB = Menubutton(dropmenu2, text="CB", style="W3.TButton")
-MeasmenuB.menu = Menu(MeasmenuB, tearoff = 0 )
-MeasmenuB["menu"]  = MeasmenuB.menu
-MeasmenuB.menu.add_command(label="-CB-V-", foreground="blue", command=donothing)
-MeasmenuB.menu.add_checkbutton(label='Avg', variable=MeasDCV2)
-MeasmenuB.menu.add_checkbutton(label='Min', variable=MeasMinV2)
-MeasmenuB.menu.add_checkbutton(label='Max', variable=MeasMaxV2)
-MeasmenuB.menu.add_checkbutton(label='Base', variable=MeasBaseV2)
-MeasmenuB.menu.add_checkbutton(label='Top', variable=MeasTopV2)
-MeasmenuB.menu.add_checkbutton(label='Mid', variable=MeasMidV2)
-MeasmenuB.menu.add_checkbutton(label='P-P', variable=MeasPPV2)
-MeasmenuB.menu.add_checkbutton(label='RMS', variable=MeasRMSV2)
-MeasmenuB.menu.add_checkbutton(label='B-A', variable=MeasDiffBA)
-MeasmenuB.menu.add_checkbutton(label='User', variable=MeasUserB, command=BUserBMeas)
-#MeasmenuB.menu.add_separator()
-MeasmenuB.menu.add_command(label="-CB-Time-", foreground="blue", command=donothing)
-MeasmenuB.menu.add_checkbutton(label='H-Width', variable=MeasBHW)
-MeasmenuB.menu.add_checkbutton(label='L-Width', variable=MeasBLW)
-MeasmenuB.menu.add_checkbutton(label='DutyCyle', variable=MeasBDCy)
-MeasmenuB.menu.add_checkbutton(label='Period', variable=MeasBPER)
-MeasmenuB.menu.add_checkbutton(label='Freq', variable=MeasBFREQ)
-MeasmenuB.menu.add_checkbutton(label='B-A Delay', variable=MeasDelay)
-if CHANNELS >= 4:
-    MeasmenuB.menu.add_separator()
-    MeasmenuB.menu.add_command(label="-CD-V-", foreground="blue", command=donothing)
-    MeasmenuB.menu.add_checkbutton(label='Avg', variable=MeasDCV4)
-    MeasmenuB.menu.add_checkbutton(label='Min', variable=MeasMinV4)
-    MeasmenuB.menu.add_checkbutton(label='Max', variable=MeasMaxV4)
-    MeasmenuB.menu.add_checkbutton(label='Mid', variable=MeasMidV4)
-    MeasmenuB.menu.add_checkbutton(label='P-P', variable=MeasPPV4)
-    MeasmenuB.menu.add_checkbutton(label='RMS', variable=MeasRMSV4)
-MeasmenuB.pack(side=LEFT)
+if CHANNELS >= 2:
+    MeasmenuB = Menubutton(dropmenu2, text="CB", style="W3.TButton")
+    MeasmenuB.menu = Menu(MeasmenuB, tearoff = 0 )
+    MeasmenuB["menu"]  = MeasmenuB.menu
+    MeasmenuB.menu.add_command(label="-CB-V-", foreground="blue", command=donothing)
+    MeasmenuB.menu.add_checkbutton(label='Avg', variable=MeasDCV2)
+    MeasmenuB.menu.add_checkbutton(label='Min', variable=MeasMinV2)
+    MeasmenuB.menu.add_checkbutton(label='Max', variable=MeasMaxV2)
+    MeasmenuB.menu.add_checkbutton(label='Base', variable=MeasBaseV2)
+    MeasmenuB.menu.add_checkbutton(label='Top', variable=MeasTopV2)
+    MeasmenuB.menu.add_checkbutton(label='Mid', variable=MeasMidV2)
+    MeasmenuB.menu.add_checkbutton(label='P-P', variable=MeasPPV2)
+    MeasmenuB.menu.add_checkbutton(label='RMS', variable=MeasRMSV2)
+    MeasmenuB.menu.add_checkbutton(label='B-A', variable=MeasDiffBA)
+    MeasmenuB.menu.add_checkbutton(label='User', variable=MeasUserB, command=BUserBMeas)
+    #MeasmenuB.menu.add_separator()
+    MeasmenuB.menu.add_command(label="-CB-Time-", foreground="blue", command=donothing)
+    MeasmenuB.menu.add_checkbutton(label='H-Width', variable=MeasBHW)
+    MeasmenuB.menu.add_checkbutton(label='L-Width', variable=MeasBLW)
+    MeasmenuB.menu.add_checkbutton(label='DutyCyle', variable=MeasBDCy)
+    MeasmenuB.menu.add_checkbutton(label='Period', variable=MeasBPER)
+    MeasmenuB.menu.add_checkbutton(label='Freq', variable=MeasBFREQ)
+    MeasmenuB.menu.add_checkbutton(label='B-A Delay', variable=MeasDelay)
+    if CHANNELS >= 4:
+        MeasmenuB.menu.add_separator()
+        MeasmenuB.menu.add_command(label="-CD-V-", foreground="blue", command=donothing)
+        MeasmenuB.menu.add_checkbutton(label='Avg', variable=MeasDCV4)
+        MeasmenuB.menu.add_checkbutton(label='Min', variable=MeasMinV4)
+        MeasmenuB.menu.add_checkbutton(label='Max', variable=MeasMaxV4)
+        MeasmenuB.menu.add_checkbutton(label='Mid', variable=MeasMidV4)
+        MeasmenuB.menu.add_checkbutton(label='P-P', variable=MeasPPV4)
+        MeasmenuB.menu.add_checkbutton(label='RMS', variable=MeasRMSV4)
+    MeasmenuB.pack(side=LEFT)
 if ShowBallonHelp > 0:
     math_tip = CreateToolTip(mathbt, 'Open Math window')
     options_tip = CreateToolTip(Optionmenu, 'Select Optional Settings')
@@ -20538,21 +20813,33 @@ if AWGChannels > 0:
     else:
         AWGScreenStatus.set(1)
 #
-BLoadConfig("alice-last-config.cfg") # load configuration from last session
-if LocalLanguage != "English":
-    BLoadConfig(LocalLanguage) # load local language configuration 
+# BLoadConfig("alice-last-config.cfg") # load configuration from last session
+# if LocalLanguage != "English":
+#     BLoadConfig(LocalLanguage) # load local language configuration 
 #
 # Try to connect to hardware
-Sucess = ConnectDevice()
+# Sucess = ConnectDevice()
 if Sucess:
     # Get_Data() # do a dummy first data capture
     bcon.configure(text="Conn", style="GConn.TButton")
+    
+    if AWGChannels > 0:
+        MakeAWGwaves()
+    try:
+        if ExtraUI > 0:
+            MakeExtraUI()
+    except:
+        donothing()
     BTime() # initally set Sample Rate by Horz Time base
     BSetTrigEdge()
     BSetTriggerSource()
     BTriglevel() # set trigger level
-    if AWGChannels > 0:
-        MakeAWGwaves()
+#
+BLoadConfig("alice-last-config.cfg") # load configuration from last session
+if AWGChannels > 0:
+    MakeAWGwaves()
+if LocalLanguage != "English":
+    BLoadConfig(LocalLanguage) # load local language configuration
 #
 # ================ Call main routine ===============================
 #
